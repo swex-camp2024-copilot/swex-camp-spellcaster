@@ -1,8 +1,8 @@
 from game.engine import GameEngine
 
-def run_match(bot1, bot2, max_turns=50, verbose=False):
+def run_match(bot1, bot2, max_turns=100, verbose=False):
     engine = GameEngine(bot1, bot2)
-    winner = None  # ← Important fix
+    winner = None
 
     for _ in range(max_turns):
         winner = engine.run_turn()

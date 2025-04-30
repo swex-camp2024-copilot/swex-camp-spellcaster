@@ -1,6 +1,27 @@
 import random
 
-class SampleBot:
+from bots.bot_interface import BotInterface
+
+
+class SampleBot (BotInterface):
+    def __init__(self, name="SampleBot", sprite_path="assets/wizards/sample_bot1.png", minion_sprite_path="assets/minions/minion_1.png"):
+        # Adding these properties makes the interface clearer
+        self._name = name
+        self._sprite_path = sprite_path
+        self._minion_sprite_path = minion_sprite_path
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def sprite_path(self):
+        return self._sprite_path
+
+    @property
+    def minion_sprite_path(self):
+        return self._minion_sprite_path
+
     def decide(self, state):
         self_data = state["self"]
         opp_data = state["opponent"]
@@ -18,6 +39,22 @@ class SampleBot:
 
         def dist(a, b):
             return max(abs(a[0] - b[0]), abs(a[1] - b[1]))  # Chebyshev
+
+        def manhattan_dist(a, b):
+            return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+        # 0. Use MELEE ATTACK if adjacent to enemy (manhattan distance = 1)
+        enemies = [e for e in minions if e["owner"] != self_data["name"]]
+        enemies.append(opp_data)  # Add opponent to potential targets
+
+        adjacent_enemies = [e for e in enemies if manhattan_dist(self_pos, e["position"]) == 1]
+        if adjacent_enemies and cooldowns["melee_attack"] == 0:
+            # Pick the enemy with lowest HP
+            target = min(adjacent_enemies, key=lambda e: e["hp"])
+            spell = {
+                "name": "melee_attack",
+                "target": target["position"]
+            }
 
         # 1. FIREBALL if in range
         if cooldowns["fireball"] == 0 and mana >= 30 and dist(self_pos, opp_pos) <= 3:

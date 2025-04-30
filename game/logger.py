@@ -1,9 +1,12 @@
+import copy
+
 class GameLogger:
     def __init__(self):
         self.turn_logs = []
         self.current_turn = []
         self.snapshots = []   # 💾 new: full board state per turn
         self.spells = []
+        self.damage_events = []
 
     def new_turn(self, turn_num):
         if self.current_turn:
@@ -14,7 +17,7 @@ class GameLogger:
         self.current_turn.append(message)
 
     def log_state(self, state_dict):
-        self.snapshots.append(state_dict)
+        self.snapshots.append(copy.deepcopy(state_dict))
 
     def finalize(self):
         if self.current_turn:
@@ -37,10 +40,19 @@ class GameLogger:
                 for line in turn:
                     f.write(line + "\n")
 
-    def log_spell(self, caster, spell_name, target=None):
+    def log_spell(self, caster, spell_name, target=None, hit=None):
         self.spells.append({
-            "turn": len(self.snapshots),  # snapshot already added this turn
+            "turn": len(self.snapshots),
             "caster": caster.name,
             "spell": spell_name,
-            "target": target
+            "target": target,
+            "hit": hit
+        })
+
+    def log_damage(self, position, amount, target_name):
+        self.damage_events.append({
+            "turn": len(self.snapshots),
+            "position": position,
+            "amount": amount,
+            "target": target_name
         })
