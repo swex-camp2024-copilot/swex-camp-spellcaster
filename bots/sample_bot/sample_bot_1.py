@@ -3,12 +3,12 @@ import random
 from bots.bot_interface import BotInterface
 
 
-class SampleBot (BotInterface):
-    def __init__(self, name="SampleBot", sprite_path="assets/wizards/sample_bot1.png", minion_sprite_path="assets/minions/minion_1.png"):
+class SampleBot1 (BotInterface):
+    def __init__(self):
         # Adding these properties makes the interface clearer
-        self._name = name
-        self._sprite_path = sprite_path
-        self._minion_sprite_path = minion_sprite_path
+        self._name = "Sample Bot 1"
+        self._sprite_path = "assets/wizards/sample_bot1.png"
+        self._minion_sprite_path = "assets/minions/minion_1.png"
 
     @property
     def name(self):
