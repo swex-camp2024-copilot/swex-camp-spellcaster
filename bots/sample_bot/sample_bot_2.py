@@ -9,6 +9,7 @@ class SampleBot2 (BotInterface):
         self._name = "Sample Bot 2"
         self._sprite_path = "assets/wizards/sample_bot2.png"
         self._minion_sprite_path = "assets/minions/minion_2.png"
+        self._first_round = True  # Track if this is the first round
 
     @property
     def name(self):
@@ -42,6 +43,13 @@ class SampleBot2 (BotInterface):
 
         def manhattan_dist(a, b):
             return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+        if self._first_round and cooldowns["shield"] == 0 and mana >= 20:
+            spell = {"name": "shield"}
+            self._first_round = False  # No longer the first round
+            return {"move": [0, 0], "spell": spell}  # Return immediately with shield spell
+        elif self._first_round:
+            self._first_round = False  # Mark first round as completed even if we couldn't shield
 
         # 0. Use MELEE ATTACK if adjacent to enemy (manhattan distance = 1)
         enemies = [e for e in minions if e["owner"] != self_data["name"]]
