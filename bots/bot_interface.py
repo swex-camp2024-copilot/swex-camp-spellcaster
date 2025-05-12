@@ -50,6 +50,7 @@ class BotInterface(ABC):
         """Process game state and return action decision."""
         pass
 
+    ## UNUSED
     def get_registration(self) -> BotRegistration:
         """Get bot registration data."""
         return BotRegistration(

@@ -7,8 +7,8 @@ from game.minion import Minion
 
 class GameEngine:
     def __init__(self, bot1, bot2):
-        self.wizard1 = Wizard("Bot1", [0, 0])
-        self.wizard2 = Wizard("Bot2", [9, 9])
+        self.wizard1 = Wizard(bot1.name, [0, 0])
+        self.wizard2 = Wizard(bot2.name, [9, 9])
         self.bots = [bot1, bot2]
         self.artifacts = ArtifactManager()
         self.turn = 0

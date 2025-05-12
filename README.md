@@ -1,4 +1,78 @@
-# swex-camp-spellcaster
+# 🧙 Spellcasters
 
+**Spellcasters** is a hackathon game challenge where participants program bots to battle in a turn-based, wizard-themed strategy arena. Each bot controls a wizard who can move, cast spells, summon minions, and collect artifacts — all on a 10x10 battlefield.
 
-move is an array of two integers representing the x and y coordinates of the move, they must be in the range of -1 to 1
+This repo includes:
+- A full game engine
+- Bot development framework
+- Visualizer with animations (using Pygame)
+- Sample smart bots
+
+---
+
+## 🎮 How It Works
+
+Each wizard-bot competes by:
+- Moving across a grid (like a chess king)
+- Casting spells (fireball, shield, teleport, etc.)
+- Summoning minions
+- Collecting artifacts for health, mana, or cooldown boosts
+
+Bots receive structured game state input each turn and return an action (move + optional spell).
+
+---
+
+## 🚀 Quick Start
+
+### 1. Create and Activate a Virtual Environment
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows use: venv\Scripts\activate
+```
+
+### 2. Install pip-tools and Compile Requirements
+
+```bash
+pip install pip-tools
+pip-compile requirements.in 
+```
+
+### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 🧠 Bot Interface
+
+To participate in the game, each bot must implement a decide(state) method. This method is called every turn and must return an action dict.
+Ask your AI assistant to give you more details.
+
+---
+
+## 📥 State Input Format
+
+The state dictionary includes everything your bot needs to make decisions - your AI assistant can provide you more details on this.
+
+---
+
+## ✍️ Add Your Own Bot
+
+Create a new folder/module in bots/, and implement the required decide(state) logic.
+
+---
+
+## 📥 Add Sprites
+Place custom assets in assets/:
+
+```
+assets/
+├── wizards/
+├── minions/
+```
+
+Use PNGs with transparent backgrounds. Add the path to your sprite using the respective properties in the bot class.
+NOTE: It is not necessary to add sprites to play the game - if the custom sprite is not provided then the default one(s) will be used.

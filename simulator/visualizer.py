@@ -4,6 +4,8 @@ import pygame
 import sys
 import time
 
+from bots.bot_interface import BotInterface
+
 # Constants
 TILE_SIZE = 64
 INFO_BAR_HEIGHT = 80
@@ -21,15 +23,20 @@ GREEN = (100, 255, 100)
 YELLOW = (255, 255, 100)
 BLACK = (0, 0, 0)
 
+DEFAULT_WIZARD_SPRITES = ["assets/wizards/sample_bot1.png", "assets/wizards/sample_bot2.png"]
+DEFAULT_MINION_SPRITES = ["assets/minions/minion_1.png", "assets/minions/minion_2.png"]
+
 
 def load_frames(path):
     return [pygame.image.load(path).convert_alpha()]
 
 
 class Visualizer:
-    def __init__(self, logger):
+    def __init__(self, logger, bot1: BotInterface, bot2: BotInterface):
         pygame.init()
         self.logger = logger
+        self.bot1 = bot1
+        self.bot2 = bot2
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT + INFO_BAR_HEIGHT+  50))
         pygame.display.set_caption("Spellcasters: Code Duel")
         self.clock = pygame.time.Clock()
@@ -45,10 +52,19 @@ class Visualizer:
         self.fireball_sprite = pygame.transform.smoothscale(original, (32, 32))
 
     def load_wizard_sprites(self):
-        self.wizard_sprites = {
-            "Bot1": load_frames("assets/wizards/sample_bot1.png"),
-            "Bot2": load_frames("assets/wizards/sample_bot2.png")
-        }
+        for bot in [self.bot1, self.bot2]:
+            try:
+                sprite_path = bot.sprite_path
+                if sprite_path not in self.wizard_sprites:
+                    frames = load_frames(sprite_path)
+                    self.wizard_sprites[bot.name] = frames
+            except Exception as e:
+                print(f"Error loading sprite for {bot.name}: {e}")
+                # Fallback to default sprite
+                if bot.name not in self.wizard_sprites:
+                    default_sprite = DEFAULT_WIZARD_SPRITES[0] if bot.name == self.bot1.name else DEFAULT_WIZARD_SPRITES[1]
+                    frames = load_frames(default_sprite)
+                    self.wizard_sprites[bot.name] = frames
 
     def load_artifact_sprites(self):
         self.artifact_sprites = {
@@ -58,10 +74,19 @@ class Visualizer:
         }
 
     def load_minion_sprites(self):
-        self.minion_sprites = {
-            "Bot1": load_frames("assets/minions/minion_1.png"),
-            "Bot2": load_frames("assets/minions/minion_2.png")
-        }
+        for bot in [self.bot1, self.bot2]:
+            try:
+                sprite_path = bot.minion_sprite_path
+                if sprite_path not in self.minion_sprites:
+                    frames = load_frames(sprite_path)
+                    self.minion_sprites[bot.name] = frames
+            except Exception as e:
+                print(f"Error loading sprite for {bot.name}: {e}")
+                # Fallback to default sprite
+                if bot.name not in self.minion_sprites:
+                    default_sprite = DEFAULT_MINION_SPRITES[0] if bot.name == self.bot1.name else DEFAULT_MINION_SPRITES[1]
+                    frames = load_frames(default_sprite)
+                    self.minion_sprites[bot.name] = frames
 
     def draw_wizard_info_bar(self, state):
         try:
@@ -80,7 +105,7 @@ class Visualizer:
 
         for i, key in enumerate(["self", "opponent"]):
             wiz = state[key]
-            color = BLUE if wiz["name"] != "Bot2" else RED
+            color = BLUE if wiz["name"] != self.bot2.name else RED
             x_offset = i * spacing + padding
 
             # Name
@@ -121,6 +146,9 @@ class Visualizer:
         elif symbol == "A" and name in self.artifact_sprites:
             frames = self.artifact_sprites[name]
             self.draw_sprite(frames, center)
+        elif symbol == "M" and name in self.minion_sprites:
+            frames = self.minion_sprites[name]
+            self.draw_sprite(frames, center)
         else:
             pygame.draw.circle(self.screen, color, center, TILE_SIZE // 3)
             text = self.font.render(symbol, True, BLACK)
@@ -152,13 +180,13 @@ class Visualizer:
 
             # Minions
             for minion in state.get("minions", []):
-                color = RED if minion["owner"] == "Bot2" else BLUE
-                self.draw_unit(minion["position"], color, "M")
+                color = RED if minion["owner"] == self.bot2.name else BLUE
+                self.draw_unit(minion["position"], color, "M", minion["owner"])
 
             # Wizards
             for wiz in ["self", "opponent"]:
                 wiz_data = state[wiz]
-                color = RED if wiz_data["name"] == "Bot2" else BLUE
+                color = RED if wiz_data["name"] == self.bot2.name else BLUE
                 self.draw_unit(wiz_data["position"], color, "W", wiz_data["name"])
 
         self.draw_info_bar(turn)
@@ -220,7 +248,7 @@ class Visualizer:
             for wiz_key in ["self", "opponent"]:
                 wiz_curr = curr_state[wiz_key]
                 wiz_next = next_state[wiz_key]
-                color = RED if wiz_curr["name"] == "Bot2" else BLUE
+                color = RED if wiz_curr["name"] == self.bot2.name else BLUE
                 pos = self.interpolate(wiz_curr["position"], wiz_next["position"], progress)
                 self.draw_unit(pos, color, "W", wiz_curr["name"])
 
@@ -228,9 +256,9 @@ class Visualizer:
             for i in range(min(len(curr_minions), len(existing_minions))):
                 curr_m = curr_minions[i]
                 next_m = existing_minions[i]
-                color = RED if curr_m["owner"] == "Bot2" else BLUE
+                color = RED if curr_m["owner"] == self.bot2.name else BLUE
                 pos = self.interpolate(curr_m["position"], next_m["position"], progress)
-                self.draw_unit(pos, color, "M")
+                self.draw_unit(pos, color, "M", curr_m["owner"])
 
             # Static artifacts
             for artifact in curr_state.get("artifacts", []):
@@ -253,18 +281,18 @@ class Visualizer:
             # Draw wizards at final positions
             for wiz_key in ["self", "opponent"]:
                 wiz_next = next_state[wiz_key]
-                color = RED if wiz_next["name"] == "Bot2" else BLUE
+                color = RED if wiz_next["name"] == self.bot2.name else BLUE
                 self.draw_unit(wiz_next["position"], color, "W", wiz_next["name"])
 
             # Draw existing minions
             for m in existing_minions:
-                color = RED if m["owner"] == "Bot2" else BLUE
-                self.draw_unit(m["position"], color, "M")
+                color = RED if m["owner"] == self.bot2.name else BLUE
+                self.draw_unit(m["position"], color, "M", m["owner"])
 
             new_minions = [m for m in next_minions if not any(cm["id"] == m["id"] for cm in curr_minions)]
 
             for m in new_minions:
-                color = RED if m["owner"] == "Bot2" else BLUE
+                color = RED if m["owner"] == self.bot2.name else BLUE
                 center = self.pixel_center(m["position"])
                 # Grow effect
                 size = int(TILE_SIZE * 0.6 * progress)  # Start small and grow
