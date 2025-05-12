@@ -17,27 +17,18 @@ class GameEngine:
         self.logger = GameLogger()
 
     def run_turn(self):
-        self.logger.log_state(self.build_input(self.wizard1, self.wizard2))
-        self.turn += 1
-        self.logger.new_turn(self.turn)
+        self.log_turn()
+
         collision_occurred = False
 
         # Step 1: Artifact spawning
-        if self.turn % ARTIFACT_SPAWN_RATE == 0:
-            occupied_positions = [
-                self.wizard1.position,
-                self.wizard2.position
-            ]
-            # Add positions of alive minions
-            occupied_positions.extend([m.position for m in self.minions if m.is_alive()])
+        self.spawn_artifacts()
 
-            self.artifacts.spawn_random(occupied_positions, self.turn)
-
-        # Step 2: Get bot actions
-        actions = [
-            self.bots[0].decide(self.build_input(self.wizard1, self.wizard2)),
-            self.bots[1].decide(self.build_input(self.wizard2, self.wizard1))
-        ]
+        # Step 2: Get bot actions and validate them
+        actions = self.validate_actions([
+            (self.bots[0].decide(self.build_input(self.wizard1, self.wizard2))),
+            (self.bots[1].decide(self.build_input(self.wizard2, self.wizard1)))
+        ])
 
         # Step 3: Movement with collision detection
         wiz1_move = actions[0].get("move")
@@ -80,7 +71,7 @@ class GameEngine:
 
         self.logger.log_state(self.build_input(self.wizard1, self.wizard2))
 
-        winner =  self.check_winner()
+        winner = self.check_winner()
 
         if winner:
             if winner == "Draw":
@@ -92,6 +83,22 @@ class GameEngine:
 
         return winner
 
+    def spawn_artifacts(self):
+        if self.turn % ARTIFACT_SPAWN_RATE == 0:
+            occupied_positions = [
+                self.wizard1.position,
+                self.wizard2.position
+            ]
+            # Add positions of alive minions
+            occupied_positions.extend([m.position for m in self.minions if m.is_alive()])
+
+            self.artifacts.spawn_random(occupied_positions, self.turn)
+
+    def log_turn(self):
+        self.logger.log_state(self.build_input(self.wizard1, self.wizard2))
+        self.turn += 1
+        self.logger.new_turn(self.turn)
+
     def build_input(self, self_wiz, opp_wiz):
         return {
             "turn": self.turn,
@@ -101,6 +108,24 @@ class GameEngine:
             "artifacts": self.artifacts.active_artifacts(),
             "minions": [m.to_dict() for m in self.minions if m.is_alive()]
         }
+
+    def validate_actions(self, actions):
+        for action in actions:
+            # Validate "move"
+            move = action.get("move")
+            if move and isinstance(move, list) and len(move) == 2 and all(isinstance(i, int) for i in move):
+                if -1 <= move[0] <= 1 and -1 <= move[1] <= 1:
+                    continue
+                else:
+                    self.logger.log("Invalid move: Out of bounds.")
+                    move[0] = 0
+                    move[1] = 0
+            elif move:
+                self.logger.log("Invalid move: Must be an array of two integers.")
+                move[0] = 0
+                move[1] = 0
+
+        return actions
 
     def process_movement(self, wizard, move):
         if not move:
@@ -389,4 +414,3 @@ class GameEngine:
             if m.is_alive() and m.position == pos and m not in exceptions:
                 return True
         return False
-
