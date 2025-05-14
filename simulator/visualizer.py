@@ -40,6 +40,7 @@ DEFAULT_MINION_SPRITES = ["assets/minions/minion_1.png", "assets/minions/minion_
 FIREBALL_SPRITE_PATH = "assets/spells/fireball.png"
 HEAL_SPRITE_PATH = "assets/spells/heal.png"
 SHIELD_SPRITE_PATH = "assets/spells/shield.png"
+EXPLOSION_SPRITE_PATH = "assets/spells/fireball_explosion.png"
 
 # Animation settings
 SPRITE_SCALE = 0.8  # 80% of the tile size
@@ -76,6 +77,8 @@ class Visualizer:
         self.load_artifact_sprites()
         self.minion_sprites: Dict[str, List[pygame.Surface]] = {}
         self.load_minion_sprites()
+        self.info_bar_state = {}
+        self.info_bar_state = {}
 
         original = pygame.image.load(FIREBALL_SPRITE_PATH).convert_alpha()
         self.fireball_sprite = pygame.transform.smoothscale(original, (32, 32))
@@ -85,6 +88,8 @@ class Visualizer:
 
         original = pygame.image.load(SHIELD_SPRITE_PATH).convert_alpha()
         self.shield_sprite = pygame.transform.smoothscale(original, (TILE_SIZE, TILE_SIZE))
+
+        self.fireball_explosion_sprite = pygame.image.load(FIREBALL_SPRITE_PATH).convert_alpha()
 
     def load_wizard_sprites(self) -> None:
         """Load wizard sprites for both bots with fallback to defaults if needed."""
@@ -126,8 +131,10 @@ class Visualizer:
                     frames = load_frames(default_sprite)
                     self.minion_sprites[bot.name] = frames
 
-    def draw_wizard_info_bar(self, state: Dict[str, Any]) -> None:
+    def draw_wizard_info_bar(self, state: Dict[str, Any] = None) -> None:
         """Draw the top bar with wizard health and mana information."""
+        if (state == None):
+            state = self.info_bar_state
         try:
             assert "self" in state and "opponent" in state, "State must contain 'self' and 'opponent'"
             assert "name" in state["self"] and "hp" in state["self"] and "mana" in state["self"], "Invalid 'self' data"
@@ -213,7 +220,7 @@ class Visualizer:
     def render_frame(self, state: Dict[str, Any], turn: int, skip_entities: bool = False) -> None:
         """Render a complete frame with all entities."""
         self.screen.fill(WHITE)
-        self.draw_wizard_info_bar(state)
+        self.draw_wizard_info_bar()
         self.draw_board()
 
         if not skip_entities:
@@ -291,19 +298,23 @@ class Visualizer:
         """Run the visualization for a sequence of game states."""
         if states:
             initial_state = states[0]
+            self.info_bar_state = initial_state
             self.render_frame(initial_state, 0)
             self.wait_for(0.3)
 
-        for turn in range(len(states) - 1):
-            curr = states[turn]
-            nxt = states[turn + 1]
-            self.animate_transition(curr, nxt, turn)
+        for state_index in range(len(states) - 1):
+            curr = states[state_index]
+            nxt = states[state_index + 1]
+            self.animate_transition(curr, nxt, state_index)
 
             # Current animation wait
             self.wait_for(ANIMATION_DURATION)
+            self.info_bar_state = nxt
+            self.draw_wizard_info_bar()
 
             # Additional wait after each turn
-            self.wait_for(0.3)
+            if (curr["turn"] != nxt["turn"]):
+                self.wait_for(0.3)
 
         # Determine the winner
         final_state = states[-1]
@@ -317,11 +328,11 @@ class Visualizer:
         # Display the end game message
         self.display_end_game_message(winner)
 
-    def animate_transition(self, curr_state: Dict[str, Any], next_state: Dict[str, Any], turn: int) -> None:
+    def animate_transition(self, curr_state: Dict[str, Any], next_state: Dict[str, Any], state_index: int) -> None:
         """Animate the transition between two game states."""
         # First half of animation: movement only
         move_steps = int(FPS * ANIMATION_DURATION / 2)
-        damage_this_turn = [d for d in self.logger.damage_events if d["turn"] == turn]
+        damage_this_state = [d for d in self.logger.damage_events if d["state_index"] == state_index]
 
         curr_minions = curr_state.get("minions", [])
         next_minions = next_state.get("minions", [])
@@ -335,7 +346,7 @@ class Visualizer:
             progress = frame / move_steps
             self.screen.fill(WHITE)
             self.draw_board()
-            self.draw_wizard_info_bar(curr_state)
+            self.draw_wizard_info_bar()
 
             # Interpolate wizards
             for wiz_key in ["self", "opponent"]:
@@ -359,19 +370,19 @@ class Visualizer:
             for artifact in curr_state.get("artifacts", []):
                 self.draw_unit(artifact["position"], YELLOW, "A", artifact["type"])
 
-            self.draw_info_bar(turn + 1)
+            self.draw_info_bar(curr_state["turn"])
             pygame.display.flip()
             self.clock.tick(FPS)
             self.handle_events()
 
         # Second half: spell casting (entities at their final positions)
         spell_steps = int(FPS * ANIMATION_DURATION / 2)
-        spell_effects = [s for s in self.logger.spells if s["turn"] == turn]
+        spell_effects = [s for s in self.logger.spells if s["state_index"] == state_index]
 
         for frame in range(spell_steps):
             progress = frame / spell_steps
             self.screen.fill(WHITE)
-            self.render_frame(next_state, turn, skip_entities=True)
+            self.render_frame(next_state, curr_state["turn"], skip_entities=True)
 
             # Draw wizards at final positions
             for wiz_key in ["self", "opponent"]:
@@ -434,7 +445,7 @@ class Visualizer:
                 elif spell_name == "teleport":
                     self.draw_teleport_pulse(caster_pos)
 
-            for dmg in damage_this_turn:
+            for dmg in damage_this_state:
                 center = self.pixel_center(dmg["position"])
                 rise = int((1 - progress) * 20)  # float upward
                 alpha = int(255 * (1 - progress))  # fade out
@@ -446,7 +457,7 @@ class Visualizer:
             for artifact in curr_state.get("artifacts", []):
                 self.draw_unit(artifact["position"], YELLOW, "A", artifact["type"])
 
-            self.draw_info_bar(turn + 1)
+            self.draw_info_bar(curr_state["turn"])
             pygame.display.flip()
             self.clock.tick(FPS)
             self.handle_events()
@@ -564,16 +575,13 @@ class Visualizer:
         """Draw fireball explosion effect at the target position."""
         center = self.pixel_center(position)
 
-        # Load the explosion sprite
-        explosion_sprite = pygame.image.load("assets/spells/fireball_explosion.png").convert_alpha()
-
         # Scale the explosion sprite based on progress (grow and fade out)
         scale = 0.8 + 1 * progress  # Start small and grow
         size = int(TILE_SIZE * scale)
         alpha = int(255 * (1 - progress))  # Fade out as progress increases
 
         # Scale the explosion sprite
-        scaled_explosion = pygame.transform.smoothscale(explosion_sprite, (size, size))
+        scaled_explosion = pygame.transform.smoothscale(self.fireball_explosion_sprite, (size, size))
         scaled_explosion.set_alpha(alpha)
 
         # Draw the explosion sprite centered at the target position

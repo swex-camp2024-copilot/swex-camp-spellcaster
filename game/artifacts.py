@@ -52,7 +52,9 @@ class ArtifactManager:
             if artifact["position"] == wizard.position:
                 self.apply_effect(wizard, artifact["type"])
                 self.artifacts.remove(artifact)
-                break
+                return artifact
+
+        return None
 
     def apply_effect(self, wizard, kind):
         if kind == "health":

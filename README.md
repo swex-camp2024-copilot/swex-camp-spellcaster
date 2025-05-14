@@ -62,6 +62,25 @@ The state dictionary includes everything your bot needs to make decisions - your
 ## ✍️ Add Your Own Bot
 
 Create a new folder/module in bots/, and implement the required decide(state) logic.
+Your main task is to implement how decide method works for your bot. Method needs to return an object like this:
+```python
+{
+    "move": move,
+    "spell": spell
+}
+```
+Move must be an array of two integers where one represent your movement on x-axis and another one movement on y-axis. Numbers must be in range from -1 to 1.
+
+Spell format is defined as below:
+```python 
+{
+    "name": spell_name,
+    "target": position
+}
+```
+Spell name must be one of the values defined in rules.py. Position is a tuple representing coordinates on the board.
+
+Spells shield and heal do not require target to be provided.
 
 ---
 
