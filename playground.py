@@ -2,6 +2,7 @@ import os
 import random
 import importlib
 import inspect
+import sys
 from typing import List, Tuple, Dict, Optional
 from bots.bot_interface import BotInterface
 from simulator.match import run_match
@@ -199,4 +200,14 @@ def run_multiple_tournaments(num_tournaments=100, target_bot_name="Kevin Link"):
 
 # Example usage
 if __name__ == "__main__":
-    run_multiple_tournaments(100, "Kevin Link")
+    # Get num_tournaments from command line argument if provided
+    num_tournaments = 100  # Default value
+    target_bot_name = "Kevin Link"  # Default bot name
+    
+    if len(sys.argv) > 1:
+        try:
+            num_tournaments = int(sys.argv[1])
+        except ValueError:
+            print(f"Error: Invalid number '{sys.argv[1]}'. Using default value of 100 tournaments.")
+    
+    run_multiple_tournaments(num_tournaments, target_bot_name)
