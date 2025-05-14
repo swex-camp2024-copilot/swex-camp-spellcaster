@@ -143,7 +143,8 @@ class RedWizardBot(BotInterface):
                 move = [
                     max(-1, min(1, dx)),
                     max(-1, min(1, dy))
-                ]        # 7. Teleport strategy - use teleport to escape or to get close to artifacts
+                ]        
+        # 7. Teleport strategy - use teleport to escape or to get close to artifacts
         if cooldowns["teleport"] == 0 and mana >= 20:
             # Priority 1: Low HP - teleport to health artifact if available
             health_artifacts = [a for a in artifacts if a["type"] == "health"]
