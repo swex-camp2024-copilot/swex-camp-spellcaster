@@ -225,15 +225,15 @@ def train_ai_bot(episodes=1000, matches_per_episode=20, save_interval=10, plot_i
     
     # Track performance against sample bots
     performance_history = []
-    PERFORMANCE_WINDOW = 10  # Number of episodes to average performance over
-    SELF_PLAY_THRESHOLD = 0.7  # Win rate threshold to start self-play
+    PERFORMANCE_WINDOW = 10
+    SELF_PLAY_THRESHOLD = 0.7
     
     # Curriculum learning phases
     curriculum_phases = {
-        "easy": (0, episodes // 4),      # First quarter: train against easy bots
-        "medium": (episodes // 4, episodes // 2),  # Second quarter: medium bots
-        "hard": (episodes // 2, 3 * episodes // 4),  # Third quarter: hard bots
-        "self_play": (3 * episodes // 4, episodes)  # Final quarter: mostly self-play
+        "easy": (0, episodes // 4),
+        "medium": (episodes // 4, episodes // 2),
+        "hard": (episodes // 2, 3 * episodes // 4),
+        "self_play": (3 * episodes // 4, episodes)
     }
     
     for episode in tqdm(range(episodes), desc="Training Progress"):
@@ -256,35 +256,33 @@ def train_ai_bot(episodes=1000, matches_per_episode=20, save_interval=10, plot_i
             avg_performance = 0
         
         # Select opponents based on phase and performance
+        current_opponents = []
         if current_phase == "self_play" or avg_performance >= SELF_PLAY_THRESHOLD:
             # Mix of sample bots and self-play
-            current_opponents = []
-            
-            # Add self-play bot with probability increasing over time
             self_play_prob = min(0.8, 0.2 + (episode - curriculum_phases["hard"][1]) / (episodes / 4))
             
             if random.random() < self_play_prob:
                 # Create a copy of the current model for self-play
                 self_play_bot = create_self_play_bot()
                 self_play_bot.load_state_dict(main_bot.state_dict())
-                current_opponents.append(("self_play", self_play_bot))
+                current_opponents.append((self_play_bot, "self_play"))
             else:
                 # Add some hard bots to maintain diversity
-                current_opponents.extend([bot for diff, bot in bot_pool if diff == "hard"])
+                current_opponents.extend([(bot, "hard") for diff, bot in bot_pool if diff == "hard"])
         else:
             # Regular curriculum learning
-            current_opponents = [bot for diff, bot in bot_pool if diff == current_phase]
+            current_opponents = [(bot, diff) for diff, bot in bot_pool if diff == current_phase]
         
         # Training iterations based on phase
         num_training_iterations = {
             "easy": 2,
             "medium": 4,
             "hard": 6,
-            "self_play": 8  # More iterations during self-play
+            "self_play": 8
         }[current_phase]
         
         # Train against selected opponents
-        for diff, opponent in current_opponents:
+        for opponent, diff in current_opponents:
             results, avg_reward = evaluate_bot(main_bot, opponent, matches_per_episode)
             episode_stats[f"vs_{opponent.name}"] = results
             episode_total_reward += avg_reward
@@ -304,7 +302,6 @@ def train_ai_bot(episodes=1000, matches_per_episode=20, save_interval=10, plot_i
         if avg_win_rate < 0.3:
             main_bot.epsilon = min(0.9, main_bot.epsilon * 1.1)
         else:
-            # Faster decay during self-play
             decay_rate = 0.99 if current_phase == "self_play" else 0.995
             main_bot.epsilon = max(0.05, main_bot.epsilon * decay_rate)
         
