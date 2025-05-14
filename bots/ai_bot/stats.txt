@@ -1,0 +1,1400 @@
+Episode 1:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 2:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 3:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.8, 'AIBot_variant_0': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.4, 'Draw': 0.1}
+
+Episode 4:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 5:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.7, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 6:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 7:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.4, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 8:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.9, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.6, 'AIBot_variant_2': 0.4, 'Draw': 0.0}
+
+Episode 9:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.6, 'AIBot_variant_2': 0.4, 'Draw': 0.0}
+
+Episode 10:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.8, 'AIBot_variant_0': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.6, 'Draw': 0.1}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 11:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.9, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 12:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 13:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.9, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.5, 'Draw': 0.1}
+
+Episode 14:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.9, 'AIBot_variant_0': 0.1, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 15:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.7, 'AIBot_variant_1': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 16:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.7, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 17:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.5, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 18:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.8, 'AIBot_variant_1': 0.1, 'Draw': 0.1}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 19:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.9, 'Draw': 0.1}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.5, 'Draw': 0.1}
+
+Episode 20:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 21:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 22:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.5, 'Draw': 0.1}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 23:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.2, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.8, 'AIBot_variant_1': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 24:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 25:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 26:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 27:
+vs_Sample Bot 1: {'DQNWizard': 0.1, 'Sample Bot 1': 0.8, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 28:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.7, 'AIBot_variant_1': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 29:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.9, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.9, 'Draw': 0.1}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.7, 'AIBot_variant_2': 0.3, 'Draw': 0.0}
+
+Episode 30:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 31:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 32:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.4, 'Draw': 0.1}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 33:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 34:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.9, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 35:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.8, 'AIBot_variant_0': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 36:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 37:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.9, 'AIBot_variant_1': 0.1, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 38:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.7, 'AIBot_variant_2': 0.3, 'Draw': 0.0}
+
+Episode 39:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.5, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.8, 'AIBot_variant_1': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 40:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 41:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 42:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 43:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.8, 'AIBot_variant_0': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.5, 'Draw': 0.1}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 44:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.8, 'AIBot_variant_0': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 45:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.0, 'AIBot_variant_2': 1.0, 'Draw': 0.0}
+
+Episode 46:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.9, 'AIBot_variant_0': 0.1, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 47:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 48:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.0, 'AIBot_variant_1': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 49:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.8, 'AIBot_variant_0': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.4, 'Draw': 0.1}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 50:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.9, 'Draw': 0.1}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.6, 'AIBot_variant_2': 0.4, 'Draw': 0.0}
+
+Episode 51:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.7, 'AIBot_variant_1': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 52:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.5, 'Draw': 0.1}
+
+Episode 53:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.4, 'Draw': 0.1}
+
+Episode 54:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 55:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.9, 'Draw': 0.1}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 56:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.8, 'AIBot_variant_2': 0.2, 'Draw': 0.0}
+
+Episode 57:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 58:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 59:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 60:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 61:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 62:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 63:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.7, 'AIBot_variant_1': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 1.0, 'AIBot_variant_2': 0.0, 'Draw': 0.0}
+
+Episode 64:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.6, 'Draw': 0.1}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 65:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 66:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.7, 'AIBot_variant_1': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 67:
+vs_Sample Bot 1: {'DQNWizard': 0.1, 'Sample Bot 1': 0.9, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 68:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.7, 'AIBot_variant_1': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.6, 'AIBot_variant_2': 0.4, 'Draw': 0.0}
+
+Episode 69:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 70:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 71:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 72:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.1, 'AIBot_variant_0': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.0, 'AIBot_variant_2': 1.0, 'Draw': 0.0}
+
+Episode 73:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 74:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 75:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 76:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.6, 'AIBot_variant_2': 0.4, 'Draw': 0.0}
+
+Episode 77:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.8, 'AIBot_variant_0': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 78:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 79:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.3, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 80:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.9, 'AIBot_variant_0': 0.1, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 81:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.7, 'AIBot_variant_1': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 82:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.5, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 83:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 84:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 85:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 86:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.6, 'Draw': 0.2}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 87:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 88:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.3, 'Draw': 0.3}
+vs_AIBot_variant_1: {'DQNWizard': 0.7, 'AIBot_variant_1': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 89:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.8, 'AIBot_variant_1': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.6, 'AIBot_variant_2': 0.4, 'Draw': 0.0}
+
+Episode 90:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 91:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.8, 'AIBot_variant_1': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 92:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 93:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 94:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.9, 'AIBot_variant_0': 0.1, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 95:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.7, 'AIBot_variant_2': 0.3, 'Draw': 0.0}
+
+Episode 96:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.7, 'Draw': 0.1}
+
+Episode 97:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.8, 'AIBot_variant_1': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 98:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.3, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 99:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.9, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.2, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 100:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.7, 'AIBot_variant_1': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 1:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.6, 'AIBot_variant_2': 0.4, 'Draw': 0.0}
+
+Episode 2:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 3:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.9, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 4:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 5:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.6, 'Draw': 0.1}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 6:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.1, 'Draw': 0.3}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 7:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 8:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 9:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 10:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 11:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 12:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 13:
+vs_Sample Bot 1: {'DQNWizard': 0.1, 'Sample Bot 1': 0.9, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.9, 'Draw': 0.1}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 14:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.7, 'Draw': 0.1}
+
+Episode 15:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 16:
+vs_Sample Bot 1: {'DQNWizard': 0.1, 'Sample Bot 1': 0.8, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 17:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 18:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 19:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 20:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.8, 'AIBot_variant_0': 0.2, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 21:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.9, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 22:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 23:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 24:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 25:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 26:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.9, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 27:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 28:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.5, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 29:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.8, 'Draw': 0.1}
+
+Episode 30:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.0, 'AIBot_variant_2': 1.0, 'Draw': 0.0}
+
+Episode 31:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.1, 'AIBot_variant_0': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 32:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 33:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 34:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 35:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 36:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 37:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.8, 'Draw': 0.1}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.5, 'Draw': 0.1}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 38:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 39:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 40:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.5, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.7, 'AIBot_variant_1': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 41:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.9, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 42:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 43:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 44:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 45:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.9, 'Draw': 0.1}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 46:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 47:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 48:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 49:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.9, 'AIBot_variant_0': 0.1, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 50:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 51:
+vs_Sample Bot 1: {'DQNWizard': 0.1, 'Sample Bot 1': 0.9, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 52:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 53:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.9, 'Draw': 0.1}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.0, 'AIBot_variant_2': 1.0, 'Draw': 0.0}
+
+Episode 54:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.9, 'Draw': 0.1}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.0, 'AIBot_variant_2': 0.9, 'Draw': 0.1}
+
+Episode 55:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 56:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.6, 'AIBot_variant_2': 0.4, 'Draw': 0.0}
+
+Episode 57:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 58:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.6, 'AIBot_variant_2': 0.4, 'Draw': 0.0}
+
+Episode 59:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 60:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 61:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.5, 'Draw': 0.1}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 62:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.9, 'Draw': 0.1}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 63:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 64:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.7, 'AIBot_variant_2': 0.3, 'Draw': 0.0}
+
+Episode 65:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 66:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 67:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.5, 'AIBot_variant_1': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 68:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 69:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 70:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 71:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 72:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 73:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 74:
+vs_Sample Bot 1: {'DQNWizard': 0.1, 'Sample Bot 1': 0.9, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 75:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 76:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 77:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.9, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 78:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 79:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 80:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.7, 'Draw': 0.1}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.0, 'AIBot_variant_2': 1.0, 'Draw': 0.0}
+
+Episode 81:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.0, 'AIBot_variant_1': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 82:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.6, 'Draw': 0.1}
+
+Episode 83:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.9, 'Draw': 0.1}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 84:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 85:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
+Episode 86:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.1, 'AIBot_variant_2': 0.9, 'Draw': 0.0}
+
+Episode 87:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 88:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.6, 'AIBot_variant_1': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 89:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 90:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.0, 'AIBot_variant_1': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 91:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.6, 'AIBot_variant_0': 0.4, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.6, 'AIBot_variant_2': 0.4, 'Draw': 0.0}
+
+Episode 92:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.1, 'AIBot_variant_1': 0.9, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.5, 'AIBot_variant_2': 0.5, 'Draw': 0.0}
+
+Episode 93:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.3, 'AIBot_variant_0': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.4, 'AIBot_variant_1': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 94:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.7, 'Draw': 0.1}
+
+Episode 95:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 96:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 97:
+vs_Sample Bot 1: {'DQNWizard': 0.1, 'Sample Bot 1': 0.9, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.5, 'AIBot_variant_0': 0.5, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.2, 'AIBot_variant_2': 0.8, 'Draw': 0.0}
+
+Episode 98:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.7, 'AIBot_variant_0': 0.3, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.3, 'AIBot_variant_1': 0.7, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 99:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.2, 'AIBot_variant_0': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.8, 'Draw': 0.0}
+vs_AIBot_variant_2: {'DQNWizard': 0.3, 'AIBot_variant_2': 0.7, 'Draw': 0.0}
+
+Episode 100:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+vs_AIBot_variant_0: {'DQNWizard': 0.4, 'AIBot_variant_0': 0.6, 'Draw': 0.0}
+vs_AIBot_variant_1: {'DQNWizard': 0.2, 'AIBot_variant_1': 0.7, 'Draw': 0.1}
+vs_AIBot_variant_2: {'DQNWizard': 0.4, 'AIBot_variant_2': 0.6, 'Draw': 0.0}
+
