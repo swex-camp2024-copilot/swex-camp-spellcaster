@@ -143,28 +143,45 @@ class RedWizardBot(BotInterface):
                 move = [
                     max(-1, min(1, dx)),
                     max(-1, min(1, dy))
-                ]
-
-        # 7. Teleport strategy - use teleport to escape or to get close to artifacts
+                ]        # 7. Teleport strategy - use teleport to escape or to get close to artifacts
         if cooldowns["teleport"] == 0 and mana >= 20:
-            # Teleport to an artifact if any exists and we're not in immediate danger
-            if artifacts and hp > 30 and manhattan_dist(self_pos, opp_pos) > 2:
+            # Priority 1: Low HP - teleport to health artifact if available
+            health_artifacts = [a for a in artifacts if a["type"] == "health"]
+            if hp < 40 and health_artifacts:
+                # Find nearest health artifact
+                nearest_health = min(health_artifacts, key=lambda a: manhattan_dist(self_pos, a["position"]))
+                spell = {
+                    "name": "teleport",
+                    "target": nearest_health["position"]
+                }
+            # Priority 2: Teleport to any artifact if not in immediate danger
+            elif artifacts and hp > 30 and manhattan_dist(self_pos, opp_pos) > 2:
                 # Find nearest artifact
                 nearest_artifact = min(artifacts, key=lambda a: manhattan_dist(self_pos, a["position"]))
                 spell = {
                     "name": "teleport",
                     "target": nearest_artifact["position"]
                 }
-            # Emergency teleport if opponent is too close and we're weak
+            # Priority 3: Emergency teleport if opponent is too close and we're weak
             elif hp < 30 and manhattan_dist(self_pos, opp_pos) <= 2:
-                # Teleport to a corner opposite of the opponent
-                corners = [[0, 0], [0, board_size-1], [board_size-1, 0], [board_size-1, board_size-1]]
-                # Find the corner furthest from opponent
-                best_corner = max(corners, key=lambda c: manhattan_dist(c, opp_pos))
-                spell = {
-                    "name": "teleport",
-                    "target": best_corner
-                }
+                # First try to find a health artifact anywhere on the board
+                if health_artifacts:
+                    # Ideally find one that's far from opponent
+                    best_health = max(health_artifacts, 
+                                     key=lambda a: manhattan_dist(a["position"], opp_pos))
+                    spell = {
+                        "name": "teleport",
+                        "target": best_health["position"]
+                    }
+                # If no health artifacts, teleport to a corner opposite of the opponent
+                else:
+                    corners = [[0, 0], [0, board_size-1], [board_size-1, 0], [board_size-1, board_size-1]]
+                    # Find the corner furthest from opponent
+                    best_corner = max(corners, key=lambda c: manhattan_dist(c, opp_pos))
+                    spell = {
+                        "name": "teleport",
+                        "target": best_corner
+                    }
 
         # 8. Default movement strategy if no special movement has been decided
         if move == [0, 0]:
