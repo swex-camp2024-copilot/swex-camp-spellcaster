@@ -52,12 +52,22 @@ def run_tournament():
 
             print(f"Match: {b1.name} vs {b2.name}")
             winner, logger = run_match(b1, b2)
+            draw_counter = 0
+            while winner == "Draw":
+                draw_counter += 1
+                print("Match ended in a draw")
+                winner, logger = run_match(b1, b2)
+                if draw_counter > 2:
+                    print("Too many draws, skipping this match")
+                    break
+                continue
+
             turns_fought = logger.get_snapshots()[-1]["turn"]  # Get the last turn number
 
             snapshots = logger.get_snapshots()
 
             visualizer = Visualizer(logger, b1, b2)
-            visualizer.run(snapshots)
+            visualizer.run(snapshots, len(bots) > 2)
 
             # Update losers stats
             loser = b2 if winner == b1 else b1
