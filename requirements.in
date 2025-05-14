@@ -1,6 +1,11 @@
-pygame>=2.0.0
-pydantic>=2.0.0
-torch>=2.0.0
-numpy>=1.24.0
-tqdm>=4.65.0
-matplotlib>=3.7.0
+# Core ML dependencies
+torch>=2.1.0
+numpy
+matplotlib
+tqdm
+pygame
+
+# Azure ML dependencies
+azure-ai-ml
+azure-identity
+python-dotenv

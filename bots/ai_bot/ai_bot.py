@@ -11,20 +11,43 @@ import os
 class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
-        # Input features:
-        # - Board state (10x10)
-        # - Player stats (HP, mana, position)
-        # - Opponent stats (HP, mana, position)
-        # - Spell cooldowns
-        # - Artifacts positions
-        input_size = BOARD_SIZE * BOARD_SIZE + 6 + len(SPELLS) + 10  # Flattened board + stats + cooldowns + artifacts
+        
+        # Calculate input size:
+        # Board state (BOARD_SIZE * BOARD_SIZE)
+        board_size = BOARD_SIZE * BOARD_SIZE
+        
+        # Player stats (hp, mana, position_x, position_y)
+        player_stats = 4
+        
+        # Opponent stats (hp, mana, position_x, position_y)
+        opponent_stats = 4
+        
+        # Spell cooldowns (one for each spell)
+        spell_cooldowns = len(SPELLS)
+        
+        # Minion counts (friendly and enemy)
+        minion_features = 2
+        
+        # Calculate total input size
+        input_size = (board_size +  # Board state
+                     player_stats +  # Player stats
+                     opponent_stats +  # Opponent stats
+                     spell_cooldowns +  # Spell cooldowns
+                     minion_features)  # Minion counts
+        
+        # Calculate output size
+        num_moves = len(DIRECTIONS)
+        num_actions = len(SPELLS) + 1  # All spells plus no spell
+        output_size = num_moves * num_actions
+        
+        print(f"Input size: {input_size}, Output size: {output_size}")  # Debug print
         
         self.network = nn.Sequential(
-            nn.Linear(input_size, 128),
+            nn.Linear(input_size, 256),
             nn.ReLU(),
-            nn.Linear(128, 64),
+            nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Linear(64, len(DIRECTIONS) * (len(SPELLS) + 1))  # Actions: movement + spell combinations
+            nn.Linear(128, output_size)
         )
     
     def forward(self, x):
@@ -60,8 +83,9 @@ class AIBot(BotInterface):
         self.gamma = 0.99  # Discount factor
         self.batch_size = 32
         
-        # Set up model path in the ai_bot folder
-        self.model_dir = os.path.dirname(os.path.abspath(__file__))
+        # Set up model path in the ai_bot/models folder
+        self.model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
+        os.makedirs(self.model_dir, exist_ok=True)
         self.model_path = os.path.join(self.model_dir, "ai_bot_model.pth")
         
         # Load pre-trained model if available
@@ -87,39 +111,55 @@ class AIBot(BotInterface):
         # Convert game state to tensor
         board = np.zeros((BOARD_SIZE, BOARD_SIZE))
         
-        # Mark player position
-        player_pos = state['self']['position']
-        board[player_pos[0]][player_pos[1]] = 1
-        
-        # Mark opponent position
+        # Mark wizard positions (1 for self, -1 for opponent)
+        self_pos = state['self']['position']
         opp_pos = state['opponent']['position']
+        board[self_pos[0]][self_pos[1]] = 1
         board[opp_pos[0]][opp_pos[1]] = -1
         
-        # Mark artifacts
-        for artifact in state['artifacts']:
+        # Mark minions (0.5 for friendly, -0.5 for enemy)
+        for minion in state.get('minions', []):
+            pos = minion['position']
+            value = 0.5 if minion['owner'] == self.name else -0.5
+            board[pos[0]][pos[1]] = value
+        
+        # Mark artifacts (0.25)
+        for artifact in state.get('artifacts', []):
             pos = artifact['position']
-            board[pos[0]][pos[1]] = 0.5
+            board[pos[0]][pos[1]] = 0.25
         
         # Create feature vector
         features = [
             state['self']['hp'] / 100,
             state['self']['mana'] / 100,
+            self_pos[0] / BOARD_SIZE,
+            self_pos[1] / BOARD_SIZE,
             state['opponent']['hp'] / 100,
             state['opponent']['mana'] / 100,
-            player_pos[0] / BOARD_SIZE,
-            player_pos[1] / BOARD_SIZE
+            opp_pos[0] / BOARD_SIZE,
+            opp_pos[1] / BOARD_SIZE,
         ]
         
         # Add spell cooldowns
         for spell in SPELLS:
             features.append(state['self']['cooldowns'].get(spell, 0) / 5)
         
+        # Add minion count features
+        friendly_minions = len([m for m in state.get('minions', []) if m['owner'] == self.name])
+        enemy_minions = len([m for m in state.get('minions', []) if m['owner'] != self.name])
+        features.extend([
+            friendly_minions / 2,  # Normalize by max minions
+            enemy_minions / 2
+        ])
+        
         # Flatten and combine all features
         state_tensor = np.concatenate([
             board.flatten(),
-            np.array(features),
-            np.zeros(10)  # Reserved for additional features
+            np.array(features)
         ])
+        
+        # Debug print to verify size
+        print(f"State tensor size: {state_tensor.shape}")  # Debug print
         
         return torch.FloatTensor(state_tensor).unsqueeze(0).to(self.device)
 
@@ -174,78 +214,62 @@ class AIBot(BotInterface):
             
             return {'move': list(move), 'spell': spell}
 
-    def calculate_reward(self, state, prev_state):
+    def calculate_reward(self, current_state, prev_state):
         if not prev_state:
             return 0
         
         reward = 0
         
-        # Reward for damaging opponent
-        reward += (prev_state['opponent']['hp'] - state['opponent']['hp']) * 1.0
+        # Health changes
+        health_diff_self = current_state['self']['hp'] - prev_state['self']['hp']
+        health_diff_opp = prev_state['opponent']['hp'] - current_state['opponent']['hp']
+        reward += health_diff_opp * 1.0  # Reward for damaging opponent
+        reward += health_diff_self * 0.8  # Reward for healing/penalty for damage
         
-        # Penalty for taking damage
-        reward -= (prev_state['self']['hp'] - state['self']['hp']) * 0.8
+        # Mana efficiency
+        mana_used = prev_state['self']['mana'] - current_state['self']['mana']
+        if mana_used > 0:
+            # Check if the mana usage resulted in opponent damage
+            if health_diff_opp > 0:
+                reward += 0.5  # Bonus for effective mana use
         
-        # Reward for collecting artifacts
-        reward += len(prev_state['artifacts']) - len(state['artifacts'])
+        # Minion management
+        curr_friendly_minions = len([m for m in current_state.get('minions', []) if m['owner'] == self.name])
+        prev_friendly_minions = len([m for m in prev_state.get('minions', []) if m['owner'] == self.name])
         
-        # Reward for maintaining good position
-        player_pos = np.array(state['self']['position'])
-        opp_pos = np.array(state['opponent']['position'])
-        dist = np.linalg.norm(player_pos - opp_pos)
+        # Reward for summoning minions when we have few
+        if curr_friendly_minions > prev_friendly_minions:
+            reward += 2.0
         
-        # Dynamic positioning reward based on available spells and cooldowns
-        optimal_dist = 1  # Default to close range
-        if state['self']['cooldowns']['fireball'] == 0 and state['self']['mana'] >= 30:
-            optimal_dist = 4  # Stay at fireball range if ready to cast
-        elif state['self']['cooldowns']['summon'] == 0 and state['self']['mana'] >= 50:
-            optimal_dist = 5  # Stay far when ready to summon
-            # Extra reward for having mana and cooldown ready for summon
-            reward += 0.5
+        # Position control
+        curr_pos = np.array(current_state['self']['position'])
+        prev_pos = np.array(prev_state['self']['position'])
+        opp_pos = np.array(current_state['opponent']['position'])
         
-        # Penalize staying in the same position
-        if np.array_equal(player_pos, np.array(prev_state['self']['position'])):
-            reward -= 0.2  # Small penalty for not moving
+        # Calculate optimal distance based on state
+        optimal_dist = 3  # Default medium range
+        if current_state['self']['cooldowns'].get('fireball', 0) == 0 and current_state['self']['mana'] >= 30:
+            optimal_dist = 4  # Fireball range
+        elif curr_friendly_minions > 0:
+            optimal_dist = 2  # Closer if we have minions
         
-        # Reward for maintaining strategic distance
-        position_reward = -abs(dist - optimal_dist) * 0.2
-        reward += position_reward
+        # Distance management reward
+        current_dist = np.linalg.norm(curr_pos - opp_pos)
+        distance_reward = -abs(current_dist - optimal_dist) * 0.2
+        reward += distance_reward
         
-        # Reward for effective mana usage
-        mana_diff = prev_state['self']['mana'] - state['self']['mana']
-        if mana_diff > 0:  # If mana was used
-            reward += 0.3  # Encourage spell usage
-            # Extra reward for using summon
-            if state['self']['cooldowns']['summon'] > prev_state['self']['cooldowns']['summon']:
-                reward += 1.5  # Significant bonus for using summon
+        # Artifact collection
+        curr_artifacts = len(current_state.get('artifacts', []))
+        prev_artifacts = len(prev_state.get('artifacts', []))
+        reward += (prev_artifacts - curr_artifacts) * 2.0  # Good reward for collecting artifacts
         
-        # Reward for having minions
-        prev_minions = [m for m in prev_state.get('minions', []) if m['owner'] == state['self']['name']]
-        curr_minions = [m for m in state.get('minions', []) if m['owner'] == state['self']['name']]
+        # Encourage exploration of the board
+        if not np.array_equal(curr_pos, prev_pos):
+            reward += 0.1  # Small reward for moving
         
-        # Reward for summoning minions
-        if len(curr_minions) > len(prev_minions):
-            reward += 2.0  # Major reward for successful summon
-        
-        # Reward for minion survival and effectiveness
-        for minion in curr_minions:
-            # Find corresponding minion in previous state
-            prev_minion = next((m for m in prev_minions if m['id'] == minion['id']), None)
-            if prev_minion:
-                # Reward for minion dealing damage
-                if prev_minion['hp'] > minion['hp']:
-                    reward += 0.5  # Reward for minion being active in combat
-                # Reward for minion survival
-                reward += 0.1  # Small constant reward for each surviving minion
-        
-        # Strategic summon timing rewards
-        if state['self']['mana'] >= 50 and state['self']['cooldowns']['summon'] == 0:
-            # Extra reward for having summon ready when no minions
-            if len(curr_minions) == 0:
-                reward += 0.8
-            # Reward for maintaining minion presence
-            elif len(curr_minions) < 2:  # Encourage having multiple minions
-                reward += 0.4
+        # Boundary penalty
+        if (curr_pos[0] in [0, BOARD_SIZE-1] or curr_pos[1] in [0, BOARD_SIZE-1]):
+            reward -= 0.2  # Penalty for being at the edges
         
         return reward
 
@@ -262,54 +286,56 @@ class AIBot(BotInterface):
                 reward,
                 state_tensor
             )
-            
-            # Train the model if we have enough samples
-            if len(self.memory) >= self.batch_size:
-                self.train()
         
         self.prev_state = state
         return action
 
-    def train(self):
+    def train(self, num_batches=1):
+        """Train the model for a specified number of batches."""
         if len(self.memory) < self.batch_size:
-            return
+            return 0  # Return 0 loss if not enough samples
         
-        batch = self.memory.sample(self.batch_size)
-        states, actions, rewards, next_states = zip(*batch)
-        
-        states = torch.cat(states)
-        next_states = torch.cat(next_states)
-        rewards = torch.FloatTensor(rewards).to(self.device)
-        
-        # Calculate current Q values
-        current_q = self.model(states)
-        
-        # Calculate next Q values
-        with torch.no_grad():
-            next_q = self.target_model(next_states)
-            max_next_q = next_q.max(1)[0]
-            target_q = rewards + self.gamma * max_next_q
-        
-        # Create a target tensor of the same shape as current_q
-        target = current_q.clone()
-        # Update only the Q-value for the chosen action
-        for i in range(len(batch)):
-            action_idx = self.action_to_index(actions[i])
-            target[i, action_idx] = target_q[i]
-        
-        # Update model
-        loss = nn.MSELoss()(current_q, target)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-        
-        # Periodically update target network
-        if random.random() < 0.01:  # 1% chance each training step
-            self.target_model.load_state_dict(self.model.state_dict())
+        total_loss = 0
+        for _ in range(num_batches):
+            batch = self.memory.sample(self.batch_size)
+            states, actions, rewards, next_states = zip(*batch)
             
-            # Save the model
-            torch.save(self.model.state_dict(), self.model_path)
-    
+            states = torch.cat(states)
+            next_states = torch.cat(next_states)
+            rewards = torch.FloatTensor(rewards).to(self.device)
+            
+            # Calculate current Q values
+            current_q = self.model(states)
+            
+            # Calculate next Q values
+            with torch.no_grad():
+                next_q = self.target_model(next_states)
+                max_next_q = next_q.max(1)[0]
+                target_q = rewards + self.gamma * max_next_q
+            
+            # Create a target tensor of the same shape as current_q
+            target = current_q.clone()
+            # Update only the Q-value for the chosen action
+            for i in range(len(batch)):
+                action_idx = self.action_to_index(actions[i])
+                target[i, action_idx] = target_q[i]
+            
+            # Update model
+            loss = nn.MSELoss()(current_q, target)
+            self.optimizer.zero_grad()
+            loss.backward()
+            # Clip gradients to prevent exploding gradients
+            torch.nn.utils.clip_grad_value_(self.model.parameters(), 100)
+            self.optimizer.step()
+            
+            total_loss += loss.item()
+        
+        # Update target network more frequently with soft updates
+        for target_param, param in zip(self.target_model.parameters(), self.model.parameters()):
+            target_param.data.copy_(0.005 * param.data + 0.995 * target_param.data)
+        
+        return total_loss / num_batches  # Return average loss
+
     def action_to_index(self, action):
         """Convert an action dictionary to its corresponding index."""
         move = action['move']
@@ -365,3 +391,15 @@ class AIBot(BotInterface):
             }
         except:
             return None 
+
+    def save_model(self, path=None):
+        """Save the model to a specific path or use default path"""
+        save_path = path if path is not None else self.model_path
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        torch.save(self.model.state_dict(), save_path)
+        
+    def load_model(self, path=None):
+        """Load the model from a specific path or use default path"""
+        load_path = path if path is not None else self.model_path
+        self.model.load_state_dict(torch.load(load_path))
+        self.target_model.load_state_dict(self.model.state_dict()) 
