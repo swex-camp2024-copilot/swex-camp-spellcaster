@@ -7,7 +7,7 @@ class RedWizardBot(BotInterface):
     def __init__(self):
         self._name = "Red Wizard Bot"
         self._sprite_path = "assets/wizards/red_wizard.png"
-        self._minion_sprite_path = "assets/minions/minion_1.png"
+        self._minion_sprite_path = "assets/minions/green_minion.png"
         self.previous_positions = []
         self.target_position = None
         self.retreat_mode = False
