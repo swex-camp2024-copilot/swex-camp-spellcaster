@@ -41,6 +41,7 @@ FIREBALL_SPRITE_PATH = "assets/spells/fireball.png"
 HEAL_SPRITE_PATH = "assets/spells/heal.png"
 SHIELD_SPRITE_PATH = "assets/spells/shield.png"
 EXPLOSION_SPRITE_PATH = "assets/spells/fireball_explosion.png"
+MELEE_SPRITE_PATH = "assets/spells/melee.png"
 
 # Animation settings
 SPRITE_SCALE = 0.8  # 80% of the tile size
@@ -89,7 +90,10 @@ class Visualizer:
         original = pygame.image.load(SHIELD_SPRITE_PATH).convert_alpha()
         self.shield_sprite = pygame.transform.smoothscale(original, (TILE_SIZE, TILE_SIZE))
 
-        self.fireball_explosion_sprite = pygame.image.load(FIREBALL_SPRITE_PATH).convert_alpha()
+        original = pygame.image.load(MELEE_SPRITE_PATH).convert_alpha()
+        self.melee_sprite = pygame.transform.smoothscale(original, (TILE_SIZE, TILE_SIZE))
+
+        self.fireball_explosion_sprite = pygame.image.load(EXPLOSION_SPRITE_PATH).convert_alpha()
 
     def load_wizard_sprites(self) -> None:
         """Load wizard sprites for both bots with fallback to defaults if needed."""
@@ -312,10 +316,6 @@ class Visualizer:
             self.info_bar_state = nxt
             self.draw_wizard_info_bar()
 
-            # Additional wait after each turn
-            if (curr["turn"] != nxt["turn"]):
-                self.wait_for(0.3)
-
         # Determine the winner
         final_state = states[-1]
         if final_state["self"]["hp"] > final_state["opponent"]["hp"]:
@@ -425,6 +425,18 @@ class Visualizer:
                     self.draw_shield_effect(caster_pos)
                 elif spell_name == "heal":
                     self.draw_heal_effect(caster_pos)
+                elif spell_name == "melee_attack":
+                    if target:
+                        # Calculate progress for attack animation
+                        self.draw_melee_attack(target, progress)
+
+                        if progress > 0.8:  # Show hit text near the end of animation
+                            center = self.pixel_center(target)
+                            result_text = "SWIPE!"
+                            color = HIT_COLOR
+                            result_surface = self.font.render(result_text, True, color)
+                            result_rect = result_surface.get_rect(center=(center[0], center[1] - 50))
+                            self.screen.blit(result_surface, result_rect)
                 elif spell_name == "fireball" and target:
                     actual_target = target
                     if hit:
@@ -446,6 +458,9 @@ class Visualizer:
                     self.draw_teleport_pulse(caster_pos)
 
             for dmg in damage_this_state:
+                if dmg["cause"] == "melee_attack":
+                    position = dmg["position"]
+                    self.draw_melee_attack(position, progress)
                 center = self.pixel_center(dmg["position"])
                 rise = int((1 - progress) * 20)  # float upward
                 alpha = int(255 * (1 - progress))  # fade out
@@ -587,6 +602,42 @@ class Visualizer:
         # Draw the explosion sprite centered at the target position
         rect = scaled_explosion.get_rect(center=center)
         self.screen.blit(scaled_explosion, rect)
+
+    def draw_melee_attack(self, position: Position, progress: float) -> None:
+        """Draw melee attack animation at the given position."""
+        center = self.pixel_center(position)
+
+        # Scale up at beginning, then scale down as the animation progresses
+        if progress < 0.5:
+            # First half: scale up
+            scale = 0.2 + 1.6 * (progress * 2)  # Scale from 0.2 to 1.8
+        else:
+            # Second half: scale down
+            scale = 1.8 - 1.6 * ((progress - 0.5) * 2)  # Scale from 1.8 to 0.2
+
+        size = int(TILE_SIZE * scale)
+
+        # Rotate the sprite a bit for dynamic effect
+        angle = progress * 30  # Rotate up to 30 degrees
+
+        # Create a temporary surface with per-pixel alpha
+        temp = pygame.Surface((size, size), pygame.SRCALPHA)
+
+        # Scale and rotate the melee sprite
+        scaled = pygame.transform.smoothscale(self.melee_sprite, (size, size))
+        rotated = pygame.transform.rotate(scaled, angle)
+
+        # Set alpha based on progress (fully opaque in middle, transparent at beginning and end)
+        alpha = int(255 * (1 - abs(progress - 0.5) * 2))
+        rotated.set_alpha(alpha)
+
+        # Draw to temp surface
+        temp_rect = temp.get_rect(center=(temp.get_width() // 2, temp.get_height() // 2))
+        temp.blit(rotated, temp_rect)
+
+        # Draw temp surface centered on position
+        rect = temp.get_rect(center=center)
+        self.screen.blit(temp, rect)
 
     def draw_fireball(self, caster_pos: Position, target_pos: Position, progress: float) -> None:
         """Draw fireball effect animation."""
