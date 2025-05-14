@@ -67,20 +67,68 @@ class RedWizardBot(BotInterface):
         if hp < 30 and cooldowns["heal"] == 0 and mana >= 25:
             spell = {"name": "heal"}
             # Go into retreat mode
-            self.retreat_mode = True
-
+            self.retreat_mode = True        
         # 2. Shield activation when exposed or when low on health
         if not self_data["shield_active"] and cooldowns["shield"] == 0 and mana >= 20:
             if hp < 50 or manhattan_dist(self_pos, opp_pos) <= 3:
                 spell = {"name": "shield"}
-
+                # When we activate shield, we should be more aggressive
+                self.retreat_mode = False
+        
+        # If shield is active, be more aggressive in movement and positioning
+        if self_data["shield_active"] and hp > 30:
+            # If opponent is nearby, prefer melee attacks
+            if manhattan_dist(self_pos, opp_pos) <= 2 and cooldowns["melee_attack"] == 0:
+                spell = {
+                    "name": "melee_attack",
+                    "target": opp_pos
+                }
+                # With shield active, move aggressively toward opponent
+                dx = opp_pos[0] - self_pos[0]
+                dy = opp_pos[1] - self_pos[1]
+                move = [
+                    max(-1, min(1, dx)),
+                    max(-1, min(1, dy))
+                ]
         # 3. Fireball if enemy is in range and we have enough mana
         fireball_range = 5
-        if cooldowns["fireball"] == 0 and mana >= 30 and chebyshev_dist(self_pos, opp_pos) <= fireball_range:
-            spell = {
-                "name": "fireball",
-                "target": opp_pos
-            }
+        if cooldowns["fireball"] == 0 and mana >= 30:
+            # Find all valid targets (enemy wizard and enemy minions)
+            enemy_minions = [m for m in minions if m["owner"] != self_data["name"]]
+            all_targets = [opp_data] + enemy_minions
+            targets_in_range = [t for t in all_targets if chebyshev_dist(self_pos, t["position"]) <= fireball_range]
+            
+            if targets_in_range:
+                # Target selection strategy:
+                # 1. If opponent and minion are both in splash damage range, target the center point
+                # 2. Otherwise, prioritize targets with lower HP, preferring the opponent
+                
+                # Check if we can hit multiple targets with splash damage
+                best_target = None
+                max_targets_hit = 0
+                
+                for potential_target in targets_in_range:
+                    # Count how many entities would be hit by splash damage from this target
+                    target_pos = potential_target["position"]
+                    targets_hit = sum(1 for t in all_targets if manhattan_dist(t["position"], target_pos) <= 1)
+                    
+                    if targets_hit > max_targets_hit:
+                        max_targets_hit = targets_hit
+                        best_target = potential_target
+                
+                # If no multi-target opportunity found, target the opponent if in range
+                if best_target is None and opp_data in targets_in_range:
+                    best_target = opp_data
+                # Otherwise take the first available target
+                elif best_target is None and targets_in_range:
+                    best_target = targets_in_range[0]
+                
+                # Cast fireball at the selected target
+                if best_target:
+                    spell = {
+                        "name": "fireball",
+                        "target": best_target["position"]
+                    }
 
         # 4. Try to use blink to position strategically
         if cooldowns["blink"] == 0 and mana >= 10:
@@ -204,6 +252,32 @@ class RedWizardBot(BotInterface):
                 # If we've recovered enough HP, exit retreat mode
                 if hp > 60:
                     self.retreat_mode = False
+            
+            # If low HP, prioritize moving toward health artifacts
+            elif hp < 40 and artifacts:
+                health_artifacts = [a for a in artifacts if a["type"] == "health"]
+                if health_artifacts:
+                    # Move toward nearest health artifact
+                    nearest_health = min(health_artifacts, key=lambda a: manhattan_dist(self_pos, a["position"]))
+                    target = nearest_health["position"]
+                    dx = target[0] - self_pos[0]
+                    dy = target[1] - self_pos[1]
+                    
+                    move = [
+                        max(-1, min(1, dx)),
+                        max(-1, min(1, dy))
+                    ]
+                else:
+                    # Move toward any artifact if no health artifacts available
+                    nearest_artifact = min(artifacts, key=lambda a: manhattan_dist(self_pos, a["position"]))
+                    target = nearest_artifact["position"]
+                    dx = target[0] - self_pos[0]
+                    dy = target[1] - self_pos[1]
+                    
+                    move = [
+                        max(-1, min(1, dx)),
+                        max(-1, min(1, dy))
+                    ]
             
             # Move toward artifacts if they exist and we're not in danger
             elif artifacts and hp > 30:
