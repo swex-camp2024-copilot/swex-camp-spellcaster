@@ -5,7 +5,7 @@ import inspect
 from typing import List, Tuple, Dict, Optional
 from bots.bot_interface import BotInterface
 from simulator.match import run_match
-from simulator.visualizer import Visualizer
+# from simulator.visualizer import Visualizer
 
 
 def run_tournament():
@@ -56,8 +56,8 @@ def run_tournament():
 
             snapshots = logger.get_snapshots()
 
-            visualizer = Visualizer(logger, b1, b2)
-            visualizer.run(snapshots)
+            # visualizer = Visualizer(logger, b1, b2)
+            # visualizer.run(snapshots)
 
             # Update losers stats
             if winner == "Draw":
@@ -176,7 +176,27 @@ def create_pairs(bots: List[BotInterface], losers_stats: Dict[str, int]) -> Tupl
 
     return pairs, lucky_loser
 
+def run_multiple_tournaments(num_tournaments=100, target_bot_name="Kevin Link"):
+    """
+    Run multiple tournaments and calculate win percentage for a specific bot.
+    """
+    wins = 0
+    print(f"Running {num_tournaments} tournaments to calculate win rate for '{target_bot_name}'")
+    
+    for i in range(num_tournaments):
+        print(f"\nTournament {i+1}/{num_tournaments}")
+        winner, _ = run_tournament()
+        if winner.name == target_bot_name:
+            wins += 1
+        print(f"Current win rate: {wins}/{i+1} ({(wins/(i+1))*100:.2f}%)")
+    
+    win_percentage = (wins / num_tournaments) * 100
+    print(f"\n==== Final Results ====")
+    print(f"'{target_bot_name}' won {wins} out of {num_tournaments} tournaments")
+    print(f"Win rate: {win_percentage:.2f}%")
+    
+    return win_percentage
+
 # Example usage
 if __name__ == "__main__":
-    winner, stats = run_tournament()
-    print(f"Tournament completed with {len(stats['matches'])} matches across {len(stats['rounds'])} rounds")
+    run_multiple_tournaments(100, "Kevin Link")
