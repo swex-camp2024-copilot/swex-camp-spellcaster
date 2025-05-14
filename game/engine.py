@@ -425,9 +425,9 @@ class GameEngine:
         if self.wizard1.hp <= 0 and self.wizard2.hp <= 0:
             return "Draw"
         elif self.wizard1.hp <= 0:
-            return self.wizard2.name
+            return self.bots[0]
         elif self.wizard2.hp <= 0:
-            return self.wizard1.name
+            return self.bots[1]
         return None
 
     def in_range(self, start, end, max_range):
