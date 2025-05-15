@@ -69,13 +69,14 @@ class GameLogger:
             "hit": hit
         })
 
-    def log_damage(self, position, amount, target_name):
+    def log_damage(self, position, amount, target_name, cause=None):
         self.damage_events.append({
             "turn": self.current_turn,
             "state_index": self.state_index,
             "position": position,
             "amount": amount,
-            "target": target_name
+            "target": target_name,
+            "cause": cause
         })
 
     def log_collision(self, position):

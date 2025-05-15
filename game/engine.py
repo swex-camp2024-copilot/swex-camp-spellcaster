@@ -196,7 +196,8 @@ class GameEngine:
                     else:
                         self.logger.log_event_minion_damage(self.turn, target_pos, damage, target_entity.id)
                     self.logger.log(f"{entity_name} took {damage} damage (HP: {target_entity.hp})")
-
+                else:
+                    splash_damage_hit = False
                     # Apply splash damage to adjacent tiles
                     for dx, dy in DIRECTIONS:
                         if dx == 0 and dy == 0:  # Skip the center tile (already processed)
@@ -210,6 +211,8 @@ class GameEngine:
                                     (hasattr(splash_entity, "owner") and splash_entity.owner != caster.name)
                             ):
                                 # Only damage enemy entities
+                                splash_damage_hit = True
+                                print(self.turn, " splash_damage")
                                 splash_damage = FIREBALL_SPLASH_DAMAGE
                                 if hasattr(splash_entity, "shield_active") and splash_entity.shield_active:
                                     splash_damage = max(0, splash_damage - SPELLS["shield"]["block"])
@@ -228,8 +231,8 @@ class GameEngine:
                                     else:
                                         self.logger.log_event_minion_damage(self.turn, splash_pos, splash_damage,
                                                                             splash_entity.id)
-                else:
-                    self.logger.log(f"{caster.name}'s fireball missed!")
+                    if not splash_damage_hit:
+                        self.logger.log(f"{caster.name}'s fireball missed!")
             else:
                 self.logger.log(f"{caster.name}'s fireball out of range!")
         elif spell == "melee_attack":
@@ -339,7 +342,7 @@ class GameEngine:
             # If adjacent → attack
             if self.manhattan_dist(minion.position, target.position) <= 1:
                 target.hp -= 10
-                self.logger.log_damage(target.position, 10, target.name if hasattr(target, "name") else "Minion")
+                self.logger.log_damage(target.position, 10, target.name if hasattr(target, "name") else "Minion", "melee_attack")
                 self.logger.log(
                     f"{minion.owner}'s minion attacked {target.owner if hasattr(target, 'owner') else target.name} for 10 dmg")
                 if hasattr(target, "name"):
@@ -416,9 +419,9 @@ class GameEngine:
         if self.wizard1.hp <= 0 and self.wizard2.hp <= 0:
             return "Draw"
         elif self.wizard1.hp <= 0:
-            return self.wizard2.name
+            return self.bots[0]
         elif self.wizard2.hp <= 0:
-            return self.wizard1.name
+            return self.bots[1]
         return None
 
     def in_range(self, start, end, max_range):
