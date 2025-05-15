@@ -3,9 +3,9 @@ import math
 from bots.bot_interface import BotInterface
 
 
-class RedWizardBot(BotInterface):
+class RincewindBot(BotInterface):
     def __init__(self):
-        self._name = "Red Wizard Bot"
+        self._name = "Rincewind Bot"
         self._sprite_path = "assets/wizards/red_wizard.png"
         self._minion_sprite_path = "assets/minions/green_minion.png"
         self.previous_positions = []
