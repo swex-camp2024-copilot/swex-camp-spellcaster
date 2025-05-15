@@ -70,6 +70,18 @@ class KevinLink(BotInterface):
             if cooldowns["shield"] == 0 and mana >= 20:
                 return {"move": [0, 0], "spell": {"name": "shield"}}
         
+        # Early Artifact Racing: teleport or blink to critical artifacts by turn 3
+        if self._turn_count <= 3 and artifacts:
+            best_artifact = self._choose_best_artifact(artifacts, self_pos, opp_pos, hp, mana)
+            if best_artifact:
+                art_pos = best_artifact["position"]
+                art_dist = self.dist(self_pos, art_pos)
+                if cooldowns["teleport"] == 0 and mana >= 40 and art_dist > 2:
+                    return {"move": [0, 0], "spell": {"name": "teleport", "target": art_pos}}
+                if cooldowns["blink"] == 0 and mana >= 10 and art_dist > 1:
+                    blink_dir = self._direction_toward(self_pos, art_pos, 2)
+                    return {"move": [0, 0], "spell": {"name": "blink", "target": blink_dir}}
+        
         # Track our own positions for better pattern detection
         self._last_positions.append(self_pos)
         if len(self._last_positions) > 5:
@@ -148,13 +160,16 @@ class KevinLink(BotInterface):
                 
         # 4. MINION MANAGEMENT - Strategic advantage
         own_minions = [m for m in minions if m["owner"] == self_data["name"]]
-        if not spell and self._turn_count <= 3 and cooldowns["summon"] == 0 and mana >= 50 and len(own_minions) == 0:
+        if not spell and self._turn_count <= 2 and cooldowns["summon"] == 0 and mana >= 50 and len(own_minions) == 0:
             dx = self_pos[0] - opp_pos[0]
             dy = self_pos[1] - opp_pos[1]
             dx_dir = 1 if dx > 0 else -1 if dx < 0 else 1
             dy_dir = 1 if dy > 0 else -1 if dy < 0 else 1
             target_x = max(0, min(9, self_pos[0] + 2 * dx_dir))
             target_y = max(0, min(9, self_pos[1] + 2 * dy_dir))
+            # Avoid edges and corners by clamping within 1..8
+            target_x = min(max(target_x, 1), 8)
+            target_y = min(max(target_y, 1), 8)
             best_pos = [target_x, target_y]
             occupied = [self_pos, opp_pos] + [m["position"] for m in minions]
             if best_pos not in occupied:
@@ -459,7 +474,7 @@ class KevinLink(BotInterface):
         
     def _classify_opponent(self, opp_data, minions):
         """Classify opponent behavior to adapt strategy"""
-        if self._turn_count < 5:
+        if self._turn_count < 3:
             # Not enough data yet
             return
             
@@ -469,8 +484,7 @@ class KevinLink(BotInterface):
             return
             
         # Check for defensive behavior (lots of shielding)
-        if opp_data.get("shield_active", False) and self._turn_count % 5 == 0:
-            # If opponent shields frequently
+        if opp_data.get("shield_active", False):
             self._opponent_behavior = "defensive"
             return
             
