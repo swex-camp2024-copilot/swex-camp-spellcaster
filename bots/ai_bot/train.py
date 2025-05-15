@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from collections import defaultdict
 import torch
+import torch.optim as optim
 
 from simulator.match import run_match
 from bots.ai_bot.ai_bot import AIBot
@@ -257,40 +258,73 @@ def train_ai_bot(episodes=1000, matches_per_episode=20, save_interval=10, plot_i
     print("Starting AI bot training with curriculum learning and self-play...")
     
     main_bot = AIBot()
-    # Set initial epsilon higher
-    main_bot.epsilon = 0.9  # Start with high exploration
+    # Lower initial epsilon for more focused learning
+    main_bot.epsilon = 0.7
     
     visualizer = TrainingVisualizer()
     bot_pool = create_bot_pool()
     
-    # Track performance against sample bots
+    # Track performance metrics
     performance_history = []
-    PERFORMANCE_WINDOW = 10
-    SELF_PLAY_THRESHOLD = 0.7
+    win_streak = 0
+    PERFORMANCE_WINDOW = 20  # Increased from 10
+    PROMOTION_THRESHOLD = 0.6  # Win rate needed to advance to next phase
+    DEMOTION_THRESHOLD = 0.3  # Win rate that triggers return to previous phase
     
-    # Modified curriculum learning phases to include more time with hard bots
+    # Enhanced curriculum phases with longer early training
     curriculum_phases = {
-        "easy": (0, episodes // 5),          # 20% of time on easy bots
-        "medium": (episodes // 5, episodes // 2),  # 30% of time on medium bots
-        "hard": (episodes // 2, 4 * episodes // 5),  # 30% of time on hard bots
-        "self_play": (4 * episodes // 5, episodes)   # 20% of time on self-play
+        "beginner": (0, episodes * 0.15),        # 15% - Very basic opponents
+        "easy": (episodes * 0.15, episodes * 0.35),    # 20% - Easy opponents
+        "medium": (episodes * 0.35, episodes * 0.60),   # 25% - Medium opponents
+        "hard": (episodes * 0.60, episodes * 0.85),     # 25% - Hard opponents
+        "expert": (episodes * 0.85, episodes)           # 15% - Expert opponents + self-play
     }
     
-    # Add minimum epsilon values for each phase
-    min_epsilon = {
-        "easy": 0.3,
-        "medium": 0.2,
-        "hard": 0.15,
-        "self_play": 0.1
+    # Phase-specific parameters
+    phase_params = {
+        "beginner": {
+            "min_epsilon": 0.4,
+            "learning_rate": 0.001,
+            "batch_size": 32,
+            "training_iterations": 2
+        },
+        "easy": {
+            "min_epsilon": 0.3,
+            "learning_rate": 0.0008,
+            "batch_size": 48,
+            "training_iterations": 3
+        },
+        "medium": {
+            "min_epsilon": 0.2,
+            "learning_rate": 0.0005,
+            "batch_size": 64,
+            "training_iterations": 4
+        },
+        "hard": {
+            "min_epsilon": 0.15,
+            "learning_rate": 0.0003,
+            "batch_size": 96,
+            "training_iterations": 5
+        },
+        "expert": {
+            "min_epsilon": 0.1,
+            "learning_rate": 0.0001,
+            "batch_size": 128,
+            "training_iterations": 6
+        }
     }
     
-    # Add epsilon increase thresholds
-    EPSILON_INCREASE_THRESHOLD = {
-        "easy": 0.4,    # Increase exploration if win rate below 40%
-        "medium": 0.35, # Increase exploration if win rate below 35%
-        "hard": 0.3,    # Increase exploration if win rate below 30%
-        "self_play": 0.25  # Increase exploration if win rate below 25%
+    # Performance thresholds for epsilon adjustment
+    EPSILON_ADJUST_THRESHOLDS = {
+        "beginner": {"increase": 0.3, "decrease": 0.5},
+        "easy": {"increase": 0.35, "decrease": 0.55},
+        "medium": {"increase": 0.4, "decrease": 0.6},
+        "hard": {"increase": 0.45, "decrease": 0.65},
+        "expert": {"increase": 0.5, "decrease": 0.7}
     }
+    
+    current_phase = "beginner"
+    phase_episode_count = 0
     
     for episode in tqdm(range(episodes), desc="Training Progress"):
         episode_stats = {}
@@ -298,104 +332,142 @@ def train_ai_bot(episodes=1000, matches_per_episode=20, save_interval=10, plot_i
         total_loss = 0
         num_training_batches = 0
         
-        # Determine current phase
-        current_phase = None
+        # Check for phase transition
         for phase, (start, end) in curriculum_phases.items():
             if start <= episode < end:
-                current_phase = phase
+                if phase != current_phase:
+                    print(f"\nTransitioning to {phase} phase")
+                    current_phase = phase
+                    phase_episode_count = 0
+                    
+                    # Update learning parameters
+                    params = phase_params[phase]
+                    main_bot.optimizer = optim.Adam(main_bot.model.parameters(), 
+                                                  lr=params["learning_rate"])
+                    main_bot.batch_size = params["batch_size"]
                 break
         
-        # Calculate average performance against sample bots
+        phase_episode_count += 1
+        
+        # Calculate performance metrics
         if len(performance_history) >= PERFORMANCE_WINDOW:
             avg_performance = np.mean(performance_history[-PERFORMANCE_WINDOW:])
+            performance_trend = np.mean(performance_history[-PERFORMANCE_WINDOW:]) - \
+                              np.mean(performance_history[-2*PERFORMANCE_WINDOW:-PERFORMANCE_WINDOW])
         else:
             avg_performance = 0
+            performance_trend = 0
         
         # Select opponents based on phase and performance
         current_opponents = []
-        if current_phase == "self_play" or avg_performance >= SELF_PLAY_THRESHOLD:
-            # Mix of hard bots (including tactical) and self-play
-            self_play_prob = min(0.8, 0.2 + (episode - curriculum_phases["hard"][1]) / (episodes / 5))
-            
-            if random.random() < self_play_prob:
-                # Create a copy of the current model for self-play
+        if current_phase == "expert":
+            # Mix of hard bots and self-play
+            self_play_prob = min(0.6, 0.2 + phase_episode_count / (episodes * 0.15))
+            if random.random() < self_play_prob and avg_performance >= 0.4:
                 self_play_bot = create_self_play_bot()
-                self_play_bot.load_state_dict(main_bot.state_dict())
+                self_play_bot.model.load_state_dict(main_bot.model.state_dict())  # Fixed: use model.load_state_dict
                 current_opponents.append((self_play_bot, "self_play"))
-            else:
-                # Always include tactical bot in opponent selection
+            
+            # Always include at least one hard bot if self-play wasn't selected
+            if not current_opponents:
                 hard_bots = [(bot, diff) for diff, bot in bot_pool if diff == "hard"]
-                tactical_bot = next((b for b in hard_bots if "Tactical" in b[0].name), None)
-                if tactical_bot:
-                    current_opponents.append(tactical_bot)
-                    other_bots = [b for b in hard_bots if "Tactical" not in b[0].name]
-                    current_opponents.extend(random.sample(other_bots, min(2, len(other_bots))))
+                if hard_bots:  # Make sure we have hard bots available
+                    # Prioritize tactical bot
+                    tactical_bot = next((b for b in hard_bots if "Tactical" in b[0].name), None)
+                    if tactical_bot:
+                        current_opponents.append(tactical_bot)
+                    
+                    # If still no opponents, add other hard bots
+                    if not current_opponents:
+                        other_bots = [b for b in hard_bots if "Tactical" not in b[0].name]
+                        if other_bots:
+                            current_opponents.extend(random.sample(other_bots, min(2, len(other_bots))))
+                
+                # Fallback to medium bots if no hard bots available
+                if not current_opponents:
+                    medium_bots = [(bot, diff) for diff, bot in bot_pool if diff == "medium"]
+                    if medium_bots:
+                        current_opponents.append(random.choice(medium_bots))
         else:
-            # Regular curriculum learning with guaranteed tactical bot
+            # Regular curriculum learning
             phase_bots = [(bot, diff) for diff, bot in bot_pool if diff == current_phase]
+            
+            # Always try to include tactical bot first
             tactical_bot = next((b for b in phase_bots if "Tactical" in b[0].name), None)
             if tactical_bot:
                 current_opponents.append(tactical_bot)
-                other_bots = [b for b in phase_bots if "Tactical" not in b[0].name]
+            
+            # Add other bots from the current phase
+            other_bots = [b for b in phase_bots if "Tactical" not in b[0].name]
+            if other_bots:
                 current_opponents.extend(random.sample(other_bots, min(2, len(other_bots))))
+            
+            # Fallback to easier phase if no opponents available
+            if not current_opponents:
+                previous_phases = ["medium", "easy", "beginner"]
+                for prev_phase in previous_phases:
+                    if not current_opponents:
+                        prev_phase_bots = [(bot, diff) for diff, bot in bot_pool if diff == prev_phase]
+                        if prev_phase_bots:
+                            current_opponents.append(random.choice(prev_phase_bots))
+                            break
         
-        # Training iterations based on phase
-        num_training_iterations = {
-            "easy": 2,
-            "medium": 4,
-            "hard": 6,
-            "self_play": 8
-        }[current_phase]
+        # Final fallback: if still no opponents, create a new basic opponent
+        if not current_opponents:
+            fallback_bot = SampleBot1()
+            current_opponents.append((fallback_bot, "beginner"))
+            print(f"Warning: Using fallback bot in episode {episode}")
         
-        # Train against selected opponents
+        # Training against selected opponents
         for opponent, diff in current_opponents:
             results, avg_reward = evaluate_bot(main_bot, opponent, matches_per_episode)
             episode_stats[f"vs_{opponent.name}"] = results
             episode_total_reward += avg_reward
             
-            # Track performance against sample bots
             if diff != "self_play":
                 performance_history.append(results["ai_bot"])
             
-            # Training step
+            # Enhanced training step
             if len(main_bot.memory) >= main_bot.batch_size:
-                batch_loss = main_bot.train(num_batches=num_training_iterations)
+                num_iterations = phase_params[current_phase]["training_iterations"]
+                batch_loss = main_bot.train(num_batches=num_iterations)
                 total_loss += batch_loss
                 num_training_batches += 1
         
-        # Enhanced adaptive exploration rate
+        # Adaptive exploration rate adjustment
         avg_win_rate = np.mean([stats["ai_bot"] for stats in episode_stats.values()])
+        thresholds = EPSILON_ADJUST_THRESHOLDS[current_phase]
         
-        # Calculate win rate trend
-        if len(performance_history) >= PERFORMANCE_WINDOW:
-            recent_trend = np.mean(performance_history[-PERFORMANCE_WINDOW:]) - np.mean(performance_history[-2*PERFORMANCE_WINDOW:-PERFORMANCE_WINDOW])
-        else:
-            recent_trend = 0
-            
-        # Adjust epsilon based on performance and phase
-        if avg_win_rate < EPSILON_INCREASE_THRESHOLD[current_phase]:
-            # Increase exploration more aggressively if performance is poor
-            increase_factor = 1.2 if recent_trend < 0 else 1.1
-            main_bot.epsilon = min(0.95, main_bot.epsilon * increase_factor)
-        else:
-            # Slower decay when performing well
-            if current_phase == "self_play":
-                decay_rate = 0.995  # Slower decay in self-play
+        if avg_win_rate < thresholds["increase"]:
+            # Poor performance - increase exploration
+            increase_factor = 1.2 if performance_trend < 0 else 1.1
+            main_bot.epsilon = min(0.9, main_bot.epsilon * increase_factor)
+        elif avg_win_rate > thresholds["decrease"]:
+            # Good performance - decrease exploration
+            if current_phase == "expert":
+                decay_rate = 0.995  # Slower decay in expert phase
             else:
-                # Adaptive decay based on performance
-                decay_rate = 0.998 if avg_win_rate < 0.5 else 0.997
+                decay_rate = 0.99 if avg_win_rate < 0.7 else 0.985
             
             # Ensure epsilon doesn't go below phase minimum
-            main_bot.epsilon = max(min_epsilon[current_phase], 
+            main_bot.epsilon = max(phase_params[current_phase]["min_epsilon"], 
                                  main_bot.epsilon * decay_rate)
         
-        # Print debugging information about exploration
+        # Update win streak
+        if avg_win_rate > 0.5:
+            win_streak += 1
+        else:
+            win_streak = 0
+        
+        # Print detailed debugging information
         if (episode + 1) % 10 == 0:
             print(f"\nEpisode {episode + 1}")
             print(f"Current phase: {current_phase}")
             print(f"Average win rate: {avg_win_rate:.3f}")
             print(f"Current epsilon: {main_bot.epsilon:.3f}")
-            print(f"Win rate trend: {recent_trend:.3f}")
+            print(f"Performance trend: {performance_trend:.3f}")
+            print(f"Win streak: {win_streak}")
+            print(f"Average reward: {episode_total_reward/len(current_opponents):.2f}")
         
         # Update visualizer
         visualizer.update(
@@ -407,9 +479,11 @@ def train_ai_bot(episodes=1000, matches_per_episode=20, save_interval=10, plot_i
         # Save training stats
         save_training_stats(episode + 1, episode_stats)
         
-        # Save model periodically
+        # Save model checkpoints
         if (episode + 1) % save_interval == 0:
-            model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", f"ai_bot_episode_{episode + 1}.pth")
+            model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+                                    "models", 
+                                    f"ai_bot_episode_{episode + 1}.pth")
             main_bot.save_model(model_path)
             print(f"\nSaved model checkpoint: {model_path}")
             print(f"Current phase: {current_phase}, Average performance: {avg_performance:.2f}")

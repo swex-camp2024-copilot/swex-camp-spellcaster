@@ -14,72 +14,180 @@ class DQN(nn.Module):
         
         # Calculate input size:
         # Board state (BOARD_SIZE * BOARD_SIZE)
-        board_size = BOARD_SIZE * BOARD_SIZE
+        self.board_size = BOARD_SIZE * BOARD_SIZE
         
         # Player stats (hp, mana, position_x, position_y)
-        player_stats = 4
+        self.player_stats = 4
         
         # Opponent stats (hp, mana, position_x, position_y)
-        opponent_stats = 4
+        self.opponent_stats = 4
         
         # Spell cooldowns (one for each spell)
-        spell_cooldowns = len(SPELLS)
+        self.spell_cooldowns = len(SPELLS)
         
-        # Minion counts (friendly and enemy)
-        minion_features = 2
+        # Minion features (friendly count, enemy count)
+        self.minion_features = 2
         
         # Calculate total input size
-        input_size = (board_size +  # Board state
-                     player_stats +  # Player stats
-                     opponent_stats +  # Opponent stats
-                     spell_cooldowns +  # Spell cooldowns
-                     minion_features)  # Minion counts
+        self.input_size = (self.board_size +  # Board state
+                     self.player_stats +  # Player stats
+                     self.opponent_stats +  # Opponent stats
+                     self.spell_cooldowns +  # Spell cooldowns
+                     self.minion_features)  # Minion features
         
         # Calculate output size
         num_moves = len(DIRECTIONS)
         num_actions = len(SPELLS) + 1  # All spells plus no spell
-        output_size = num_moves * num_actions
+        self.output_size = num_moves * num_actions
         
-        self.network = nn.Sequential(
-            nn.Linear(input_size, 256),
+        # Enhanced network architecture with layer normalization and dropout
+        self.board_encoder = nn.Sequential(
+            nn.Linear(self.board_size, 256),
+            nn.LayerNorm(256),
             nn.ReLU(),
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Linear(128, output_size)
+            nn.Dropout(0.2)
         )
-    
+        
+        self.player_encoder = nn.Sequential(
+            nn.Linear(self.player_stats + self.opponent_stats, 64),
+            nn.LayerNorm(64),
+            nn.ReLU(),
+            nn.Dropout(0.2)
+        )
+        
+        self.spell_encoder = nn.Sequential(
+            nn.Linear(self.spell_cooldowns + self.minion_features, 64),
+            nn.LayerNorm(64),
+            nn.ReLU(),
+            nn.Dropout(0.2)
+        )
+        
+        self.advantage_stream = nn.Sequential(
+            nn.Linear(384, 256),  # 256 + 64 + 64 = 384
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(256, 128),
+            nn.LayerNorm(128),
+            nn.ReLU(),
+            nn.Linear(128, self.output_size)
+        )
+        
+        self.value_stream = nn.Sequential(
+            nn.Linear(384, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(256, 128),
+            nn.LayerNorm(128),
+            nn.ReLU(),
+            nn.Linear(128, 1)
+        )
+        
     def forward(self, x):
-        return self.network(x)
+        # Ensure input is 2D: [batch_size, features]
+        if x.dim() == 1:
+            x = x.unsqueeze(0)  # Add batch dimension if missing
+        
+        # Split input into different components
+        board_state = x[:, :self.board_size]
+        player_state = x[:, self.board_size:self.board_size + self.player_stats + self.opponent_stats]
+        spell_state = x[:, self.board_size + self.player_stats + self.opponent_stats:]
+        
+        # Process each component
+        board_features = self.board_encoder(board_state)
+        player_features = self.player_encoder(player_state)
+        spell_features = self.spell_encoder(spell_state)
+        
+        # Combine features
+        combined = torch.cat([board_features, player_features, spell_features], dim=1)
+        
+        # Dueling DQN architecture
+        advantage = self.advantage_stream(combined)
+        value = self.value_stream(combined)
+        
+        # Combine value and advantage
+        q_values = value + (advantage - advantage.mean(dim=1, keepdim=True))
+        
+        return q_values
 
-class ReplayBuffer:
-    def __init__(self, capacity=10000):
-        self.buffer = deque(maxlen=capacity)
-    
-    def push(self, state, action, reward, next_state):
-        self.buffer.append((state, action, reward, next_state))
+class PrioritizedReplayBuffer:
+    def __init__(self, capacity=50000):
+        self.capacity = capacity
+        self.buffer = []
+        self.priorities = np.zeros(capacity, dtype=np.float32)
+        self.position = 0
+        self.alpha = 0.6  # Priority exponent
+        self.beta = 0.4   # Importance sampling weight
+        self.beta_increment = 0.001
+        self.epsilon = 1e-5  # Small constant to prevent zero priorities
+        
+    def push(self, state, action, reward, next_state, done):
+        """Store a transition in the buffer."""
+        max_priority = np.max(self.priorities) if self.buffer else 1.0
+        
+        if len(self.buffer) < self.capacity:
+            self.buffer.append((state, action, reward, next_state, done))
+        else:
+            self.buffer[self.position] = (state, action, reward, next_state, done)
+        
+        self.priorities[self.position] = max_priority
+        self.position = (self.position + 1) % self.capacity
     
     def sample(self, batch_size):
-        return random.sample(self.buffer, batch_size)
+        """Sample a batch of transitions with priorities."""
+        if len(self.buffer) < batch_size:
+            return None
+        
+        # Update beta
+        self.beta = min(1.0, self.beta + self.beta_increment)
+        
+        # Calculate sampling probabilities
+        priorities = self.priorities[:len(self.buffer)]
+        probs = priorities ** self.alpha
+        probs /= probs.sum()
+        
+        # Sample indices based on priorities
+        indices = np.random.choice(len(self.buffer), batch_size, p=probs)
+        
+        # Calculate importance sampling weights
+        total = len(self.buffer)
+        weights = (total * probs[indices]) ** (-self.beta)
+        weights /= weights.max()
+        
+        # Get samples
+        batch = [self.buffer[idx] for idx in indices]
+        states, actions, rewards, next_states, dones = zip(*batch)
+        
+        return (states, actions, rewards, next_states, dones, weights, indices)
+    
+    def update_priorities(self, indices, td_errors):
+        """Update priorities based on TD errors."""
+        for idx, td_error in zip(indices, td_errors):
+            self.priorities[idx] = abs(td_error) + self.epsilon
     
     def __len__(self):
         return len(self.buffer)
 
 class AIBot(BotInterface):
     def __init__(self):
+        super().__init__()
         self._name = "DQNWizard"
-        self._sprite_path = "assets/wizards/ai_bot.png"  # Using new AI bot sprite
-        self._minion_sprite_path = "assets/minions/ai_minion.png"  # Using new AI minion sprite
+        self._sprite_path = "assets/wizards/ai_bot.png"
+        self._minion_sprite_path = "assets/minions/ai_minion.png"
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = DQN().to(self.device)
         self.target_model = DQN().to(self.device)
         self.target_model.load_state_dict(self.model.state_dict())
         
-        self.optimizer = optim.Adam(self.model.parameters(), lr=0.001)
-        self.memory = ReplayBuffer()
+        # Initialize optimizer with model parameters that require gradients
+        self.optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.model.parameters()), lr=0.001)
+        self.memory = PrioritizedReplayBuffer()
         
         self.epsilon = 0.1  # Exploration rate
         self.gamma = 0.99  # Discount factor
         self.batch_size = 32
+        self.training = True  # Add training flag
         
         # Set up model path in the ai_bot/models folder
         self.model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
@@ -106,6 +214,7 @@ class AIBot(BotInterface):
         return self._minion_sprite_path
 
     def process_state(self, state):
+        """Process state with proper tensor creation."""
         # Convert game state to tensor
         board = np.zeros((BOARD_SIZE, BOARD_SIZE))
         
@@ -126,8 +235,8 @@ class AIBot(BotInterface):
             pos = artifact['position']
             board[pos[0]][pos[1]] = 0.25
         
-        # Create feature vector
-        features = [
+        # Create feature vector for player and opponent stats
+        player_features = [
             state['self']['hp'] / 100,
             state['self']['mana'] / 100,
             self_pos[0] / BOARD_SIZE,
@@ -139,26 +248,33 @@ class AIBot(BotInterface):
         ]
         
         # Add spell cooldowns
+        spell_features = []
         for spell in SPELLS:
-            features.append(state['self']['cooldowns'].get(spell, 0) / 5)
+            spell_features.append(state['self']['cooldowns'].get(spell, 0) / 5)
         
         # Add minion count features
         friendly_minions = len([m for m in state.get('minions', []) if m['owner'] == self.name])
         enemy_minions = len([m for m in state.get('minions', []) if m['owner'] != self.name])
-        features.extend([
+        minion_features = [
             friendly_minions / 2,  # Normalize by max minions
             enemy_minions / 2
-        ])
+        ]
         
         # Flatten and combine all features
         state_tensor = np.concatenate([
             board.flatten(),
-            np.array(features)
+            np.array(player_features),
+            np.array(spell_features),
+            np.array(minion_features)
         ])
         
-        return torch.FloatTensor(state_tensor).unsqueeze(0).to(self.device)
+        # Convert to tensor
+        tensor = torch.FloatTensor(state_tensor).to(self.device)
+        return tensor  # Return flat tensor, batch dimension will be handled in forward()
 
     def get_action(self, state_tensor):
+        # Set training flag to False during action selection
+        self.training = False
         if random.random() < self.epsilon:
             # Random action with strategic bias
             move = random.choice(DIRECTIONS)
@@ -202,6 +318,8 @@ class AIBot(BotInterface):
             
             return {'move': list(move), 'spell': spell}
         
+        # Set model to evaluation mode for inference
+        self.model.eval()
         with torch.no_grad():
             q_values = self.model(state_tensor)
             action_idx = q_values.argmax().item()
@@ -222,8 +340,11 @@ class AIBot(BotInterface):
                     spell["target"] = opp_pos
                 else:
                     spell["target"] = [BOARD_SIZE // 2, BOARD_SIZE // 2]
-            
-            return {'move': list(move), 'spell': spell}
+        
+        # Set model back to training mode and return action
+        self.model.train()
+        self.training = True
+        return {'move': list(move), 'spell': spell}
 
     def calculate_reward(self, current_state, prev_state):
         if not prev_state:
@@ -231,133 +352,118 @@ class AIBot(BotInterface):
         
         reward = 0
         
-        # Health changes with smart healing logic
-        health_diff_self = current_state['self']['hp'] - prev_state['self']['hp']
-        health_diff_opp = prev_state['opponent']['hp'] - current_state['opponent']['hp']
+        # Extract state information
+        curr_hp = current_state['self']['hp']
+        prev_hp = prev_state['self']['hp']
+        curr_mana = current_state['self']['mana']
+        prev_mana = prev_state['self']['mana']
+        curr_opp_hp = current_state['opponent']['hp']
+        prev_opp_hp = prev_state['opponent']['hp']
         
-        # Enhanced reward for damaging opponent
-        reward += health_diff_opp * 3.0  # Increased from 2.0 to 3.0 to prioritize dealing damage
-        
-        # Smart healing rewards/penalties with enhanced low-health recovery
-        if health_diff_self > 0:  # If healing occurred
-            prev_hp = prev_state['self']['hp']
-            if prev_hp >= 100:  # If we were already at full HP
-                reward -= 5.0  # Increased penalty for wasting healing
-            elif prev_hp <= 30:  # Critical health situation
-                reward += health_diff_self * 2.5  # Major reward for healing when low
-            elif prev_hp <= 60:  # Low health situation
-                reward += health_diff_self * 1.5  # Good reward for healing when needed
-            else:  # Regular healing
-                reward += health_diff_self * 0.5  # Small reward for topping off
-        elif health_diff_self < 0:  # If we took damage
-            curr_hp = current_state['self']['hp']
-            if curr_hp <= 30:  # We're in danger
-                reward += health_diff_self * 2.0  # Increased penalty for taking damage when low
-            else:
-                reward += health_diff_self * 1.5  # Regular penalty for taking damage
-        
-        # Enhanced mana efficiency with strategic spell usage
-        mana_used = prev_state['self']['mana'] - current_state['self']['mana']
-        spell_used = current_state['self'].get('last_spell')
-        opp_hp = current_state['opponent']['hp']
-        
-        if mana_used > 0:
-            if health_diff_opp > 0:  # If we damaged the opponent
-                # Bonus reward for damaging low-health opponent
-                if opp_hp <= 30:
-                    reward += 4.0  # Major reward for damaging low-health opponent
-                else:
-                    reward += 2.5  # Regular reward for damage
-                
-                # Additional rewards for effective spell use
-                if spell_used in ['fireball', 'melee_attack']:
-                    reward += 1.5  # Increased from 1.0
-            elif health_diff_self > 0 and prev_state['self']['hp'] < 60:  # If we healed when needed
-                reward += 1.0  # Increased from 0.5
-            else:  # If we used mana without good effect
-                reward -= 1.0  # Increased penalty for ineffective mana use
-        
-        # Enhanced artifact collection rewards with strategic timing
-        curr_artifacts = len(current_state.get('artifacts', []))
-        prev_artifacts = len(prev_state.get('artifacts', []))
-        artifacts_collected = prev_artifacts - curr_artifacts
-        
-        if artifacts_collected > 0:
-            # Calculate distance-based bonus for artifact collection
-            artifact_positions = [a['position'] for a in prev_state.get('artifacts', [])]
-            if artifact_positions:
-                curr_pos = np.array(current_state['self']['position'])
-                min_distance = min(np.linalg.norm(curr_pos - np.array(pos)) for pos in artifact_positions)
-                distance_bonus = max(0, (10 - min_distance) * 0.3)  # Increased from 0.2
-                
-                # Additional reward if we're low on mana or health
-                if current_state['self']['hp'] <= 60 or current_state['self']['mana'] <= 30:
-                    reward += artifacts_collected * (6.0 + distance_bonus)  # Increased reward when resources needed
-                else:
-                    reward += artifacts_collected * (4.0 + distance_bonus)
-        
-        # Enhanced minion management with strategic positioning
-        curr_friendly_minions = len([m for m in current_state.get('minions', []) if m['owner'] == self.name])
-        prev_friendly_minions = len([m for m in prev_state.get('minions', []) if m['owner'] == self.name])
-        enemy_minions = len([m for m in current_state.get('minions', []) if m['owner'] != self.name])
-        
-        # Enhanced reward for summoning and maintaining minions
-        if curr_friendly_minions > prev_friendly_minions:
-            if enemy_minions > 0:
-                reward += 4.0  # Extra reward for summoning when enemy has minions
-            else:
-                reward += 3.0  # Regular reward for summoning
-        elif curr_friendly_minions > 0:  # Reward for keeping minions alive
-            reward += 0.8  # Increased from 0.5
-        
-        # Strategic positioning with enhanced rewards
+        # Position-based calculations
         curr_pos = np.array(current_state['self']['position'])
         prev_pos = np.array(prev_state['self']['position'])
         opp_pos = np.array(current_state['opponent']['position'])
+        center_pos = np.array([BOARD_SIZE/2, BOARD_SIZE/2])
         
-        # Dynamic optimal distance based on state
-        optimal_dist = 3  # Default medium range
-        if current_state['self']['cooldowns'].get('fireball', 0) == 0 and current_state['self']['mana'] >= 30:
-            optimal_dist = 4  # Fireball range
-        elif curr_friendly_minions > 0:
-            optimal_dist = 2  # Closer if we have minions
-        elif current_state['self']['hp'] <= 40:
-            optimal_dist = 5  # Further if low health
+        # 1. Strategic Positioning (0-10 points)
+        dist_to_opp = np.linalg.norm(curr_pos - opp_pos)
+        dist_to_center = np.linalg.norm(curr_pos - center_pos)
+        opp_dist_to_center = np.linalg.norm(opp_pos - center_pos)
         
-        # Enhanced positioning rewards
-        current_dist = np.linalg.norm(curr_pos - opp_pos)
-        distance_reward = -abs(current_dist - optimal_dist) * 0.4  # Increased penalty for poor positioning
-        reward += distance_reward
+        # Optimal distance varies based on situation
+        if curr_hp < 40:  # Low health - stay away
+            optimal_dist = 5
+        elif current_state['self']['cooldowns'].get('fireball', 0) == 0:  # Can cast fireball
+            optimal_dist = 4
+        else:  # Default medium range
+            optimal_dist = 3
+            
+        # Position score based on optimal distance
+        position_score = 2.0 * (1.0 / (1.0 + abs(dist_to_opp - optimal_dist)))
         
-        # Enhanced board control rewards
-        board_center = np.array([BOARD_SIZE/2, BOARD_SIZE/2])
-        dist_to_center = np.linalg.norm(curr_pos - board_center)
-        opp_dist_to_center = np.linalg.norm(opp_pos - board_center)
+        # Bonus for controlling center when advantageous
+        if dist_to_center < opp_dist_to_center and curr_hp >= curr_opp_hp:
+            position_score += 1.0
+            
+        reward += position_score
         
-        if dist_to_center < opp_dist_to_center:
-            reward += 1.0  # Increased from 0.5
+        # 2. Health Management (-10 to +10 points)
+        health_diff = curr_hp - prev_hp
+        if health_diff > 0:  # Healing
+            if prev_hp < 30:  # Critical healing
+                reward += health_diff * 0.3
+            elif prev_hp < 60:  # Needed healing
+                reward += health_diff * 0.2
+            else:  # Unnecessary healing
+                reward += health_diff * 0.1
+        else:  # Taking damage
+            if curr_hp < 30:  # Critical damage
+                reward += health_diff * 0.4
+            else:  # Normal damage
+                reward += health_diff * 0.3
+                
+        # 3. Mana Efficiency (-5 to +5 points)
+        mana_used = prev_mana - curr_mana
+        if mana_used > 0:
+            damage_dealt = prev_opp_hp - curr_opp_hp
+            mana_efficiency = damage_dealt / mana_used
+            reward += mana_efficiency * 0.5
+            
+        # 4. Combat Effectiveness (-10 to +10 points)
+        damage_dealt = prev_opp_hp - curr_opp_hp
+        if damage_dealt > 0:
+            # More reward for damaging low-health opponents
+            if curr_opp_hp < 30:
+                reward += damage_dealt * 0.4
+            else:
+                reward += damage_dealt * 0.3
+                
+        # 5. Resource Collection (0 to 5 points)
+        curr_artifacts = set((a['position'][0], a['position'][1]) for a in current_state.get('artifacts', []))
+        prev_artifacts = set((a['position'][0], a['position'][1]) for a in prev_state.get('artifacts', []))
+        collected_artifacts = len(prev_artifacts - curr_artifacts)
         
-        # Enhanced tactical positioning rewards
-        if current_dist <= optimal_dist:
-            if current_state['self']['hp'] > current_state['opponent']['hp']:
-                reward += 2.0  # Increased reward for advantageous position with HP advantage
-            if current_state['self']['mana'] > current_state['opponent']['mana']:
-                reward += 1.0  # New reward for mana advantage
+        if collected_artifacts > 0:
+            # Higher reward for collecting when resources are low
+            if curr_hp < 50 or curr_mana < 40:
+                reward += collected_artifacts * 2.0
+            else:
+                reward += collected_artifacts * 1.0
+                
+        # 6. Minion Management (-5 to +5 points)
+        curr_friendly_minions = len([m for m in current_state.get('minions', []) if m['owner'] == self.name])
+        prev_friendly_minions = len([m for m in prev_state.get('minions', []) if m['owner'] == self.name])
+        curr_enemy_minions = len([m for m in current_state.get('minions', []) if m['owner'] != self.name])
         
-        # Increased boundary penalties
+        # Reward for effective minion usage
+        if curr_friendly_minions > prev_friendly_minions:
+            if curr_enemy_minions > 0:  # Summoning against enemy minions
+                reward += 2.0
+            else:  # Normal summoning
+                reward += 1.0
+        elif curr_friendly_minions > 0:  # Keeping minions alive
+            reward += 0.5
+            
+        # 7. Tactical Penalties (-5 to 0 points)
+        # Penalize being in corners or edges
         if (curr_pos[0] in [0, BOARD_SIZE-1] or curr_pos[1] in [0, BOARD_SIZE-1]):
-            reward -= 1.0  # Increased from 0.5
-        
-        # Major rewards/penalties for match outcomes with enhanced win conditions
-        if current_state['opponent']['hp'] <= 0:  # We won
-            reward += 50.0  # Massive reward for winning (increased from 20.0)
-            # Additional rewards based on our remaining health
-            remaining_hp_ratio = current_state['self']['hp'] / 100
-            reward += remaining_hp_ratio * 20.0  # Up to 20 additional points for winning with high HP
-        elif current_state['self']['hp'] <= 0:  # We lost
-            reward -= 30.0  # Increased penalty for losing (from 15.0)
-        elif current_state['opponent']['hp'] <= 0 and current_state['self']['hp'] <= 0:  # Draw
-            reward += 5.0  # Increased from 2.0 to encourage fighting over running
+            reward -= 1.0
+            
+        # Penalize staying still when not beneficial
+        if np.array_equal(curr_pos, prev_pos) and dist_to_opp > optimal_dist:
+            reward -= 0.5
+            
+        # 8. Win/Loss Rewards (-30 to +50 points)
+        if curr_opp_hp <= 0:  # Win
+            base_win_reward = 30.0
+            # Bonus for winning with high health
+            health_bonus = (curr_hp / 100.0) * 20.0
+            reward += base_win_reward + health_bonus
+        elif curr_hp <= 0:  # Loss
+            reward -= 30.0
+        elif curr_opp_hp <= 0 and curr_hp <= 0:  # Draw
+            reward += 5.0
             
         return reward
 
@@ -372,57 +478,18 @@ class AIBot(BotInterface):
                 self.process_state(self.prev_state),
                 action,
                 reward,
-                state_tensor
+                self.process_state(state),
+                False
             )
         
         self.prev_state = state
         return action
 
-    def train(self, num_batches=1):
-        """Train the model for a specified number of batches."""
-        if len(self.memory) < self.batch_size:
-            return 0  # Return 0 loss if not enough samples
-        
-        total_loss = 0
-        for _ in range(num_batches):
-            batch = self.memory.sample(self.batch_size)
-            states, actions, rewards, next_states = zip(*batch)
-            
-            states = torch.cat(states)
-            next_states = torch.cat(next_states)
-            rewards = torch.FloatTensor(rewards).to(self.device)
-            
-            # Calculate current Q values
-            current_q = self.model(states)
-            
-            # Calculate next Q values
-            with torch.no_grad():
-                next_q = self.target_model(next_states)
-                max_next_q = next_q.max(1)[0]
-                target_q = rewards + self.gamma * max_next_q
-            
-            # Create a target tensor of the same shape as current_q
-            target = current_q.clone()
-            # Update only the Q-value for the chosen action
-            for i in range(len(batch)):
-                action_idx = self.action_to_index(actions[i])
-                target[i, action_idx] = target_q[i]
-            
-            # Update model
-            loss = nn.MSELoss()(current_q, target)
-            self.optimizer.zero_grad()
-            loss.backward()
-            # Clip gradients to prevent exploding gradients
-            torch.nn.utils.clip_grad_value_(self.model.parameters(), 100)
-            self.optimizer.step()
-            
-            total_loss += loss.item()
-        
-        # Update target network more frequently with soft updates
-        for target_param, param in zip(self.target_model.parameters(), self.model.parameters()):
-            target_param.data.copy_(0.005 * param.data + 0.995 * target_param.data)
-        
-        return total_loss / num_batches  # Return average loss
+    def push_experience(self, state, action, reward, next_state, done):
+        """Push experience to memory with proper tensor handling."""
+        state_tensor = self.process_state(state)
+        next_state_tensor = self.process_state(next_state)
+        self.memory.push(state_tensor, action, reward, next_state_tensor, done)
 
     def action_to_index(self, action):
         """Convert an action dictionary to its corresponding index."""
@@ -491,3 +558,92 @@ class AIBot(BotInterface):
         load_path = path if path is not None else self.model_path
         self.model.load_state_dict(torch.load(load_path))
         self.target_model.load_state_dict(self.model.state_dict()) 
+
+    def train(self, num_batches=1):
+        """Train the model with prioritized experience replay and TD-error clipping."""
+        if len(self.memory) < self.batch_size:
+            return 0
+        
+        # Ensure model is in training mode
+        self.model.train()
+        self.target_model.eval()
+        self.training = True
+        
+        total_loss = 0
+        for _ in range(num_batches):
+            # Get batch with priorities
+            batch = self.memory.sample(self.batch_size)
+            if batch is None:
+                continue
+                
+            states, actions, rewards, next_states, dones, weights, indices = batch
+            
+            # Convert everything to proper tensors with gradients where needed
+            # Handle states and next_states which are tuples of tensors
+            states_list = []
+            next_states_list = []
+            
+            for state in states:
+                if isinstance(state, torch.Tensor):
+                    states_list.append(state.view(1, -1))
+                else:
+                    states_list.append(torch.FloatTensor(state).view(1, -1).to(self.device))
+                    
+            for next_state in next_states:
+                if isinstance(next_state, torch.Tensor):
+                    next_states_list.append(next_state.view(1, -1))
+                else:
+                    next_states_list.append(torch.FloatTensor(next_state).view(1, -1).to(self.device))
+            
+            # Stack all states and next_states
+            states = torch.cat(states_list, dim=0).to(self.device)
+            next_states = torch.cat(next_states_list, dim=0).to(self.device)
+            
+            # Convert other elements to tensors
+            rewards = torch.FloatTensor(rewards).to(self.device)
+            dones = torch.FloatTensor(dones).to(self.device)
+            weights = torch.FloatTensor(weights).to(self.device)
+            action_indices = torch.tensor([self.action_to_index(a) for a in actions], 
+                                       dtype=torch.long, device=self.device)
+            
+            # Double DQN: Use main network to select actions, target network to evaluate
+            with torch.no_grad():
+                next_q_values = self.model(next_states)
+                next_actions = next_q_values.max(1)[1]
+                next_q_target = self.target_model(next_states)
+                next_q_target = next_q_target.gather(1, next_actions.unsqueeze(1)).squeeze(1)
+                target_q = rewards + (1 - dones) * self.gamma * next_q_target
+            
+            # Get current Q values
+            current_q = self.model(states)
+            current_q = current_q.gather(1, action_indices.unsqueeze(1)).squeeze(1)
+            
+            # Calculate TD errors for prioritized replay
+            with torch.no_grad():
+                td_errors = (target_q - current_q).detach()
+            
+            # Update priorities in replay buffer
+            self.memory.update_priorities(indices, td_errors.abs().cpu().numpy())
+            
+            # Calculate loss with importance sampling weights
+            # Use MSE loss directly on the Q-values
+            elementwise_loss = 0.5 * (target_q.detach() - current_q) ** 2
+            loss = (weights * elementwise_loss).mean()
+            
+            # Optimize the model
+            self.optimizer.zero_grad()
+            loss.backward()
+            
+            # Clip gradients to prevent exploding gradients
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10.0)
+            
+            self.optimizer.step()
+            total_loss += loss.item()
+            
+            # Soft update target network
+            with torch.no_grad():
+                for target_param, param in zip(self.target_model.parameters(), self.model.parameters()):
+                    target_param.data.copy_(0.001 * param.data + 0.999 * target_param.data)
+        
+        self.training = False
+        return total_loss / num_batches 
