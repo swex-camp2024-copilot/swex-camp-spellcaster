@@ -175,8 +175,7 @@ class GameLogger:
             "event": EVENT_MINION_MOVE,
             "details": {
                 "minion_id": minion_id,
-                "start_position": start_position,
-                "new_position": new_position
+                "move": str(start_position) + '->' + str(new_position)
             }
         }
         self.events.append(event_data)
