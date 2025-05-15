@@ -92,6 +92,8 @@ def run_tournament():
                 print(f"Winner: {winner.name} after {turns_fought} turns")
             else:
                 print(f"Too many draws, spell casters {b1.name} and  {b2.name} are disqualified")
+                losers_stats[b1.name] = losers_stats.get(b1.name, 0) + turns_fought
+                losers_stats[b2.name] = losers_stats.get(b2.name, 0) + turns_fought
                 match_info = {
                     "round": round_num,
                     "bot1": b1.name,
