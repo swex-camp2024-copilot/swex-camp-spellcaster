@@ -10,6 +10,8 @@ from simulator.match import run_match
 from bots.ai_bot.ai_bot import AIBot
 from bots.sample_bot1.sample_bot_1 import SampleBot1
 from bots.sample_bot2.sample_bot_2 import SampleBot2
+from bots.sample_bot3.sample_bot_3 import SampleBot3
+from bots.tactical_bot.tactical_bot import TacticalBot
 
 class TrainingVisualizer:
     def __init__(self):
@@ -21,7 +23,13 @@ class TrainingVisualizer:
     def update(self, episode_stats, epsilon, episode_reward):
         # Track win rates for each opponent
         for opponent, results in episode_stats.items():
-            self.win_rates[opponent].append(results["DQNWizard"])
+            # Strip the 'vs_' prefix and normalize tactical bot names
+            opponent_name = opponent.replace('vs_', '')
+            if 'Tactical' in opponent_name:
+                opponent_name = 'TacticalBot'  # Combine all tactical bot variants into one line
+            
+            # Store AI bot's win rate against this opponent
+            self.win_rates[opponent_name].append(results["ai_bot"])
         
         # Track draw rates (average across all opponents)
         draw_rate = np.mean([results["Draw"] for results in episode_stats.values()])
@@ -37,13 +45,21 @@ class TrainingVisualizer:
         # Make save_path relative to the ai_bot folder
         save_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), save_path)
         os.makedirs(save_path, exist_ok=True)
-        episodes = range(1, len(next(iter(self.win_rates.values()))) + 1)
         
         # Plot win rates
         plt.figure(figsize=(12, 6))
+        
+        # Get the maximum length of any win rate list
+        max_episodes = max(len(rates) for rates in self.win_rates.values())
+        episodes = range(1, max_episodes + 1)
+        
         for opponent, rates in self.win_rates.items():
-            plt.plot(episodes, rates, label=f'{opponent}')
-        plt.title('Win Rates vs Different Opponents')
+            # Pad shorter rate lists with their last value
+            if len(rates) < max_episodes:
+                rates.extend([rates[-1]] * (max_episodes - len(rates)))
+            plt.plot(episodes, rates, label=f'vs {opponent}')
+            
+        plt.title('AI Bot Win Rates vs Different Opponents')
         plt.xlabel('Episode')
         plt.ylabel('Win Rate')
         plt.legend()
@@ -53,7 +69,8 @@ class TrainingVisualizer:
         
         # Plot draw rates
         plt.figure(figsize=(12, 6))
-        plt.plot(episodes, self.draw_rates)
+        draw_episodes = range(1, len(self.draw_rates) + 1)
+        plt.plot(draw_episodes, self.draw_rates)
         plt.title('Draw Rates Over Time')
         plt.xlabel('Episode')
         plt.ylabel('Draw Rate')
@@ -63,7 +80,8 @@ class TrainingVisualizer:
         
         # Plot exploration rate
         plt.figure(figsize=(12, 6))
-        plt.plot(episodes, self.exploration_rates)
+        exploration_episodes = range(1, len(self.exploration_rates) + 1)
+        plt.plot(exploration_episodes, self.exploration_rates)
         plt.title('Exploration Rate (Epsilon) Over Time')
         plt.xlabel('Episode')
         plt.ylabel('Epsilon')
@@ -73,7 +91,8 @@ class TrainingVisualizer:
         
         # Plot episode rewards
         plt.figure(figsize=(12, 6))
-        plt.plot(episodes, self.episode_rewards)
+        reward_episodes = range(1, len(self.episode_rewards) + 1)
+        plt.plot(reward_episodes, self.episode_rewards)
         plt.title('Average Episode Reward Over Time')
         plt.xlabel('Episode')
         plt.ylabel('Average Reward')
@@ -114,18 +133,16 @@ def evaluate_bot(bot1, bot2, num_matches=10):
     results = defaultdict(int)
     total_reward = 0
     
-    for _ in range(num_matches):
+    print(f"\nEvaluating {bot1.name} vs {bot2.name} for {num_matches} matches")
+    
+    for match_num in range(num_matches):
         winner, logger = run_match(bot1, bot2, max_turns=100)
         results[winner] += 1
+        print(f"Match {match_num + 1}: Winner = {winner}")
         
         # Enhanced reward calculation
         snapshots = logger.get_snapshots()
         match_reward = 0
-        
-        # Debug: Print first snapshot structure
-        if len(snapshots) > 0:
-            print("Debug - Snapshot structure:", snapshots[0].keys())
-            print("Debug - First snapshot:", snapshots[0])
         
         for i in range(len(snapshots)):
             if i > 0:
@@ -136,18 +153,10 @@ def evaluate_bot(bot1, bot2, num_matches=10):
                 match_reward += bot1.calculate_reward(current_state, prev_state)
                 
                 try:
-                    # Get player indices (bot1 might be player 1 or 2)
-                    bot1_idx = 0 if current_state['wizard1']['name'] == bot1.name else 1
-                    bot2_idx = 1 - bot1_idx
-                    
-                    # Get wizard keys based on indices
-                    bot1_key = f'wizard{bot1_idx + 1}'
-                    bot2_key = f'wizard{bot2_idx + 1}'
-                    
                     # Calculate rewards based on health changes
-                    if current_state[bot1_key]['health'] > prev_state[bot1_key]['health']:
+                    if current_state['self']['hp'] > prev_state['self']['hp']:
                         match_reward += 0.5  # Reward for healing
-                    if current_state[bot2_key]['health'] < prev_state[bot2_key]['health']:
+                    if current_state['opponent']['hp'] < prev_state['opponent']['hp']:
                         match_reward += 1.0  # Reward for damaging opponent
                     
                     # Winner rewards
@@ -160,16 +169,23 @@ def evaluate_bot(bot1, bot2, num_matches=10):
                         
                 except KeyError as e:
                     print(f"Debug - KeyError accessing state: {e}")
-                    print(f"Debug - Current state keys: {current_state.keys()}")
-                    print(f"Debug - Previous state keys: {prev_state.keys()}")
                     continue
         
         total_reward += match_reward
     
     avg_reward = total_reward / num_matches
+    
+    # Print match summary
+    print(f"\nMatch Summary:")
+    print(f"{bot1.name} wins: {results[bot1.name]}")
+    print(f"{bot2.name} wins: {results[bot2.name]}")
+    print(f"Draws: {results['Draw']}")
+    print(f"Average reward: {avg_reward:.2f}\n")
+    
+    # Store results with consistent keys
     return {
-        bot1.name: results[bot1.name] / num_matches,
-        bot2.name: results[bot2.name] / num_matches,
+        "ai_bot": results[bot1.name] / num_matches,  # Always use bot1's actual win rate
+        "opponent": results[bot2.name] / num_matches,
         "Draw": results["Draw"] / num_matches
     }, avg_reward
 
@@ -177,25 +193,46 @@ def create_bot_pool(num_ai_variants=3):
     """Create a pool of bots to train against with different difficulty levels."""
     pool = []
     
+    # Create tactical bots with different configurations for each phase
+    tactical_easy = TacticalBot()
+    tactical_easy._name = "TacticalEasy"  # More exploratory, less aggressive
+    
+    tactical_medium = TacticalBot()
+    tactical_medium._name = "TacticalMedium"  # Balanced configuration
+    
+    tactical_hard = TacticalBot()
+    tactical_hard._name = "TacticalHard"  # Full strength
+    
     # Easy bots (more random behavior)
     easy_bot1 = SampleBot1()
     easy_bot1.randomness = 0.3
     easy_bot2 = SampleBot2()
     easy_bot2.randomness = 0.3
+    easy_bot3 = SampleBot3()
+    easy_bot3.randomness = 0.3
     pool.append(("easy", easy_bot1))
     pool.append(("easy", easy_bot2))
+    pool.append(("easy", easy_bot3))
+    pool.append(("easy", tactical_easy))  # Add tactical bot to easy pool
     
     # Medium bots (normal behavior)
     pool.append(("medium", SampleBot1()))
     pool.append(("medium", SampleBot2()))
+    pool.append(("medium", SampleBot3()))
+    pool.append(("medium", tactical_medium))  # Add tactical bot to medium pool
     
     # Hard bots (optimized behavior)
     hard_bot1 = SampleBot1()
     hard_bot1.aggressive = True
     hard_bot2 = SampleBot2()
     hard_bot2.defensive = True
+    hard_bot3 = SampleBot3()
+    hard_bot3.aggressive = True
+    
     pool.append(("hard", hard_bot1))
     pool.append(("hard", hard_bot2))
+    pool.append(("hard", hard_bot3))
+    pool.append(("hard", tactical_hard))  # Add tactical bot to hard pool
     
     return pool
 
@@ -220,6 +257,9 @@ def train_ai_bot(episodes=1000, matches_per_episode=20, save_interval=10, plot_i
     print("Starting AI bot training with curriculum learning and self-play...")
     
     main_bot = AIBot()
+    # Set initial epsilon higher
+    main_bot.epsilon = 0.9  # Start with high exploration
+    
     visualizer = TrainingVisualizer()
     bot_pool = create_bot_pool()
     
@@ -228,12 +268,28 @@ def train_ai_bot(episodes=1000, matches_per_episode=20, save_interval=10, plot_i
     PERFORMANCE_WINDOW = 10
     SELF_PLAY_THRESHOLD = 0.7
     
-    # Curriculum learning phases
+    # Modified curriculum learning phases to include more time with hard bots
     curriculum_phases = {
-        "easy": (0, episodes // 4),
-        "medium": (episodes // 4, episodes // 2),
-        "hard": (episodes // 2, 3 * episodes // 4),
-        "self_play": (3 * episodes // 4, episodes)
+        "easy": (0, episodes // 5),          # 20% of time on easy bots
+        "medium": (episodes // 5, episodes // 2),  # 30% of time on medium bots
+        "hard": (episodes // 2, 4 * episodes // 5),  # 30% of time on hard bots
+        "self_play": (4 * episodes // 5, episodes)   # 20% of time on self-play
+    }
+    
+    # Add minimum epsilon values for each phase
+    min_epsilon = {
+        "easy": 0.3,
+        "medium": 0.2,
+        "hard": 0.15,
+        "self_play": 0.1
+    }
+    
+    # Add epsilon increase thresholds
+    EPSILON_INCREASE_THRESHOLD = {
+        "easy": 0.4,    # Increase exploration if win rate below 40%
+        "medium": 0.35, # Increase exploration if win rate below 35%
+        "hard": 0.3,    # Increase exploration if win rate below 30%
+        "self_play": 0.25  # Increase exploration if win rate below 25%
     }
     
     for episode in tqdm(range(episodes), desc="Training Progress"):
@@ -258,8 +314,8 @@ def train_ai_bot(episodes=1000, matches_per_episode=20, save_interval=10, plot_i
         # Select opponents based on phase and performance
         current_opponents = []
         if current_phase == "self_play" or avg_performance >= SELF_PLAY_THRESHOLD:
-            # Mix of sample bots and self-play
-            self_play_prob = min(0.8, 0.2 + (episode - curriculum_phases["hard"][1]) / (episodes / 4))
+            # Mix of hard bots (including tactical) and self-play
+            self_play_prob = min(0.8, 0.2 + (episode - curriculum_phases["hard"][1]) / (episodes / 5))
             
             if random.random() < self_play_prob:
                 # Create a copy of the current model for self-play
@@ -267,11 +323,21 @@ def train_ai_bot(episodes=1000, matches_per_episode=20, save_interval=10, plot_i
                 self_play_bot.load_state_dict(main_bot.state_dict())
                 current_opponents.append((self_play_bot, "self_play"))
             else:
-                # Add some hard bots to maintain diversity
-                current_opponents.extend([(bot, "hard") for diff, bot in bot_pool if diff == "hard"])
+                # Always include tactical bot in opponent selection
+                hard_bots = [(bot, diff) for diff, bot in bot_pool if diff == "hard"]
+                tactical_bot = next((b for b in hard_bots if "Tactical" in b[0].name), None)
+                if tactical_bot:
+                    current_opponents.append(tactical_bot)
+                    other_bots = [b for b in hard_bots if "Tactical" not in b[0].name]
+                    current_opponents.extend(random.sample(other_bots, min(2, len(other_bots))))
         else:
-            # Regular curriculum learning
-            current_opponents = [(bot, diff) for diff, bot in bot_pool if diff == current_phase]
+            # Regular curriculum learning with guaranteed tactical bot
+            phase_bots = [(bot, diff) for diff, bot in bot_pool if diff == current_phase]
+            tactical_bot = next((b for b in phase_bots if "Tactical" in b[0].name), None)
+            if tactical_bot:
+                current_opponents.append(tactical_bot)
+                other_bots = [b for b in phase_bots if "Tactical" not in b[0].name]
+                current_opponents.extend(random.sample(other_bots, min(2, len(other_bots))))
         
         # Training iterations based on phase
         num_training_iterations = {
@@ -289,7 +355,7 @@ def train_ai_bot(episodes=1000, matches_per_episode=20, save_interval=10, plot_i
             
             # Track performance against sample bots
             if diff != "self_play":
-                performance_history.append(results[main_bot.name])
+                performance_history.append(results["ai_bot"])
             
             # Training step
             if len(main_bot.memory) >= main_bot.batch_size:
@@ -297,13 +363,39 @@ def train_ai_bot(episodes=1000, matches_per_episode=20, save_interval=10, plot_i
                 total_loss += batch_loss
                 num_training_batches += 1
         
-        # Adaptive exploration rate
-        avg_win_rate = np.mean([stats[main_bot.name] for stats in episode_stats.values()])
-        if avg_win_rate < 0.3:
-            main_bot.epsilon = min(0.9, main_bot.epsilon * 1.1)
+        # Enhanced adaptive exploration rate
+        avg_win_rate = np.mean([stats["ai_bot"] for stats in episode_stats.values()])
+        
+        # Calculate win rate trend
+        if len(performance_history) >= PERFORMANCE_WINDOW:
+            recent_trend = np.mean(performance_history[-PERFORMANCE_WINDOW:]) - np.mean(performance_history[-2*PERFORMANCE_WINDOW:-PERFORMANCE_WINDOW])
         else:
-            decay_rate = 0.99 if current_phase == "self_play" else 0.995
-            main_bot.epsilon = max(0.05, main_bot.epsilon * decay_rate)
+            recent_trend = 0
+            
+        # Adjust epsilon based on performance and phase
+        if avg_win_rate < EPSILON_INCREASE_THRESHOLD[current_phase]:
+            # Increase exploration more aggressively if performance is poor
+            increase_factor = 1.2 if recent_trend < 0 else 1.1
+            main_bot.epsilon = min(0.95, main_bot.epsilon * increase_factor)
+        else:
+            # Slower decay when performing well
+            if current_phase == "self_play":
+                decay_rate = 0.995  # Slower decay in self-play
+            else:
+                # Adaptive decay based on performance
+                decay_rate = 0.998 if avg_win_rate < 0.5 else 0.997
+            
+            # Ensure epsilon doesn't go below phase minimum
+            main_bot.epsilon = max(min_epsilon[current_phase], 
+                                 main_bot.epsilon * decay_rate)
+        
+        # Print debugging information about exploration
+        if (episode + 1) % 10 == 0:
+            print(f"\nEpisode {episode + 1}")
+            print(f"Current phase: {current_phase}")
+            print(f"Average win rate: {avg_win_rate:.3f}")
+            print(f"Current epsilon: {main_bot.epsilon:.3f}")
+            print(f"Win rate trend: {recent_trend:.3f}")
         
         # Update visualizer
         visualizer.update(

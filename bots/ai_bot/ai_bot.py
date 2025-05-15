@@ -40,8 +40,6 @@ class DQN(nn.Module):
         num_actions = len(SPELLS) + 1  # All spells plus no spell
         output_size = num_moves * num_actions
         
-        print(f"Input size: {input_size}, Output size: {output_size}")  # Debug print
-        
         self.network = nn.Sequential(
             nn.Linear(input_size, 256),
             nn.ReLU(),
@@ -158,9 +156,6 @@ class AIBot(BotInterface):
             np.array(features)
         ])
         
-        # Debug print to verify size
-        print(f"State tensor size: {state_tensor.shape}")  # Debug print
-        
         return torch.FloatTensor(state_tensor).unsqueeze(0).to(self.device)
 
     def get_action(self, state_tensor):
@@ -241,19 +236,19 @@ class AIBot(BotInterface):
         health_diff_opp = prev_state['opponent']['hp'] - current_state['opponent']['hp']
         
         # Enhanced reward for damaging opponent
-        reward += health_diff_opp * 1.5  # Increased reward for damaging opponent
+        reward += health_diff_opp * 2.0  # Increased from 1.5 to 2.0
         
         # Smart healing rewards/penalties
         if health_diff_self > 0:  # If healing occurred
             prev_hp = prev_state['self']['hp']
             if prev_hp >= 100:  # If we were already at full HP
-                reward -= 2.0  # Significant penalty for wasting healing
+                reward -= 3.0  # Increased penalty for wasting healing
             elif prev_hp >= 80:  # If HP was already high
                 reward += health_diff_self * 0.2  # Small reward for topping off
             else:  # If HP was low
-                reward += health_diff_self * 0.8  # Good reward for needed healing
+                reward += health_diff_self * 1.0  # Increased from 0.8 to 1.0
         elif health_diff_self < 0:  # If we took damage
-            reward += health_diff_self * 0.8  # Penalty for taking damage
+            reward += health_diff_self * 1.0  # Increased penalty for taking damage
         
         # Enhanced mana efficiency with spell usage encouragement
         mana_used = prev_state['self']['mana'] - current_state['self']['mana']
@@ -261,13 +256,13 @@ class AIBot(BotInterface):
         
         if mana_used > 0:
             if health_diff_opp > 0:  # If we damaged the opponent
-                reward += 1.0  # Increased bonus for effective offensive mana use
+                reward += 2.0  # Increased from 1.0 to 2.0 for effective offensive mana use
                 if spell_used in ['fireball', 'melee_attack']:
-                    reward += 0.5  # Additional bonus for using offensive spells
-            elif health_diff_self > 0 and prev_state['self']['hp'] < 80:  # If we healed when actually needed
-                reward += 0.3  # Smaller bonus for necessary healing
+                    reward += 1.0  # Increased from 0.5 to 1.0
+            elif health_diff_self > 0 and prev_state['self']['hp'] < 80:  # If we healed when needed
+                reward += 0.5  # Increased from 0.3 to 0.5
             else:  # If we used mana without good effect
-                reward -= 0.2  # Small penalty for ineffective mana use
+                reward -= 0.5  # Increased penalty for ineffective mana use
         
         # Enhanced artifact (potion) collection rewards
         curr_artifacts = len(current_state.get('artifacts', []))
@@ -280,18 +275,20 @@ class AIBot(BotInterface):
             if artifact_positions:
                 curr_pos = np.array(current_state['self']['position'])
                 min_distance = min(np.linalg.norm(curr_pos - np.array(pos)) for pos in artifact_positions)
-                distance_bonus = max(0, (10 - min_distance) * 0.1)  # More reward for collecting distant artifacts
-                reward += artifacts_collected * (3.0 + distance_bonus)  # Increased base reward plus distance bonus
+                distance_bonus = max(0, (10 - min_distance) * 0.2)  # Increased from 0.1 to 0.2
+                reward += artifacts_collected * (4.0 + distance_bonus)  # Increased from 3.0 to 4.0
         
-        # Minion management
+        # Minion management with enhanced rewards
         curr_friendly_minions = len([m for m in current_state.get('minions', []) if m['owner'] == self.name])
         prev_friendly_minions = len([m for m in prev_state.get('minions', []) if m['owner'] == self.name])
         
-        # Reward for summoning minions when we have few
+        # Enhanced reward for summoning and maintaining minions
         if curr_friendly_minions > prev_friendly_minions:
-            reward += 2.0
+            reward += 3.0  # Increased from 2.0 to 3.0
+        elif curr_friendly_minions > 0:  # Reward for keeping minions alive
+            reward += 0.5
         
-        # Enhanced position control with artifact awareness
+        # Position control with enhanced strategic rewards
         curr_pos = np.array(current_state['self']['position'])
         prev_pos = np.array(prev_state['self']['position'])
         opp_pos = np.array(current_state['opponent']['position'])
@@ -303,40 +300,37 @@ class AIBot(BotInterface):
         elif curr_friendly_minions > 0:
             optimal_dist = 2  # Closer if we have minions
         
-        # Adjust optimal distance if there are nearby artifacts
-        if current_state.get('artifacts'):
-            nearest_artifact = min(
-                (np.linalg.norm(curr_pos - np.array(a['position'])) for a in current_state['artifacts']),
-                default=float('inf')
-            )
-            if nearest_artifact < 3:  # If artifact is close
-                optimal_dist = max(optimal_dist, nearest_artifact + 1)  # Prefer staying near artifacts
-        
-        # Distance management reward
+        # Strategic positioning rewards
         current_dist = np.linalg.norm(curr_pos - opp_pos)
-        distance_reward = -abs(current_dist - optimal_dist) * 0.2
+        
+        # Reward for maintaining optimal distance
+        distance_reward = -abs(current_dist - optimal_dist) * 0.3  # Increased from 0.2 to 0.3
         reward += distance_reward
         
-        # Encourage exploration of the board, especially towards artifacts
-        if not np.array_equal(curr_pos, prev_pos):
-            reward += 0.1  # Base reward for moving
-            if current_state.get('artifacts'):
-                # Additional reward for moving towards artifacts
-                prev_min_artifact_dist = min(
-                    (np.linalg.norm(prev_pos - np.array(a['position'])) for a in current_state['artifacts']),
-                    default=float('inf')
-                )
-                curr_min_artifact_dist = min(
-                    (np.linalg.norm(curr_pos - np.array(a['position'])) for a in current_state['artifacts']),
-                    default=float('inf')
-                )
-                if curr_min_artifact_dist < prev_min_artifact_dist:
-                    reward += 0.2  # Reward for moving closer to artifacts
+        # New: Reward for board control
+        board_center = np.array([BOARD_SIZE/2, BOARD_SIZE/2])
+        dist_to_center = np.linalg.norm(curr_pos - board_center)
+        opp_dist_to_center = np.linalg.norm(opp_pos - board_center)
         
-        # Boundary penalty
+        if dist_to_center < opp_dist_to_center:
+            reward += 0.5  # Reward for controlling center
+        
+        # New: Reward for advantageous positioning
+        if current_dist <= optimal_dist and current_state['self']['hp'] > current_state['opponent']['hp']:
+            reward += 1.0  # Reward for being in attack range with HP advantage
+        
+        # Enhanced boundary penalties
         if (curr_pos[0] in [0, BOARD_SIZE-1] or curr_pos[1] in [0, BOARD_SIZE-1]):
-            reward -= 0.2  # Penalty for being at the edges
-        
+            reward -= 0.5  # Increased from 0.2 to 0.5
+            
+        # New: Major rewards/penalties for match outcomes
+        if current_state['opponent']['hp'] <= 0:  # We won
+            reward += 20.0  # Massive reward for winning
+        elif current_state['self']['hp'] <= 0:  # We lost
+            reward -= 15.0  # Major penalty for losing
+        elif current_state['opponent']['hp'] <= 0 and current_state['self']['hp'] <= 0:  # Draw
+            reward += 2.0  # Small positive reward for draw
+            
         return reward
 
     def decide(self, state):
