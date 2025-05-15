@@ -12,6 +12,9 @@ class KevinLink(BotInterface):
         self._last_artifact_positions = []  # Remember artifact positions
         self._enemy_positions = []  # Track enemy movement patterns
         self._has_summoned = False  # Track if we've summoned a minion
+        self._last_hp = 100  # Track our last health
+        self._turn_count = 0  # Track turn count
+        self._under_attack = False  # Flag to indicate if we're under attack
 
     @property
     def name(self):
@@ -26,6 +29,7 @@ class KevinLink(BotInterface):
         return self._minion_sprite_path
 
     def decide(self, state):
+        self._turn_count += 1
         self_data = state["self"]
         opp_data = state["opponent"]
         artifacts = state.get("artifacts", [])
@@ -36,6 +40,15 @@ class KevinLink(BotInterface):
         cooldowns = self_data["cooldowns"]
         mana = self_data["mana"]
         hp = self_data["hp"]
+        
+        # Detect if we're under attack
+        if self._last_hp > hp:
+            self._under_attack = True
+        else:
+            # Gradually reduce attack detection
+            self._under_attack = self._under_attack and self._turn_count % 3 != 0
+            
+        self._last_hp = hp
         
         # Update tracking data
         self._enemy_positions.append(opp_pos)
@@ -56,8 +69,16 @@ class KevinLink(BotInterface):
             
         # Calculate if we can predict opponent's next position
         predicted_position = self._predict_enemy_position(opp_pos)
+        
+        # Identify dangerous opponents that prioritize fireballs (like SampleBot3)
+        is_aggressive_opponent = self._detect_aggressive_opponent()
 
-        # 1. FIRST ROUND STRATEGY - Shield for protection
+        # 1. EMERGENCY SHIELD - Highest priority if under active attack
+        if self._under_attack and not self_data.get("shield_active", False) and cooldowns["shield"] == 0 and mana >= 20:
+            spell = {"name": "shield"}
+            return {"move": [0, 0], "spell": spell}  # Return immediately with shield spell
+            
+        # 2. FIRST ROUND STRATEGY - Shield for protection
         if self._first_round and cooldowns["shield"] == 0 and mana >= 20:
             spell = {"name": "shield"}
             self._first_round = False
@@ -65,12 +86,21 @@ class KevinLink(BotInterface):
         elif self._first_round:
             self._first_round = False
         
-        # 2. DEFENSIVE PRIORITY - Shield when opponent is close and we're vulnerable
-        if not self_data.get("shield_active", False) and cooldowns["shield"] == 0 and mana >= 20:
-            if dist(self_pos, opp_pos) <= 3 and hp <= 70:  # More aggressive shielding
+        # 3. COUNTER AGGRESSIVE OPPONENTS - More conservative strategy against aggressive bots
+        if is_aggressive_opponent:
+            # More aggressive healing
+            if hp <= 85 and cooldowns["heal"] == 0 and mana >= 25:
+                spell = {"name": "heal"}
+            # Earlier shielding
+            elif not self_data.get("shield_active", False) and cooldowns["shield"] == 0 and mana >= 20 and hp <= 80:
                 spell = {"name": "shield"}
+        else:
+            # 4. STANDARD DEFENSIVE PRIORITY - Shield when opponent is close and we're vulnerable
+            if not self_data.get("shield_active", False) and cooldowns["shield"] == 0 and mana >= 20:
+                if dist(self_pos, opp_pos) <= 3 and hp <= 70:  # More aggressive shielding
+                    spell = {"name": "shield"}
         
-        # 3. OFFENSIVE OPPORTUNITY - Fireball at predicted position if available
+        # 5. OFFENSIVE OPPORTUNITY - Fireball at predicted position if available
         if not spell and cooldowns["fireball"] == 0 and mana >= 30:
             if predicted_position and dist(self_pos, predicted_position) <= 5:
                 target_pos = predicted_position
@@ -85,7 +115,25 @@ class KevinLink(BotInterface):
                     "target": target_pos
                 }
         
-        # 4. TACTICAL BLINK - Use blink to either escape or get in position
+        # 6. RESOURCE MANAGEMENT - Collect artifacts if running low
+        if not spell and artifacts and (mana <= 40 or hp <= 50):
+            best_artifact = self._choose_best_artifact(artifacts, self_pos, opp_pos, hp, mana)
+            
+            # Use blink to quickly reach needed artifacts
+            if cooldowns["blink"] == 0 and mana >= 10 and dist(self_pos, best_artifact["position"]) > 1:
+                direction = self._direction_toward(self_pos, best_artifact["position"], 2)
+                spell = {
+                    "name": "blink",
+                    "target": direction
+                }
+            # Use teleport for critical resources
+            elif cooldowns["teleport"] == 0 and mana >= 40 and (mana <= 30 or hp <= 40):
+                spell = {
+                    "name": "teleport",
+                    "target": best_artifact["position"]
+                }
+        
+        # 7. TACTICAL BLINK - Use blink for positioning
         if not spell and cooldowns["blink"] == 0 and mana >= 10:
             # Blink away if low health and enemy is close
             if hp <= 40 and dist(self_pos, opp_pos) <= 2:
@@ -96,17 +144,15 @@ class KevinLink(BotInterface):
                         "name": "blink",
                         "target": direction
                     }
-            # Blink toward artifact if we need resources
-            elif (mana <= 40 or hp <= 60) and artifacts:
-                nearest = min(artifacts, key=lambda a: dist(self_pos, a["position"]))
-                if dist(self_pos, nearest["position"]) > 2:  # Only blink if it's not too close
-                    direction = self._direction_toward(self_pos, nearest["position"], 2)
-                    spell = {
-                        "name": "blink",
-                        "target": direction
-                    }
+            # Blink toward opponent for tactical advantage if we're healthy
+            elif hp > 70 and mana > 50 and dist(self_pos, opp_pos) <= 5 and dist(self_pos, opp_pos) > 2:
+                direction = self._direction_toward(self_pos, opp_pos, 1)
+                spell = {
+                    "name": "blink",
+                    "target": direction
+                }
                     
-        # 5. MELEE ATTACK if adjacent to enemy
+        # 8. MELEE ATTACK if adjacent to enemy
         if not spell:
             enemies = [e for e in minions if e["owner"] != self_data["name"]]
             enemies.append(opp_data)  # Add opponent to potential targets
@@ -120,17 +166,22 @@ class KevinLink(BotInterface):
                     "target": target["position"]
                 }
         
-        # 6. HEALING STRATEGY - More aggressive healing
-        if not spell and hp <= 75 and cooldowns["heal"] == 0 and mana >= 25:
-            spell = {"name": "heal"}
+        # 9. HEALING STRATEGY - Adaptive healing based on opponent strategy
+        if not spell and cooldowns["heal"] == 0 and mana >= 25:
+            healing_threshold = 60 if is_aggressive_opponent else 75
+            if hp <= healing_threshold:
+                spell = {"name": "heal"}
         
-        # 7. SUMMON MINION STRATEGY - Earlier if we have mana to spare
+        # 10. SUMMON MINION STRATEGY - Adaptive summoning based on game phase
         has_minion = any(m["owner"] == self_data["name"] for m in minions)
         if not spell and not has_minion and cooldowns["summon"] == 0 and mana >= 60:
-            spell = {"name": "summon"}
-            self._has_summoned = True
+            # In early game, be more aggressive with minion summoning
+            early_game = self._turn_count < 10
+            if early_game or mana >= 75:  # Summon earlier in game or when mana is plentiful
+                spell = {"name": "summon"}
+                self._has_summoned = True
             
-        # 8. TELEPORT STRATEGY - For resource collection and tactical positioning
+        # 11. TELEPORT STRATEGY - For resource collection and tactical positioning
         if not spell and cooldowns["teleport"] == 0 and mana >= 40 and artifacts:
             # Teleport when critical or strategic advantage
             critical = mana <= 40 or hp <= 60
@@ -143,13 +194,27 @@ class KevinLink(BotInterface):
                     "target": best_artifact["position"]
                 }
         
-        # 9. MOVEMENT STRATEGY - Smart movement based on state
+        # 12. MOVEMENT STRATEGY - Smart movement based on state
         if not spell:
             # Move toward artifact if needed
             if artifacts and (mana <= 70 or hp <= 70):
                 best_artifact = self._choose_best_artifact(artifacts, self_pos, opp_pos, hp, mana)
                 move = self.move_toward(self_pos, best_artifact["position"])
-            # Maintain optimal combat distance if we have good mana/hp
+            # Against aggressive opponents, maintain safer distance
+            elif is_aggressive_opponent and hp > 60 and mana > 40:
+                optimal_distance = 5  # Stay at maximum fireball range
+                current_distance = dist(self_pos, opp_pos)
+                
+                if current_distance < optimal_distance:
+                    # Back away more aggressively
+                    move = self._direction_away_from(self_pos, opp_pos, 1)
+                elif current_distance > optimal_distance:
+                    # Move closer cautiously
+                    move = self.move_toward(self_pos, opp_pos)
+                else:
+                    # Strafe to avoid predictability
+                    move = self._strafe_around(self_pos, opp_pos)
+            # Standard distance management
             elif hp > 60 and mana > 40:
                 optimal_distance = 4  # Stay at fireball range but not too close
                 current_distance = dist(self_pos, opp_pos)
@@ -164,8 +229,12 @@ class KevinLink(BotInterface):
                     # Strafe to avoid predictability
                     move = self._strafe_around(self_pos, opp_pos)
             else:
-                # Default: move toward opponent
-                move = self.move_toward(self_pos, opp_pos)
+                # Default: move toward opponent if healthy enough, otherwise prioritize safety
+                if hp > 40:
+                    move = self.move_toward(self_pos, opp_pos)
+                else:
+                    # Move away if critically low health
+                    move = self._direction_away_from(self_pos, opp_pos, 1)
 
         return {
             "move": move,
@@ -244,6 +313,25 @@ class KevinLink(BotInterface):
             return [predicted_x, predicted_y]
         
         return None
+    
+    def _detect_aggressive_opponent(self):
+        """Detect if opponent is using an aggressive strategy like SampleBot3"""
+        # If we've been under attack frequently, assume aggressive opponent
+        if self._under_attack:
+            return True
+            
+        # If we've detected pattern of opponent staying at optimal fireball range
+        if len(self._enemy_positions) >= 3:
+            # Check if opponent is maintaining distance of 4-5 squares (fireball range)
+            distances = [max(abs(pos[0] - self._enemy_positions[i-1][0]), 
+                           abs(pos[1] - self._enemy_positions[i-1][1])) 
+                       for i, pos in enumerate(self._enemy_positions) if i > 0]
+            
+            # If opponent is not moving much and stays at range, likely aggressive
+            if sum(1 for d in distances if d <= 1) >= len(distances) // 2:
+                return True
+        
+        return False
         
     def _choose_best_artifact(self, artifacts, self_pos, opp_pos, hp, mana):
         """Choose the best artifact based on need and tactical advantage"""
@@ -258,16 +346,20 @@ class KevinLink(BotInterface):
             
             # Need-based scoring
             if hp <= 40 and artifact["type"] == "health":
-                score += 20
+                score += 30  # Increased priority for health when low
             elif mana <= 30 and artifact["type"] == "mana":
-                score += 20
+                score += 30  # Increased priority for mana when low
             elif artifact["type"] == "cooldown":
-                score += 10  # Generally useful
+                score += 15  # More value on cooldown resets
                 
             # Tactical positioning (don't get too close to opponent)
             enemy_distance = self.manhattan_dist(artifact["position"], opp_pos)
             if enemy_distance <= 2:
-                score -= 15  # Avoid artifacts too close to enemy
+                score -= 20  # Avoid artifacts too close to enemy even more
+            
+            # Bonus for artifacts that put objects between us and opponent
+            if self._is_blocking_path(self_pos, opp_pos, artifact["position"]):
+                score += 10
                 
             scored_artifacts.append((score, artifact))
             
@@ -277,6 +369,24 @@ class KevinLink(BotInterface):
         else:
             # Fallback - closest artifact
             return min(artifacts, key=lambda a: self.manhattan_dist(self_pos, a["position"]))
+    
+    def _is_blocking_path(self, our_pos, enemy_pos, artifact_pos):
+        """Check if artifact position helps block line of sight from enemy"""
+        # Simple check: is artifact roughly between us and enemy?
+        our_to_enemy_x = enemy_pos[0] - our_pos[0]
+        our_to_enemy_y = enemy_pos[1] - our_pos[1]
+        
+        our_to_artifact_x = artifact_pos[0] - our_pos[0]
+        our_to_artifact_y = artifact_pos[1] - our_pos[1]
+        
+        # If signs match and artifact is closer to us than enemy, it's in the path
+        same_x_direction = (our_to_enemy_x * our_to_artifact_x > 0)
+        same_y_direction = (our_to_enemy_y * our_to_artifact_y > 0)
+        
+        artifact_closer = (abs(our_to_artifact_x) < abs(our_to_enemy_x) and 
+                          abs(our_to_artifact_y) < abs(our_to_enemy_y))
+        
+        return same_x_direction and same_y_direction and artifact_closer
             
     def manhattan_dist(self, a, b):
         return abs(a[0] - b[0]) + abs(a[1] - b[1]) 
