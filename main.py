@@ -58,17 +58,26 @@ def run_tournament():
             visualizer = Visualizer(logger, b1, b2)
             visualizer.run(snapshots)
 
+            
             # Determine the winner bot object based on the name
             winner_bot = None
             if winner_name == "Draw":
                 # In case of a draw, pick the first bot arbitrarily
                 winner_bot = b1
                 print(f"Draw after {turns_fought} turns")
+            elif winner_name == b1.name:
+                # First bot won
+                winner_bot = b1
+                losers_stats[b2.name] = losers_stats.get(b2.name, 0) + turns_fought
+            elif winner_name == b2.name:
+                # Second bot won
+                winner_bot = b2
+                losers_stats[b1.name] = losers_stats.get(b1.name, 0) + turns_fought
             else:
-                winner_bot = b1 if winner_name == b1.name else b2
-                # Update losers stats
-                loser = b2 if winner_name == b1.name else b1
-                losers_stats[loser.name] = losers_stats.get(loser.name, 0) + turns_fought
+                # Unexpected winner name, treat as a draw
+                print(f"Warning: Unexpected winner name '{winner_name}'. Treating as a draw.")
+                winner_bot = b1  # Default to first bot
+                print(f"Draw (unexpected result) after {turns_fought} turns")
 
             # Store match information
             match_info = {
