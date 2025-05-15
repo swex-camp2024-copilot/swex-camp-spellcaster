@@ -48,9 +48,10 @@ def run_tournament():
             if b2 is None:  # Odd number of bots, b1 gets a bye
                 winners.append(b1)
                 print(f"{b1.name} gets a bye")
-                continue            
+                continue
+
             print(f"Match: {b1.name} vs {b2.name}")
-            winner_name, logger = run_match(b1, b2)
+            winner, logger = run_match(b1, b2)
             turns_fought = logger.get_snapshots()[-1]["turn"]  # Get the last turn number
 
             snapshots = logger.get_snapshots()
@@ -58,31 +59,22 @@ def run_tournament():
             visualizer = Visualizer(logger, b1, b2)
             visualizer.run(snapshots)
 
-            # Determine the winner bot object based on the name
-            winner_bot = None
-            if winner_name == "Draw":
-                # In case of a draw, pick the first bot arbitrarily
-                winner_bot = b1
-                print(f"Draw after {turns_fought} turns")
-            else:
-                winner_bot = b1 if winner_name == b1.name else b2
-                # Update losers stats
-                loser = b2 if winner_name == b1.name else b1
-                losers_stats[loser.name] = losers_stats.get(loser.name, 0) + turns_fought
+            # Update losers stats
+            loser = b2 if winner == b1 else b1
+            losers_stats[loser.name] = losers_stats.get(loser.name, 0) + turns_fought
 
             # Store match information
             match_info = {
                 "round": round_num,
                 "bot1": b1.name,
                 "bot2": b2.name,
-                "winner": winner_name,
+                "winner": winner,
                 "turns": turns_fought
             }
             stats["matches"].append(match_info)
 
-            winners.append(winner_bot)
-            if winner_name != "Draw":
-                print(f"Winner: {winner_name} after {turns_fought} turns")
+            winners.append(winner)
+            print(f"Winner: {winner.name} after {turns_fought} turns")
 
         # Update bots for next round
         bots = winners
