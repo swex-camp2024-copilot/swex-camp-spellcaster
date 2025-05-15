@@ -54,11 +54,26 @@ def submit_training_job(ml_client, compute_cluster):
         )
         logger.info("Environment configuration created")
         
+        # Create a setup script to add the project root to PYTHONPATH
+        setup_script = """
+import sys
+import os
+
+# Add the project root to Python path
+project_root = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, project_root)
+        """
+        
+        setup_script_path = os.path.join(current_dir, "azure_setup.sh")
+        with open(setup_script_path, "w") as f:
+            f.write("#!/bin/bash\n")
+            f.write("export PYTHONPATH=$PYTHONPATH:$PWD\n")
+        
         logger.info("Creating command job configuration")
         logger.info(f"Compute cluster name being used: {compute_cluster.name}")
         command_job = command(
             code=project_root,
-            command="python -m bots.ai_bot.train --episodes 1000 --matches 20",
+            command="bash azure_setup.sh && python -m bots.ai_bot.train --episodes 1000 --matches 20",
             environment=env,
             compute=compute_cluster.name,
             display_name="spellcaster-training",
