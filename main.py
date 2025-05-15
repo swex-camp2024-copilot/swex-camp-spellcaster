@@ -52,42 +52,56 @@ def run_tournament():
 
             print(f"Match: {b1.name} vs {b2.name}")
             winner, logger = run_match(b1, b2)
+
             turns_fought = logger.get_snapshots()[-1]["turn"]  # Get the last turn number
-
             snapshots = logger.get_snapshots()
-
             visualizer = Visualizer(logger, b1, b2)
-            visualizer.run(snapshots)
+            visualizer.run(snapshots, len(bots) > 2)
 
-            # Update losers stats
-            if winner == "Draw":
-                # In case of a draw, record turns for both bots
-                losers_stats[b1.name] = losers_stats.get(b1.name, 0) + turns_fought
-                losers_stats[b2.name] = losers_stats.get(b2.name, 0) + turns_fought
-            else:
+            draw_counter = 0
+            while winner == "Draw":
+                draw_counter += 1
+                print("Match ended in a draw")
+                winner, logger = run_match(b1, b2)
+
+                snapshots = logger.get_snapshots()
+                visualizer = Visualizer(logger, b1, b2)
+                visualizer.run(snapshots, len(bots) > 2)
+
+                if draw_counter > 2:
+                    break
+                continue
+
+
+            if(draw_counter <= 2):
+                # Update losers stats
                 loser = b2 if winner == b1 else b1
                 losers_stats[loser.name] = losers_stats.get(loser.name, 0) + turns_fought
 
-            # Store match information
-            match_info = {
-                "round": round_num,
-                "bot1": b1.name,
-                "bot2": b2.name,
-                "winner": winner,
-                "turns": turns_fought
-            }
-            stats["matches"].append(match_info)
+                # Store match information
+                match_info = {
+                    "round": round_num,
+                    "bot1": b1.name,
+                    "bot2": b2.name,
+                    "winner": winner,
+                    "turns": turns_fought
+                }
+                stats["matches"].append(match_info)
 
-            # Handle winner being a bot instance or "Draw"
-            if winner == "Draw":
-                print(f"Result: Draw after {turns_fought} turns")
-                # In case of a draw, randomly select one bot to advance
-                winner = random.choice([b1, b2])
-                print(f"Randomly selected {winner.name} to advance")
-            else:
+                winners.append(winner)
                 print(f"Winner: {winner.name} after {turns_fought} turns")
-
-            winners.append(winner)
+            else:
+                print(f"Too many draws, spell casters {b1.name} and  {b2.name} are disqualified")
+                losers_stats[b1.name] = losers_stats.get(b1.name, 0) + turns_fought
+                losers_stats[b2.name] = losers_stats.get(b2.name, 0) + turns_fought
+                match_info = {
+                    "round": round_num,
+                    "bot1": b1.name,
+                    "bot2": b2.name,
+                    "winner": "NONE",
+                    "turns": turns_fought
+                }
+            stats["matches"].append(match_info)
 
         # Update bots for next round
         bots = winners
