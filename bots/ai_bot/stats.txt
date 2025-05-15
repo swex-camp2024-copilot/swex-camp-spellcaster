@@ -8904,3 +8904,78 @@ vs_TacticalEasy: {'ai_bot': 0.56, 'opponent': 0.44, 'Draw': 0.0}
 vs_Sample Bot 3: {'ai_bot': 1.0, 'opponent': 0.0, 'Draw': 0.0}
 vs_Sample Bot 1: {'ai_bot': 0.18, 'opponent': 0.68, 'Draw': 0.14}
 
+Episode 48:
+vs_TacticalEasy: {'ai_bot': 0.46, 'opponent': 0.54, 'Draw': 0.0}
+vs_Sample Bot 2: {'ai_bot': 0.08, 'opponent': 0.72, 'Draw': 0.2}
+vs_Sample Bot 3: {'ai_bot': 1.0, 'opponent': 0.0, 'Draw': 0.0}
+
+Episode 49:
+vs_TacticalEasy: {'ai_bot': 0.32, 'opponent': 0.68, 'Draw': 0.0}
+vs_Sample Bot 2: {'ai_bot': 0.08, 'opponent': 0.72, 'Draw': 0.2}
+vs_Sample Bot 3: {'ai_bot': 1.0, 'opponent': 0.0, 'Draw': 0.0}
+
+Episode 50:
+vs_TacticalEasy: {'ai_bot': 0.36, 'opponent': 0.64, 'Draw': 0.0}
+vs_Sample Bot 3: {'ai_bot': 1.0, 'opponent': 0.0, 'Draw': 0.0}
+vs_Sample Bot 1: {'ai_bot': 0.1, 'opponent': 0.76, 'Draw': 0.14}
+
+Episode 51:
+vs_TacticalEasy: {'ai_bot': 0.56, 'opponent': 0.44, 'Draw': 0.0}
+vs_Sample Bot 1: {'ai_bot': 0.08, 'opponent': 0.76, 'Draw': 0.16}
+vs_Sample Bot 2: {'ai_bot': 0.1, 'opponent': 0.76, 'Draw': 0.14}
+
+Episode 52:
+vs_TacticalEasy: {'ai_bot': 0.46, 'opponent': 0.54, 'Draw': 0.0}
+vs_Sample Bot 1: {'ai_bot': 0.06, 'opponent': 0.74, 'Draw': 0.2}
+vs_Sample Bot 2: {'ai_bot': 0.12, 'opponent': 0.72, 'Draw': 0.16}
+
+Episode 53:
+vs_TacticalEasy: {'ai_bot': 0.36, 'opponent': 0.64, 'Draw': 0.0}
+vs_Sample Bot 2: {'ai_bot': 0.1, 'opponent': 0.76, 'Draw': 0.14}
+vs_Sample Bot 1: {'ai_bot': 0.1, 'opponent': 0.76, 'Draw': 0.14}
+
+Episode 54:
+vs_TacticalEasy: {'ai_bot': 0.4, 'opponent': 0.6, 'Draw': 0.0}
+vs_Sample Bot 1: {'ai_bot': 0.18, 'opponent': 0.66, 'Draw': 0.16}
+vs_Sample Bot 2: {'ai_bot': 0.16, 'opponent': 0.68, 'Draw': 0.16}
+
+Episode 55:
+vs_TacticalEasy: {'ai_bot': 0.26, 'opponent': 0.74, 'Draw': 0.0}
+vs_Sample Bot 3: {'ai_bot': 1.0, 'opponent': 0.0, 'Draw': 0.0}
+vs_Sample Bot 1: {'ai_bot': 0.1, 'opponent': 0.62, 'Draw': 0.28}
+
+Episode 56:
+vs_TacticalEasy: {'ai_bot': 0.6, 'opponent': 0.4, 'Draw': 0.0}
+vs_Sample Bot 2: {'ai_bot': 0.12, 'opponent': 0.64, 'Draw': 0.24}
+vs_Sample Bot 3: {'ai_bot': 1.0, 'opponent': 0.0, 'Draw': 0.0}
+
+Episode 57:
+vs_TacticalEasy: {'ai_bot': 0.5, 'opponent': 0.5, 'Draw': 0.0}
+vs_Sample Bot 3: {'ai_bot': 1.0, 'opponent': 0.0, 'Draw': 0.0}
+vs_Sample Bot 1: {'ai_bot': 0.06, 'opponent': 0.68, 'Draw': 0.26}
+
+Episode 58:
+vs_TacticalEasy: {'ai_bot': 0.28, 'opponent': 0.72, 'Draw': 0.0}
+vs_Sample Bot 3: {'ai_bot': 1.0, 'opponent': 0.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'ai_bot': 0.14, 'opponent': 0.68, 'Draw': 0.18}
+
+Episode 59:
+vs_TacticalEasy: {'ai_bot': 0.6, 'opponent': 0.4, 'Draw': 0.0}
+vs_Sample Bot 1: {'ai_bot': 0.12, 'opponent': 0.7, 'Draw': 0.18}
+vs_Sample Bot 2: {'ai_bot': 0.0, 'opponent': 0.7, 'Draw': 0.3}
+
+Episode 60:
+vs_TacticalEasy: {'ai_bot': 0.44, 'opponent': 0.56, 'Draw': 0.0}
+vs_Sample Bot 3: {'ai_bot': 1.0, 'opponent': 0.0, 'Draw': 0.0}
+vs_Sample Bot 1: {'ai_bot': 0.06, 'opponent': 0.86, 'Draw': 0.08}
+
+Episode 61:
+vs_TacticalEasy: {'ai_bot': 0.58, 'opponent': 0.42, 'Draw': 0.0}
+vs_Sample Bot 2: {'ai_bot': 0.1, 'opponent': 0.78, 'Draw': 0.12}
+vs_Sample Bot 3: {'ai_bot': 1.0, 'opponent': 0.0, 'Draw': 0.0}
+
+Episode 62:
+vs_TacticalEasy: {'ai_bot': 0.38, 'opponent': 0.62, 'Draw': 0.0}
+vs_Sample Bot 3: {'ai_bot': 0.98, 'opponent': 0.02, 'Draw': 0.0}
+vs_Sample Bot 1: {'ai_bot': 0.12, 'opponent': 0.78, 'Draw': 0.1}
+
