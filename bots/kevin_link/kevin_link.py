@@ -15,7 +15,7 @@ class KevinLink(BotInterface):
         self._under_attack = False  # Flag to indicate if we're under attack
         self._attack_source = None  # Track where attacks are coming from
         self._opponent_shield_active_until = 0  # Track opponent shield duration
-        self._last_known_spells = {}  # Track opponent's last known spell cooldowns
+        self._last_known_spells = {}  # Track opponent's last known spell cooldowns. Format: {"spell_name": last_turn_cast}
         self._minion_health = {}  # Track minion health
         self._damage_taken = 0  # Track damage taken in last 3 turns
         self._last_positions = []  # Track our own positions
@@ -47,6 +47,16 @@ class KevinLink(BotInterface):
         opp_data = state["opponent"]
         artifacts = state.get("artifacts", [])
         minions = state.get("minions", [])
+
+        # Update opponent spell tracking based on last turn's events
+        # This needs access to the full event log of the PREVIOUS turn, which state usually provides.
+        # Assuming state["events"] contains events from the last turn.
+        # If not, this part needs to be adjusted based on how game events are passed.
+        # For now, we'll assume opp_data might have a "last_spell_cast" field or similar from the game engine.
+        # Since the provided state structure doesn't explicitly show opponent's last cast spell,
+        # we'll have to manually infer or this feature might be limited.
+        # Let's assume for now we can't reliably track opponent cooldowns without more info in 'state'.
+        # So, we'll skip populating _last_known_spells for now and focus on other cues for proactive shielding.
 
         self_pos = self_data["position"]
         opp_pos = opp_data["position"]
@@ -115,7 +125,7 @@ class KevinLink(BotInterface):
         # DECISION MAKING PROCESS
         
         # 1. EMERGENCY RESPONSE - Highest priority
-        spell = self._emergency_response(self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos)
+        spell = self._emergency_response(self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos, minions)
         if spell:
             return {"move": [0, 0], "spell": spell}
         
@@ -132,12 +142,54 @@ class KevinLink(BotInterface):
                 
         # 4. MINION MANAGEMENT - Strategic advantage
         own_minions = [m for m in minions if m["owner"] == self_data["name"]]
-        if not spell and len(own_minions) == 0 and cooldowns["summon"] == 0 and mana >= 60:
-            spell = {"name": "summon"}
+        if not spell and len(own_minions) < 1 and cooldowns["summon"] == 0 and mana >= 60: # Try to maintain at least 1 minion
+            # Attempt to summon minion defensively relative to opponent
+            dx = self_pos[0] - opp_pos[0]
+            dy = self_pos[1] - opp_pos[1]
+
+            # Normalize
+            magnitude = self.dist(self_pos, opp_pos) # Using Chebyshev for simplicity here, could be an issue.
+            if magnitude == 0: # Avoid division by zero if on same spot (should not happen with wizards)
+                target_x, target_y = self_pos[0] - 1, self_pos[1] # Default fallback
+            else:
+                # Place it one step "behind" the wizard, relative to the opponent
+                norm_dx = dx / magnitude
+                norm_dy = dy / magnitude
+                target_x = self_pos[0] + norm_dx
+                target_y = self_pos[1] + norm_dy
+
+            # Clamp to board boundaries (0-9) and ensure it's an integer
+            target_x = int(round(max(0, min(9, target_x))))
+            target_y = int(round(max(0, min(9, target_y))))
+            
+            # Ensure the target is not the wizard's own square
+            if target_x == self_pos[0] and target_y == self_pos[1]:
+                # Try to offset if target is self_pos, pick an adjacent free cell if possible (simplistic offset for now)
+                for offset_x, offset_y in [(0,1), (0,-1), (1,0), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1)]:
+                    check_x, check_y = self_pos[0] + offset_x, self_pos[1] + offset_y
+                    if 0 <= check_x <= 9 and 0 <= check_y <= 9:
+                        is_occupied = False
+                        if check_x == opp_pos[0] and check_y == opp_pos[1]:
+                            is_occupied = True
+                        if not is_occupied:
+                            for m in minions: # Check against other minions
+                                if m["position"][0] == check_x and m["position"][1] == check_y:
+                                    is_occupied = True
+                                    break
+                        if not is_occupied: # Found a potential spot
+                            target_x, target_y = check_x, check_y
+                            break
+                # If still on self_pos after checks, fallback to a fixed offset (e.g. self_pos[0]-1)
+                if target_x == self_pos[0] and target_y == self_pos[1]:
+                    target_x = max(0, self_pos[0]-1) if self_pos[0] > 0 else 1
+                    # Keep target_y as is or adjust similarly if needed. For now, only x to ensure some change.
+
+
+            spell = {"name": "summon", "target": [target_x, target_y]}
         
         # 5. POSITIONAL ADVANTAGE - Better combat tactics
         if not spell:
-            spell = self._positional_advantage(self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos)
+            spell = self._positional_advantage(self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos, minions)
             
         # 6. MOVEMENT STRATEGY - Better navigation
         if not spell:
@@ -148,7 +200,7 @@ class KevinLink(BotInterface):
             "spell": spell
         }
         
-    def _emergency_response(self, self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos):
+    def _emergency_response(self, self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos, minions_list):
         """Highest priority - respond to immediate threats"""
         # Critical health shield
         if hp <= 30 and not self_data.get("shield_active", False) and cooldowns["shield"] == 0 and mana >= 20:
@@ -166,8 +218,8 @@ class KevinLink(BotInterface):
                 
             # Emergency blink away if very close to opponent
             if self.dist(self_pos, opp_pos) <= 2 and cooldowns["blink"] == 0 and mana >= 10:
-                direction = self._safe_retreat_direction(self_pos, opp_pos)
-                if direction:
+                direction = self._safe_retreat_direction(self_pos, opp_pos, all_minions=minions_list, opponent_pos=opp_pos)
+                if direction and (direction[0] != 0 or direction[1] != 0): # Ensure there is a direction
                     return {
                         "name": "blink",
                         "target": direction
@@ -252,7 +304,7 @@ class KevinLink(BotInterface):
         # Just move toward artifact if no spells available
         return None, "move_only"
         
-    def _positional_advantage(self, self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos):
+    def _positional_advantage(self, self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos, minions):
         """Improve positioning for tactical advantage"""
         distance = self.dist(self_pos, opp_pos)
         opponent_shielded = opp_data.get("shield_active", False)
@@ -261,6 +313,12 @@ class KevinLink(BotInterface):
         if not self_data.get("shield_active", False) and distance <= 4 and cooldowns["shield"] == 0 and mana >= 20:
             if hp <= 70 or (self._opponent_behavior == "aggressive" and distance <= 3):
                 return {"name": "shield"}
+            # Proactive shield against likely fireball if opponent is in range and we are not critically low on mana
+            # We don't have direct opponent cooldown/mana info, so we use distance and behavior as proxies.
+            if distance <= 5 and mana >= 40 and self._opponent_behavior != "defensive": # Don't waste shield if they are defensive
+                 # Add a small chance or other conditions if this becomes too frequent
+                if random.random() < 0.3: # Shield 30% of the time in this situation to be less predictable
+                    return {"name": "shield"}
                 
         # Heal when moderately damaged and not under immediate threat
         if hp <= 65 and distance >= 4 and cooldowns["heal"] == 0 and mana >= 25:
@@ -271,11 +329,11 @@ class KevinLink(BotInterface):
         if ((distance < 2 and hp < 60) or (abs(distance - optimal_distance) > 2)) and cooldowns["blink"] == 0 and mana >= 10:
             # Blink to safety if low health, or to optimal combat distance otherwise
             if hp < 60 and distance < 2:
-                direction = self._safe_retreat_direction(self_pos, opp_pos)
+                direction = self._safe_retreat_direction(self_pos, opp_pos, all_minions=minions, opponent_pos=opp_pos)
             else:
-                direction = self._direction_to_optimal_distance(self_pos, opp_pos, optimal_distance)
+                direction = self._direction_to_optimal_distance(self_data, self_pos, opp_pos, optimal_distance)
                 
-            if direction:
+            if direction and (direction[0] != 0 or direction[1] != 0):
                 return {
                     "name": "blink",
                     "target": direction
@@ -291,7 +349,7 @@ class KevinLink(BotInterface):
             
         # Defensive retreat if low health
         if hp <= 40 and self.dist(self_pos, opp_pos) <= 3:
-            return self._safe_retreat_direction(self_pos, opp_pos)
+            return self._safe_retreat_direction(self_pos, opp_pos, all_minions=minions, opponent_pos=opp_pos)
             
         # Manage combat distance based on situation
         optimal_distance = self._calculate_optimal_distance(self_data, opp_data, hp, mana)
@@ -307,7 +365,7 @@ class KevinLink(BotInterface):
                 return self.move_toward(self_pos, opp_pos)
         else:
             # At optimal distance, strafe to avoid predictability
-            return self._intelligent_strafe(self_pos, opp_pos, minions, artifacts)
+            return self._intelligent_strafe(self_data, self_pos, opp_pos, minions, artifacts)
             
     def _calculate_move_toward_artifact(self, self_pos, artifacts, opp_pos):
         """Calculate movement toward best artifact"""
@@ -463,25 +521,85 @@ class KevinLink(BotInterface):
             return self._direction_toward(self_pos, predicted_pos, 2)
         return self._direction_toward(self_pos, target_pos, 1)
         
-    def _safe_retreat_direction(self, self_pos, threat_pos):
-        """Calculate safest direction to retreat"""
-        # Get basic direction away from threat
-        dx = self_pos[0] - threat_pos[0]
-        dy = self_pos[1] - threat_pos[1]
+    def _safe_retreat_direction(self, self_pos, primary_threat_pos, all_minions=None, opponent_pos=None):
+        """Calculate safest direction to retreat, considering all threats."""
+        if all_minions is None:
+            all_minions = []
+        if opponent_pos is None:
+            opponent_pos = primary_threat_pos # Default if not specified separately
+
+        possible_moves = []
+        for dx_option in [-1, 0, 1]:
+            for dy_option in [-1, 0, 1]:
+                if dx_option == 0 and dy_option == 0:
+                    continue  # No movement
+                
+                new_x = self_pos[0] + dx_option
+                new_y = self_pos[1] + dy_option
+
+                # Ensure within bounds
+                if not (0 <= new_x <= 9 and 0 <= new_y <= 9):
+                    continue
+                
+                possible_moves.append(([dx_option, dy_option], [new_x, new_y]))
+
+        if not possible_moves:
+            return [0,0] # Should not happen if self_pos is valid
+
+        best_move_option = [0,0]
+        max_safety_score = -float('inf')
+
+        # Collect all threat positions
+        threat_positions = [opponent_pos] + [m["position"] for m in all_minions if m["owner"] != self._name]
+        if primary_threat_pos not in threat_positions: # Ensure primary threat is included
+             threat_positions.append(primary_threat_pos)
+
+        for move_option, new_pos in possible_moves:
+            safety_score = 0
+            
+            # Primary factor: distance from the main threat
+            dist_to_primary_threat = self.dist(new_pos, primary_threat_pos)
+            safety_score += dist_to_primary_threat * 3 # Weight this heavily
+
+            # Secondary factor: sum of distances to all other threats
+            for threat_idx, other_threat_pos in enumerate(threat_positions):
+                # if list(other_threat_pos) == list(primary_threat_pos) and threat_idx != threat_positions.index(primary_threat_pos):
+                #     continue # Already accounted for primary threat distance unless it's a different instance
+                dist_to_other = self.dist(new_pos, other_threat_pos)
+                safety_score += dist_to_other
+
+            # Penalty for moving towards edges/corners
+            if new_pos[0] == 0 or new_pos[0] == 9 or new_pos[1] == 0 or new_pos[1] == 9: # Edge
+                safety_score -= 5
+            if (new_pos[0] == 0 and new_pos[1] == 0) or (new_pos[0] == 0 and new_pos[1] == 9) or \
+               (new_pos[0] == 9 and new_pos[1] == 0) or (new_pos[0] == 9 and new_pos[1] == 9): # Corner
+                safety_score -= 10
+            
+            # Slight preference for moves that are different from the last move to reduce predictability
+            if len(self._last_positions) > 0:
+                last_move_dx = self_pos[0] - self._last_positions[-1][0]
+                last_move_dy = self_pos[1] - self._last_positions[-1][1]
+                if move_option[0] == last_move_dx and move_option[1] == last_move_dy:
+                    safety_score -= 2 # Small penalty for repeating exact vector of last actual move
+
+            if safety_score > max_safety_score:
+                max_safety_score = safety_score
+                best_move_option = move_option
+            elif safety_score == max_safety_score: # Tie-breaking: prefer larger steps or random
+                if sum(abs(m_coord) for m_coord in move_option) > sum(abs(b_coord) for b_coord in best_move_option):
+                    best_move_option = move_option
+                elif random.choice([True, False]):
+                    best_move_option = move_option
         
-        # Avoid retreating into corners or edges
-        safe_x = max(1, min(8, self_pos[0] + (1 if dx > 0 else -1 if dx < 0 else 0)))
-        safe_y = max(1, min(8, self_pos[1] + (1 if dy > 0 else -1 if dy < 0 else 0)))
+        return best_move_option
         
-        return [safe_x - self_pos[0], safe_y - self_pos[1]]
-        
-    def _direction_to_optimal_distance(self, self_pos, target_pos, optimal_distance):
+    def _direction_to_optimal_distance(self, self_data, self_pos, target_pos, optimal_distance):
         """Calculate direction to maintain optimal distance"""
         current_distance = self.dist(self_pos, target_pos)
         
         if abs(current_distance - optimal_distance) <= 1:
             # Already at optimal distance, return lateral movement
-            return self._intelligent_strafe(self_pos, target_pos, [], [])
+            return self._intelligent_strafe(self_data, self_pos, target_pos, [], [])
             
         if current_distance < optimal_distance:
             # Too close, move away
@@ -490,23 +608,28 @@ class KevinLink(BotInterface):
             # Too far, move closer
             return self._direction_toward(self_pos, target_pos, 1)
             
-    def _intelligent_strafe(self, self_pos, target_pos, minions, artifacts):
+    def _intelligent_strafe(self, self_data, self_pos, target_pos, minions, artifacts):
         """Strafe intelligently, avoiding obstacles and seeking advantages"""
         dx = target_pos[0] - self_pos[0]
         dy = target_pos[1] - self_pos[1]
         
         # Calculate perpendicular directions (two options)
+        # Prefer movement perpendicular to the longest axis of distance
         if abs(dx) > abs(dy):
-            # More horizontal distance, move vertically
+            # More horizontal distance, so primary strafe is vertical
             options = [[0, 1], [0, -1]]
-        else:
-            # More vertical distance, move horizontally
+        elif abs(dy) > abs(dx):
+            # More vertical distance, so primary strafe is horizontal
             options = [[1, 0], [-1, 0]]
+        else: # Equal distance, can choose either set or mix
+            options = [[0, 1], [0, -1], [1, 0], [-1, 0]]
+            random.shuffle(options) # Shuffle to break ties randomly
+            options = options[:2] # Pick two primary directions
             
         # Score each option
-        best_score = -1000
-        best_option = options[0]
-        
+        best_score = -float('inf') # Initialize with negative infinity
+        best_options_list = []
+
         for option in options:
             new_x = self_pos[0] + option[0]
             new_y = self_pos[1] + option[1]
@@ -518,33 +641,78 @@ class KevinLink(BotInterface):
                 
             score = 0
             
-            # Prefer moves that maintain distance
-            current_dist = self.dist(self_pos, target_pos)
-            new_dist = self.dist(new_pos, target_pos)
-            if abs(new_dist - current_dist) <= 1:
-                score += 10
-                
+            # Prefer moves that maintain optimal distance or slightly increase it defensively
+            current_target_dist = self.dist(self_pos, target_pos)
+            new_target_dist = self.dist(new_pos, target_pos)
+            
+            # Ideal strafe keeps similar distance or moves slightly away if too close
+            if abs(new_target_dist - current_target_dist) <= 1: # Maintains similar distance
+                score += 20
+            elif new_target_dist > current_target_dist and current_target_dist < 3: # Moves away if very close
+                score += 15
+            else: # Otherwise, penalize if it significantly changes distance undesirably
+                score -= 10
+
             # Avoid minions
-            for minion in minions:
+            for minion in minions: # Consider all minions on the field
                 if self.dist(new_pos, minion["position"]) <= 1:
-                    score -= 20
+                    score -= 30 # Strong penalty for moving near any minion
+                    if minion["owner"] != self._name:
+                        score -= 20 # Extra penalty for opponent minions
                     
-            # Bonus for moving toward artifacts
-            for artifact in artifacts:
-                current_artifact_dist = self.dist(self_pos, artifact["position"])
-                new_artifact_dist = self.dist(new_pos, artifact["position"])
-                if new_artifact_dist < current_artifact_dist:
-                    score += 5
+            # Bonus for moving toward strategically valuable artifacts
+            if artifacts:
+                best_artifact = self._choose_best_artifact(artifacts, self_pos, target_pos, self._last_hp, self_data["mana"]) # Use current HP/Mana
+                if best_artifact:
+                    current_artifact_dist = self.dist(self_pos, best_artifact["position"])
+                    new_artifact_dist = self.dist(new_pos, best_artifact["position"])
+                    if new_artifact_dist < current_artifact_dist:
+                        score += 10
+                    # Slight penalty for moving away from a good artifact if it's close
+                    elif new_artifact_dist > current_artifact_dist and current_artifact_dist <= 3:
+                        score -= 5
                     
-            # Avoid board edges
-            if new_x <= 1 or new_x >= 8 or new_y <= 1 or new_y >= 8:
-                score -= 5
-                
+            # Stronger penalty for board edges/corners
+            if new_x <= 0 or new_x >= 9 or new_y <= 0 or new_y >= 9: # Edge
+                score -= 25
+            if (new_x <= 0 and new_y <=0) or (new_x <=0 and new_y >=9) or \
+               (new_x >= 9 and new_y <=0) or (new_x >=9 and new_y >=9): # Corner
+                score -= 40
+            elif new_x <= 1 or new_x >= 8 or new_y <= 1 or new_y >= 8: # Near Edge
+                score -= 15
+
+            # Avoid repeating the exact same strafe move if previous move was also a strafe
+            if len(self._last_positions) > 1:
+                prev_move_dx = self_pos[0] - self._last_positions[-2][0]
+                prev_move_dy = self_pos[1] - self._last_positions[-2][1]
+                if option[0] == prev_move_dx and option[1] == prev_move_dy and abs(prev_move_dx) + abs(prev_move_dy) == 1: # Was a 1-step move
+                    score -= 10 # Penalize repeating the last 1-step move
+            
             if score > best_score:
                 best_score = score
-                best_option = option
-                
-        return best_option
+                best_options_list = [option]
+            elif score == best_score:
+                best_options_list.append(option)
+        
+        if best_options_list:
+            return random.choice(best_options_list) # Choose randomly among the best options
+            
+        # Fallback: if no good options, try to move away from target_pos or a random valid move
+        fallback_move = self._direction_away_from(self_pos, target_pos, 1)
+        # Check if fallback is valid
+        fb_x, fb_y = self_pos[0] + fallback_move[0], self_pos[1] + fallback_move[1]
+        if 0 <= fb_x <= 9 and 0 <= fb_y <= 9:
+            return fallback_move
+        else: # If even fallback is bad, pick any valid adjacent move
+            valid_moves = []
+            for opt_x, opt_y in [[0,1],[0,-1],[1,0],[-1,0]]:
+                nx, ny = self_pos[0] + opt_x, self_pos[1] + opt_y
+                if 0 <= nx <= 9 and 0 <= ny <= 9:
+                    valid_moves.append([opt_x, opt_y])
+            if valid_moves:
+                return random.choice(valid_moves)
+
+        return options[0] # Default if all else fails
 
     def move_toward(self, start, target):
         """Move one step toward target"""
