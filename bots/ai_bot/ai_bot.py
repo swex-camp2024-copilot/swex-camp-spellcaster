@@ -236,35 +236,48 @@ class AIBot(BotInterface):
         health_diff_opp = prev_state['opponent']['hp'] - current_state['opponent']['hp']
         
         # Enhanced reward for damaging opponent
-        reward += health_diff_opp * 2.0  # Increased from 1.5 to 2.0
+        reward += health_diff_opp * 3.0  # Increased from 2.0 to 3.0 to prioritize dealing damage
         
-        # Smart healing rewards/penalties
+        # Smart healing rewards/penalties with enhanced low-health recovery
         if health_diff_self > 0:  # If healing occurred
             prev_hp = prev_state['self']['hp']
             if prev_hp >= 100:  # If we were already at full HP
-                reward -= 3.0  # Increased penalty for wasting healing
-            elif prev_hp >= 80:  # If HP was already high
-                reward += health_diff_self * 0.2  # Small reward for topping off
-            else:  # If HP was low
-                reward += health_diff_self * 1.0  # Increased from 0.8 to 1.0
+                reward -= 5.0  # Increased penalty for wasting healing
+            elif prev_hp <= 30:  # Critical health situation
+                reward += health_diff_self * 2.5  # Major reward for healing when low
+            elif prev_hp <= 60:  # Low health situation
+                reward += health_diff_self * 1.5  # Good reward for healing when needed
+            else:  # Regular healing
+                reward += health_diff_self * 0.5  # Small reward for topping off
         elif health_diff_self < 0:  # If we took damage
-            reward += health_diff_self * 1.0  # Increased penalty for taking damage
+            curr_hp = current_state['self']['hp']
+            if curr_hp <= 30:  # We're in danger
+                reward += health_diff_self * 2.0  # Increased penalty for taking damage when low
+            else:
+                reward += health_diff_self * 1.5  # Regular penalty for taking damage
         
-        # Enhanced mana efficiency with spell usage encouragement
+        # Enhanced mana efficiency with strategic spell usage
         mana_used = prev_state['self']['mana'] - current_state['self']['mana']
         spell_used = current_state['self'].get('last_spell')
+        opp_hp = current_state['opponent']['hp']
         
         if mana_used > 0:
             if health_diff_opp > 0:  # If we damaged the opponent
-                reward += 2.0  # Increased from 1.0 to 2.0 for effective offensive mana use
+                # Bonus reward for damaging low-health opponent
+                if opp_hp <= 30:
+                    reward += 4.0  # Major reward for damaging low-health opponent
+                else:
+                    reward += 2.5  # Regular reward for damage
+                
+                # Additional rewards for effective spell use
                 if spell_used in ['fireball', 'melee_attack']:
-                    reward += 1.0  # Increased from 0.5 to 1.0
-            elif health_diff_self > 0 and prev_state['self']['hp'] < 80:  # If we healed when needed
-                reward += 0.5  # Increased from 0.3 to 0.5
+                    reward += 1.5  # Increased from 1.0
+            elif health_diff_self > 0 and prev_state['self']['hp'] < 60:  # If we healed when needed
+                reward += 1.0  # Increased from 0.5
             else:  # If we used mana without good effect
-                reward -= 0.5  # Increased penalty for ineffective mana use
+                reward -= 1.0  # Increased penalty for ineffective mana use
         
-        # Enhanced artifact (potion) collection rewards
+        # Enhanced artifact collection rewards with strategic timing
         curr_artifacts = len(current_state.get('artifacts', []))
         prev_artifacts = len(prev_state.get('artifacts', []))
         artifacts_collected = prev_artifacts - curr_artifacts
@@ -275,61 +288,76 @@ class AIBot(BotInterface):
             if artifact_positions:
                 curr_pos = np.array(current_state['self']['position'])
                 min_distance = min(np.linalg.norm(curr_pos - np.array(pos)) for pos in artifact_positions)
-                distance_bonus = max(0, (10 - min_distance) * 0.2)  # Increased from 0.1 to 0.2
-                reward += artifacts_collected * (4.0 + distance_bonus)  # Increased from 3.0 to 4.0
+                distance_bonus = max(0, (10 - min_distance) * 0.3)  # Increased from 0.2
+                
+                # Additional reward if we're low on mana or health
+                if current_state['self']['hp'] <= 60 or current_state['self']['mana'] <= 30:
+                    reward += artifacts_collected * (6.0 + distance_bonus)  # Increased reward when resources needed
+                else:
+                    reward += artifacts_collected * (4.0 + distance_bonus)
         
-        # Minion management with enhanced rewards
+        # Enhanced minion management with strategic positioning
         curr_friendly_minions = len([m for m in current_state.get('minions', []) if m['owner'] == self.name])
         prev_friendly_minions = len([m for m in prev_state.get('minions', []) if m['owner'] == self.name])
+        enemy_minions = len([m for m in current_state.get('minions', []) if m['owner'] != self.name])
         
         # Enhanced reward for summoning and maintaining minions
         if curr_friendly_minions > prev_friendly_minions:
-            reward += 3.0  # Increased from 2.0 to 3.0
+            if enemy_minions > 0:
+                reward += 4.0  # Extra reward for summoning when enemy has minions
+            else:
+                reward += 3.0  # Regular reward for summoning
         elif curr_friendly_minions > 0:  # Reward for keeping minions alive
-            reward += 0.5
+            reward += 0.8  # Increased from 0.5
         
-        # Position control with enhanced strategic rewards
+        # Strategic positioning with enhanced rewards
         curr_pos = np.array(current_state['self']['position'])
         prev_pos = np.array(prev_state['self']['position'])
         opp_pos = np.array(current_state['opponent']['position'])
         
-        # Calculate optimal distance based on state and artifacts
+        # Dynamic optimal distance based on state
         optimal_dist = 3  # Default medium range
         if current_state['self']['cooldowns'].get('fireball', 0) == 0 and current_state['self']['mana'] >= 30:
             optimal_dist = 4  # Fireball range
         elif curr_friendly_minions > 0:
             optimal_dist = 2  # Closer if we have minions
+        elif current_state['self']['hp'] <= 40:
+            optimal_dist = 5  # Further if low health
         
-        # Strategic positioning rewards
+        # Enhanced positioning rewards
         current_dist = np.linalg.norm(curr_pos - opp_pos)
-        
-        # Reward for maintaining optimal distance
-        distance_reward = -abs(current_dist - optimal_dist) * 0.3  # Increased from 0.2 to 0.3
+        distance_reward = -abs(current_dist - optimal_dist) * 0.4  # Increased penalty for poor positioning
         reward += distance_reward
         
-        # New: Reward for board control
+        # Enhanced board control rewards
         board_center = np.array([BOARD_SIZE/2, BOARD_SIZE/2])
         dist_to_center = np.linalg.norm(curr_pos - board_center)
         opp_dist_to_center = np.linalg.norm(opp_pos - board_center)
         
         if dist_to_center < opp_dist_to_center:
-            reward += 0.5  # Reward for controlling center
+            reward += 1.0  # Increased from 0.5
         
-        # New: Reward for advantageous positioning
-        if current_dist <= optimal_dist and current_state['self']['hp'] > current_state['opponent']['hp']:
-            reward += 1.0  # Reward for being in attack range with HP advantage
+        # Enhanced tactical positioning rewards
+        if current_dist <= optimal_dist:
+            if current_state['self']['hp'] > current_state['opponent']['hp']:
+                reward += 2.0  # Increased reward for advantageous position with HP advantage
+            if current_state['self']['mana'] > current_state['opponent']['mana']:
+                reward += 1.0  # New reward for mana advantage
         
-        # Enhanced boundary penalties
+        # Increased boundary penalties
         if (curr_pos[0] in [0, BOARD_SIZE-1] or curr_pos[1] in [0, BOARD_SIZE-1]):
-            reward -= 0.5  # Increased from 0.2 to 0.5
-            
-        # New: Major rewards/penalties for match outcomes
+            reward -= 1.0  # Increased from 0.5
+        
+        # Major rewards/penalties for match outcomes with enhanced win conditions
         if current_state['opponent']['hp'] <= 0:  # We won
-            reward += 20.0  # Massive reward for winning
+            reward += 50.0  # Massive reward for winning (increased from 20.0)
+            # Additional rewards based on our remaining health
+            remaining_hp_ratio = current_state['self']['hp'] / 100
+            reward += remaining_hp_ratio * 20.0  # Up to 20 additional points for winning with high HP
         elif current_state['self']['hp'] <= 0:  # We lost
-            reward -= 15.0  # Major penalty for losing
+            reward -= 30.0  # Increased penalty for losing (from 15.0)
         elif current_state['opponent']['hp'] <= 0 and current_state['self']['hp'] <= 0:  # Draw
-            reward += 2.0  # Small positive reward for draw
+            reward += 5.0  # Increased from 2.0 to encourage fighting over running
             
         return reward
 
