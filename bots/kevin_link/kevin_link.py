@@ -7,7 +7,7 @@ class KevinLink(BotInterface):
     def __init__(self):
         self._name = "Kevin Link"
         self._sprite_path = "assets/wizards/kevin_link.png"
-        self._minion_sprite_path = "assets/minions/minion_2.png"
+        self._minion_sprite_path = "assets/minions/moblin.png"
         self._first_round = True
         self._enemy_positions = []  # Track enemy movement patterns
         self._last_hp = 100  # Track our last health
