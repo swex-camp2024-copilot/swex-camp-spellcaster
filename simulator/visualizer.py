@@ -258,7 +258,7 @@ class Visualizer:
                     sys.exit()
             self.clock.tick(FPS)
 
-    def display_end_game_message(self, winner: Optional[str]) -> None:
+    def display_end_game_message(self, winner: Optional[str], has_more_matches: bool) -> None:
         """Display the end game message with the winner or draw."""
         # Draw a transparent grey rectangle over the screen
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
@@ -281,7 +281,8 @@ class Visualizer:
 
         # Render the restart button
         button_font = pygame.font.SysFont("arial", 30)
-        button_text = button_font.render("RESTART", True, WHITE)
+        text = "CONTINUE" if has_more_matches else "EXIT"
+        button_text = button_font.render(text, True, WHITE)
         button_rect = button_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
         pygame.draw.rect(self.screen, GRAY, button_rect.inflate(20, 10))
         self.screen.blit(button_text, button_rect)
@@ -298,7 +299,7 @@ class Visualizer:
                     if button_rect.collidepoint(event.pos):
                         return  # Exit the loop to restart the game
 
-    def run(self, states: List[Dict[str, Any]]) -> None:
+    def run(self, states: List[Dict[str, Any]], has_more_matches: bool) -> None:
         """Run the visualization for a sequence of game states."""
         if states:
             initial_state = states[0]
@@ -326,7 +327,7 @@ class Visualizer:
             winner = None
 
         # Display the end game message
-        self.display_end_game_message(winner)
+        self.display_end_game_message(winner, has_more_matches)
 
     def animate_transition(self, curr_state: Dict[str, Any], next_state: Dict[str, Any], state_index: int) -> None:
         """Animate the transition between two game states."""
