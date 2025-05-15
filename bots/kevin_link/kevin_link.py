@@ -144,48 +144,72 @@ class KevinLink(BotInterface):
         own_minions = [m for m in minions if m["owner"] == self_data["name"]]
         if not spell and len(own_minions) < 1 and cooldowns["summon"] == 0 and mana >= 60: # Try to maintain at least 1 minion
             # Attempt to summon minion defensively relative to opponent
-            dx = self_pos[0] - opp_pos[0]
-            dy = self_pos[1] - opp_pos[1]
+            #Simplified summoning logic:
+            best_summon_pos = None
+            max_dist_from_opp = -1
 
-            # Normalize
-            magnitude = self.dist(self_pos, opp_pos) # Using Chebyshev for simplicity here, could be an issue.
-            if magnitude == 0: # Avoid division by zero if on same spot (should not happen with wizards)
-                target_x, target_y = self_pos[0] - 1, self_pos[1] # Default fallback
-            else:
-                # Place it one step "behind" the wizard, relative to the opponent
-                norm_dx = dx / magnitude
-                norm_dy = dy / magnitude
-                target_x = self_pos[0] + norm_dx
-                target_y = self_pos[1] + norm_dy
+            # Potential relative positions (dx, dy) from self_pos
+            # Favor positions behind or to the sides relative to opponent
+            # Vector from self to opponent:
+            vec_self_to_opp_x = opp_pos[0] - self_pos[0]
+            vec_self_to_opp_y = opp_pos[1] - self_pos[1]
 
-            # Clamp to board boundaries (0-9) and ensure it's an integer
-            target_x = int(round(max(0, min(9, target_x))))
-            target_y = int(round(max(0, min(9, target_y))))
+            # Try to summon 1 or 2 steps away, generally opposite to opponent
+            potential_offsets = []
+            if vec_self_to_opp_x > 0: # Opponent is to the East
+                potential_offsets.extend([(-1,0), (-2,0), (-1,1), (-1,-1)])
+            elif vec_self_to_opp_x < 0: # Opponent is to the West
+                potential_offsets.extend([(1,0), (2,0), (1,1), (1,-1)])
+            if vec_self_to_opp_y > 0: # Opponent is to the South
+                potential_offsets.extend([(0,-1), (0,-2), (1,-1), (-1,-1)])
+            elif vec_self_to_opp_y < 0: # Opponent is to the North
+                potential_offsets.extend([(0,1), (0,2), (1,1), (-1,1)])
             
-            # Ensure the target is not the wizard's own square
-            if target_x == self_pos[0] and target_y == self_pos[1]:
-                # Try to offset if target is self_pos, pick an adjacent free cell if possible (simplistic offset for now)
-                for offset_x, offset_y in [(0,1), (0,-1), (1,0), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1)]:
+            if not potential_offsets: # If on same tile or no clear direction
+                potential_offsets = [(1,0), (-1,0), (0,1), (0,-1), (1,1), (1,-1), (-1,1), (-1,-1)]
+            
+            random.shuffle(potential_offsets)
+
+            occupied_cells = [self_pos, opp_pos] + [m["position"] for m in minions]
+
+            for dx, dy in potential_offsets:
+                target_x = self_pos[0] + dx
+                target_y = self_pos[1] + dy
+
+                if 0 <= target_x <= 9 and 0 <= target_y <= 9:
+                    target_pos_candidate = [target_x, target_y]
+                    if target_pos_candidate not in occupied_cells:
+                        # Optional: Prefer spots further from opponent among valid spots
+                        dist_to_opp = self.dist(target_pos_candidate, opp_pos)
+                        if dist_to_opp > max_dist_from_opp: # Basic preference for safer spots
+                            best_summon_pos = target_pos_candidate
+                            max_dist_from_opp = dist_to_opp
+                        elif best_summon_pos is None: # Take first valid if no preference met
+                             best_summon_pos = target_pos_candidate
+            
+            # Fallback if no ideal spot found from offsets (e.g. very crowded)
+            if not best_summon_pos:
+                for dx_fallback in [-1, 1, 0, -2, 2]: # Broader search
+                    for dy_fallback in [-1, 1, 0, -2, 2]:
+                        if dx_fallback == 0 and dy_fallback == 0: continue
+                        target_x = self_pos[0] + dx_fallback
+                        target_y = self_pos[1] + dy_fallback
+                        if 0 <= target_x <= 9 and 0 <= target_y <= 9:
+                            target_pos_candidate = [target_x, target_y]
+                            if target_pos_candidate not in occupied_cells:
+                                best_summon_pos = target_pos_candidate
+                                break
+                    if best_summon_pos: break
+            
+            if best_summon_pos:
+                spell = {"name": "summon", "target": best_summon_pos}
+            else: # Very last resort: try to summon on any adjacent non-self, non-opponent cell
+                for offset_x, offset_y in [(0,1), (0,-1), (1,0), (-1,0)]:
                     check_x, check_y = self_pos[0] + offset_x, self_pos[1] + offset_y
                     if 0 <= check_x <= 9 and 0 <= check_y <= 9:
-                        is_occupied = False
-                        if check_x == opp_pos[0] and check_y == opp_pos[1]:
-                            is_occupied = True
-                        if not is_occupied:
-                            for m in minions: # Check against other minions
-                                if m["position"][0] == check_x and m["position"][1] == check_y:
-                                    is_occupied = True
-                                    break
-                        if not is_occupied: # Found a potential spot
-                            target_x, target_y = check_x, check_y
+                        if [check_x, check_y] != opp_pos and [check_x, check_y] not in [m["position"] for m in minions]:
+                            spell = {"name": "summon", "target": [check_x, check_y]}
                             break
-                # If still on self_pos after checks, fallback to a fixed offset (e.g. self_pos[0]-1)
-                if target_x == self_pos[0] and target_y == self_pos[1]:
-                    target_x = max(0, self_pos[0]-1) if self_pos[0] > 0 else 1
-                    # Keep target_y as is or adjust similarly if needed. For now, only x to ensure some change.
-
-
-            spell = {"name": "summon", "target": [target_x, target_y]}
         
         # 5. POSITIONAL ADVANTAGE - Better combat tactics
         if not spell:
@@ -470,19 +494,19 @@ class KevinLink(BotInterface):
         
         if hp <= 30:
             # Very low health, stay far
-            return 6
+            return 7 # Increased from 6
         elif hp <= 50 and not self_shielded:
             # Low health without shield, maintain distance
-            return 5
+            return 6 # Increased from 5
         elif fireball_ready and not opp_shielded:
             # Can use fireball and opponent not shielded
-            return 4
+            return 5 # Increased from 4
         elif self_shielded and hp > 70:
             # We're shielded and healthy, can be aggressive
-            return 2
+            return 3 # Increased from 2, but still closer
         else:
             # Default moderate distance
-            return 4
+            return 5 # Increased from 4
             
     def _predict_position(self, current_pos, positions=None):
         """Predict future position based on movement patterns"""
@@ -529,6 +553,8 @@ class KevinLink(BotInterface):
             opponent_pos = primary_threat_pos # Default if not specified separately
 
         possible_moves = []
+        own_minion_positions = [m["position"] for m in all_minions if m["owner"] == self._name]
+
         for dx_option in [-1, 0, 1]:
             for dy_option in [-1, 0, 1]:
                 if dx_option == 0 and dy_option == 0:
@@ -541,6 +567,10 @@ class KevinLink(BotInterface):
                 if not (0 <= new_x <= 9 and 0 <= new_y <= 9):
                     continue
                 
+                # Avoid moving into own minions
+                if [new_x, new_y] in own_minion_positions:
+                    continue
+
                 possible_moves.append(([dx_option, dy_option], [new_x, new_y]))
 
         if not possible_moves:
@@ -563,10 +593,33 @@ class KevinLink(BotInterface):
 
             # Secondary factor: sum of distances to all other threats
             for threat_idx, other_threat_pos in enumerate(threat_positions):
-                # if list(other_threat_pos) == list(primary_threat_pos) and threat_idx != threat_positions.index(primary_threat_pos):
-                #     continue # Already accounted for primary threat distance unless it's a different instance
                 dist_to_other = self.dist(new_pos, other_threat_pos)
                 safety_score += dist_to_other
+
+            # Bonus for moving perpendicular to primary threat
+            move_vector = (move_option[0], move_option[1])
+            threat_vector = (primary_threat_pos[0] - self_pos[0], primary_threat_pos[1] - self_pos[1])
+            # Dot product for perpendicularity: (v1.x * v2.x) + (v1.y * v2.y) == 0
+            if threat_vector[0] != 0 or threat_vector[1] != 0: # Avoid division by zero or no threat direction
+                dot_product = move_vector[0] * threat_vector[0] + move_vector[1] * threat_vector[1]
+                # Check if move is somewhat perpendicular (dot product close to 0 for normalized vectors)
+                # A simpler check: if not moving directly towards or away from the threat
+                # Not directly towards: move_vector != normalized(threat_vector)
+                # Not directly away: move_vector != normalized(-threat_vector)
+                # For 1-step moves, if abs(dot_product) is small relative to magnitudes, it's somewhat perpendicular.
+                # Let's try a simpler logic: if not moving directly along the threat line.
+                is_directly_aligned = False
+                if threat_vector[0] != 0 and move_vector[0] != 0 and threat_vector[1] == 0 and move_vector[1] == 0: # Pure X
+                    is_directly_aligned = True
+                elif threat_vector[1] != 0 and move_vector[1] != 0 and threat_vector[0] == 0 and move_vector[0] == 0: # Pure Y
+                    is_directly_aligned = True
+                elif threat_vector[0] != 0 and threat_vector[1] != 0 and move_vector[0] != 0 and move_vector[1] != 0 and \
+                     (threat_vector[0] / threat_vector[1] if threat_vector[1] != 0 else float('inf')) == \
+                     (move_vector[0] / move_vector[1] if move_vector[1] != 0 else float('inf')) : # Diagonal align
+                     is_directly_aligned = True
+                
+                if not is_directly_aligned and not (move_vector[0] == -threat_vector[0] and move_vector[1] == -threat_vector[1]): # Not perfectly away
+                    safety_score += 3 # Small bonus for perpendicular/oblique moves
 
             # Penalty for moving towards edges/corners
             if new_pos[0] == 0 or new_pos[0] == 9 or new_pos[1] == 0 or new_pos[1] == 9: # Edge
@@ -656,9 +709,10 @@ class KevinLink(BotInterface):
             # Avoid minions
             for minion in minions: # Consider all minions on the field
                 if self.dist(new_pos, minion["position"]) <= 1:
-                    score -= 30 # Strong penalty for moving near any minion
-                    if minion["owner"] != self._name:
-                        score -= 20 # Extra penalty for opponent minions
+                    if minion["owner"] == self._name:
+                        score -= 50 # Very strong penalty for moving near OWN minion (potential collision)
+                    else:
+                        score -= 30 # Strong penalty for moving near opponent minion
                     
             # Bonus for moving toward strategically valuable artifacts
             if artifacts:
@@ -714,33 +768,46 @@ class KevinLink(BotInterface):
 
         return options[0] # Default if all else fails
 
-    def move_toward(self, start, target):
-        """Move one step toward target"""
+    def move_toward(self, start, target, forbidden_cells=None):
+        """Move one step toward target, avoiding forbidden_cells"""
+        if forbidden_cells is None:
+            forbidden_cells = []
+
         dx = target[0] - start[0]
         dy = target[1] - start[1]
         
+        potential_steps = []
         # Prioritize larger dimension first
         if abs(dx) > abs(dy):
-            step_x = 1 if dx > 0 else -1 if dx < 0 else 0
-            step_y = 0
+            if dx != 0: potential_steps.append((1 if dx > 0 else -1, 0))
+            if dy != 0: potential_steps.append((0, 1 if dy > 0 else -1)) # Secondary option
         else:
-            step_x = 0
-            step_y = 1 if dy > 0 else -1 if dy < 0 else 0
-            
-        # Stay in bounds
-        new_x = start[0] + step_x
-        new_y = start[1] + step_y
+            if dy != 0: potential_steps.append((0, 1 if dy > 0 else -1))
+            if dx != 0: potential_steps.append((1 if dx > 0 else -1, 0)) # Secondary option
+
+        # If no primary/secondary (e.g. already on target axis), add other axis options
+        if not potential_steps and dx == 0 and dy !=0:
+             potential_steps.extend([(1,0),(-1,0)])
+        elif not potential_steps and dy == 0 and dx !=0:
+             potential_steps.extend([(0,1),(0,-1)])
+        elif not potential_steps and dx==0 and dy==0: # Already at target
+            return [0,0]
         
-        if not (0 <= new_x <= 9 and 0 <= new_y <= 9):
-            # Try other axis if this would go out of bounds
-            if step_x != 0:
-                step_x = 0
-                step_y = 1 if dy > 0 else -1 if dy < 0 else 0
-            else:
-                step_y = 0
-                step_x = 1 if dx > 0 else -1 if dx < 0 else 0
+        # Ensure all 4 directions are considered if primary ones are blocked or invalid
+        all_directions = [(1,0), (-1,0), (0,1), (0,-1)]
+        random.shuffle(all_directions)
+        for d in all_directions:
+            if d not in potential_steps:
+                potential_steps.append(d)
+
+        for step_x, step_y in potential_steps:
+            new_x = start[0] + step_x
+            new_y = start[1] + step_y
+            
+            if (0 <= new_x <= 9 and 0 <= new_y <= 9) and [new_x, new_y] not in forbidden_cells:
+                return [step_x, step_y]
                 
-        return [step_x, step_y]
+        return [0, 0] # No valid move found
         
     def _direction_away_from(self, start, target, distance=1):
         """Calculate direction away from target"""
