@@ -64,6 +64,12 @@ class KevinLink(BotInterface):
         mana = self_data["mana"]
         hp = self_data["hp"]
         
+        # First-Turn Shield: secure early defense
+        if self._first_round:
+            self._first_round = False
+            if cooldowns["shield"] == 0 and mana >= 20:
+                return {"move": [0, 0], "spell": {"name": "shield"}}
+        
         # Track our own positions for better pattern detection
         self._last_positions.append(self_pos)
         if len(self._last_positions) > 5:
@@ -142,7 +148,18 @@ class KevinLink(BotInterface):
                 
         # 4. MINION MANAGEMENT - Strategic advantage
         own_minions = [m for m in minions if m["owner"] == self_data["name"]]
-        if not spell and len(own_minions) < 1 and cooldowns["summon"] == 0 and mana >= 60: # Try to maintain at least 1 minion
+        if not spell and self._turn_count <= 3 and cooldowns["summon"] == 0 and mana >= 50 and len(own_minions) == 0:
+            dx = self_pos[0] - opp_pos[0]
+            dy = self_pos[1] - opp_pos[1]
+            dx_dir = 1 if dx > 0 else -1 if dx < 0 else 1
+            dy_dir = 1 if dy > 0 else -1 if dy < 0 else 1
+            target_x = max(0, min(9, self_pos[0] + 2 * dx_dir))
+            target_y = max(0, min(9, self_pos[1] + 2 * dy_dir))
+            best_pos = [target_x, target_y]
+            occupied = [self_pos, opp_pos] + [m["position"] for m in minions]
+            if best_pos not in occupied:
+                return {"move": [0, 0], "spell": {"name": "summon", "target": best_pos}}
+        if not spell and len(own_minions) < 1 and cooldowns["summon"] == 0 and mana >= 60:
             # Attempt to summon minion defensively relative to opponent
             #Simplified summoning logic:
             best_summon_pos = None
@@ -227,11 +244,11 @@ class KevinLink(BotInterface):
     def _emergency_response(self, self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos, minions_list):
         """Highest priority - respond to immediate threats"""
         # Critical health shield
-        if hp <= 30 and not self_data.get("shield_active", False) and cooldowns["shield"] == 0 and mana >= 20:
+        if hp <= 60 and not self_data.get("shield_active", False) and cooldowns["shield"] == 0 and mana >= 20:
             return {"name": "shield"}
             
         # Emergency heal when extremely low
-        if hp <= 20 and cooldowns["heal"] == 0 and mana >= 25:
+        if hp <= 30 and cooldowns["heal"] == 0 and mana >= 25:
             return {"name": "heal"}
             
         # Counter immediate attack
@@ -241,7 +258,7 @@ class KevinLink(BotInterface):
                 return {"name": "shield"}
                 
             # Emergency blink away if very close to opponent
-            if self.dist(self_pos, opp_pos) <= 2 and cooldowns["blink"] == 0 and mana >= 10:
+            if self.dist(self_pos, opp_pos) <= 3 and cooldowns["blink"] == 0 and mana >= 10:
                 direction = self._safe_retreat_direction(self_pos, opp_pos, all_minions=minions_list, opponent_pos=opp_pos)
                 if direction and (direction[0] != 0 or direction[1] != 0): # Ensure there is a direction
                     return {
@@ -250,7 +267,7 @@ class KevinLink(BotInterface):
                     }
                     
             # Emergency teleport to health if critical
-            if hp <= 25 and cooldowns["teleport"] == 0 and mana >= 40:
+            if hp <= 35 and cooldowns["teleport"] == 0 and mana >= 40:
                 health_artifacts = [a for a in self_data.get("artifacts", []) if a["type"] == "health"]
                 if health_artifacts:
                     return {
@@ -345,11 +362,11 @@ class KevinLink(BotInterface):
                     return {"name": "shield"}
                 
         # Heal when moderately damaged and not under immediate threat
-        if hp <= 65 and distance >= 4 and cooldowns["heal"] == 0 and mana >= 25:
+        if hp <= 75 and distance >= 4 and cooldowns["heal"] == 0 and mana >= 25:
             return {"name": "heal"}
             
         # Blink to optimal combat distance
-        optimal_distance = 4  # Good for fireball but not in melee range
+        optimal_distance = 5  # Good for fireball and safer combat range
         if ((distance < 2 and hp < 60) or (abs(distance - optimal_distance) > 2)) and cooldowns["blink"] == 0 and mana >= 10:
             # Blink to safety if low health, or to optimal combat distance otherwise
             if hp < 60 and distance < 2:
@@ -418,7 +435,7 @@ class KevinLink(BotInterface):
             elif mana <= 40 and artifact["type"] == "mana":
                 score += 40 - mana  # Higher bonus when mana is lower
             elif artifact["type"] == "cooldown":
-                score += 15  # General value for cooldown reduction
+                score += 25  # Increased value for cooldown reduction
                 
             # Strategic positioning
             enemy_distance = self.dist(artifact_pos, opp_pos)
