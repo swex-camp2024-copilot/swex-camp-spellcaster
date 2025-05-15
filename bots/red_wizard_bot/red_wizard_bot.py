@@ -77,8 +77,28 @@ class RedWizardBot(BotInterface):
         
         # If shield is active, be more aggressive in movement and positioning
         if self_data["shield_active"] and hp > 30:
-            # If opponent is nearby, prefer melee attacks
-            if manhattan_dist(self_pos, opp_pos) <= 2 and cooldowns["melee_attack"] == 0:
+            # Find enemy minions
+            enemy_minions = [m for m in minions if m["owner"] != self_data["name"]]
+            
+            # First check for adjacent enemy minions
+            adjacent_minions = [m for m in enemy_minions if manhattan_dist(self_pos, m["position"]) == 1]
+            
+            if adjacent_minions and cooldowns["melee_attack"] == 0:
+                # Attack the weakest minion first
+                target_minion = min(adjacent_minions, key=lambda m: m.get("hp", float('inf')))
+                spell = {
+                    "name": "melee_attack",
+                    "target": target_minion["position"]
+                }
+                # Move toward the target slightly to maintain adjacency
+                dx = target_minion["position"][0] - self_pos[0]
+                dy = target_minion["position"][1] - self_pos[1]
+                move = [
+                    max(-1, min(1, dx)),
+                    max(-1, min(1, dy))
+                ]
+            # If no adjacent minions, check if opponent is nearby
+            elif manhattan_dist(self_pos, opp_pos) <= 2 and cooldowns["melee_attack"] == 0:
                 spell = {
                     "name": "melee_attack",
                     "target": opp_pos
@@ -116,12 +136,20 @@ class RedWizardBot(BotInterface):
                         max_targets_hit = targets_hit
                         best_target = potential_target
                 
-                # If no multi-target opportunity found, target the opponent if in range
-                if best_target is None and opp_data in targets_in_range:
-                    best_target = opp_data
-                # Otherwise take the first available target
-                elif best_target is None and targets_in_range:
-                    best_target = targets_in_range[0]
+                # If no multi-target opportunity found but enemy minions are in range
+                if best_target is None:
+                    enemy_minions_in_range = [m for m in enemy_minions if m in targets_in_range]
+                    
+                    # Prioritize enemy minions when opponent is not in range
+                    if enemy_minions_in_range and opp_data not in targets_in_range:
+                        # Target the weakest minion
+                        best_target = min(enemy_minions_in_range, key=lambda m: m.get("hp", float('inf')))
+                    # Target the opponent if in range
+                    elif opp_data in targets_in_range:
+                        best_target = opp_data
+                    # Otherwise take the first available target
+                    elif targets_in_range:
+                        best_target = targets_in_range[0]
                 
                 # Cast fireball at the selected target
                 if best_target:
@@ -176,18 +204,43 @@ class RedWizardBot(BotInterface):
 
         # 6. If we can do a melee attack, try to move adjacent to enemy
         if cooldowns["melee_attack"] == 0:
-            # If we're already adjacent, attack
-            if manhattan_dist(self_pos, opp_pos) == 1:
+            # Check for adjacent enemy minions first
+            enemy_minions = [m for m in minions if m["owner"] != self_data["name"]]
+            adjacent_minions = [m for m in enemy_minions if manhattan_dist(self_pos, m["position"]) == 1]
+            
+            if adjacent_minions:
+                # Attack the weakest minion first (lowest HP)
+                target_minion = min(adjacent_minions, key=lambda m: m.get("hp", float('inf')))
+                spell = {
+                    "name": "melee_attack",
+                    "target": target_minion["position"]
+                }
+            # If no adjacent minions, check if opponent is adjacent
+            elif manhattan_dist(self_pos, opp_pos) == 1:
                 spell = {
                     "name": "melee_attack",
                     "target": opp_pos
                 }
-            # Otherwise, try to move adjacent if we have good health
+            # Otherwise, try to move adjacent to enemy or minion if we have good health
             elif hp > 50 and not self.retreat_mode:
-                dx = opp_pos[0] - self_pos[0]
-                dy = opp_pos[1] - self_pos[1]
+                # Decide whether to target opponent or minion
+                if enemy_minions and hp > 70:  # When very healthy, consider targeting minions
+                    # Find the closest enemy minion
+                    closest_minion = min(enemy_minions, key=lambda m: manhattan_dist(self_pos, m["position"]))
+                    closest_dist = manhattan_dist(self_pos, closest_minion["position"])
+                    
+                    # If opponent is much further away, go for the minion
+                    if manhattan_dist(self_pos, opp_pos) > closest_dist + 2:
+                        target_pos = closest_minion["position"]
+                    else:
+                        target_pos = opp_pos
+                else:
+                    target_pos = opp_pos
                 
-                # Move in the direction of the opponent
+                # Move in the direction of the target
+                dx = target_pos[0] - self_pos[0]
+                dy = target_pos[1] - self_pos[1]
+                
                 move = [
                     max(-1, min(1, dx)),
                     max(-1, min(1, dy))
