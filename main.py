@@ -74,10 +74,11 @@ def run_tournament():
                 winner_bot = b2
                 losers_stats[b1.name] = losers_stats.get(b1.name, 0) + turns_fought
             else:
-                # Unexpected winner name, treat as a draw
-                print(f"Warning: Unexpected winner name '{winner_name}'. Treating as a draw.")
-                winner_bot = b1  # Default to first bot
-                print(f"Draw (unexpected result) after {turns_fought} turns")
+                # Unexpected winner name, raise an exception
+                raise ValueError(
+                    f"Unexpected winner name '{winner_name}' encountered. "
+                    f"Expected values are 'Draw', '{b1.name}', or '{b2.name}'."
+                )
 
             # Store match information
             match_info = {
