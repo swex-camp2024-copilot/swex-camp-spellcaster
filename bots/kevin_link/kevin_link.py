@@ -68,8 +68,8 @@ class KevinLink(BotInterface):
             if cooldowns["shield"] == 0 and mana >= 20:
                 return {"move": [0, 0], "spell": {"name": "shield"}}
         
-        # Early Artifact Racing: teleport or blink to critical artifacts by turn 3
-        if self._turn_count <= 3 and artifacts:
+        # Early Artifact Racing: teleport or blink to critical artifacts by turn 3 when health or mana is critical
+        if self._turn_count <= 3 and artifacts and (hp <= 60 or mana <= 40):
             best_artifact = self._choose_best_artifact(artifacts, self_pos, opp_pos, hp, mana)
             if best_artifact:
                 art_pos = best_artifact["position"]
@@ -134,7 +134,7 @@ class KevinLink(BotInterface):
         # DECISION MAKING PROCESS
         
         # 1. EMERGENCY RESPONSE - Highest priority
-        spell = self._emergency_response(self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos, minions)
+        spell = self._emergency_response(self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos, minions, artifacts)
         if spell:
             return {"move": [0, 0], "spell": spell}
         
@@ -143,7 +143,7 @@ class KevinLink(BotInterface):
             spell = self._offensive_opportunity(self_data, opp_data, cooldowns, mana, self_pos, opp_pos)
             
         # 3. RESOURCE ACQUISITION - Critical if low on resources
-        if not spell and (hp <= 60 or mana <= 50):
+        if not spell and (hp <= 50 or mana <= 40):
             spell, action = self._resource_strategy(self_data, artifacts, cooldowns, mana, hp, self_pos, opp_pos)
             if action == "move_only":
                 move = self._calculate_move_toward_artifact(self_pos, artifacts, opp_pos, hp, mana)
@@ -247,7 +247,7 @@ class KevinLink(BotInterface):
             "spell": spell
         }
         
-    def _emergency_response(self, self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos, minions_list):
+    def _emergency_response(self, self_data, opp_data, cooldowns, mana, hp, self_pos, opp_pos, minions_list, artifacts):
         """Highest priority - respond to immediate threats"""
         # Critical health shield
         if hp <= 60 and not self_data.get("shield_active", False) and cooldowns["shield"] == 0 and mana >= 20:
@@ -274,7 +274,7 @@ class KevinLink(BotInterface):
                     
             # Emergency teleport to health if critical
             if hp <= 35 and cooldowns["teleport"] == 0 and mana >= 40:
-                health_artifacts = [a for a in self_data.get("artifacts", []) if a["type"] == "health"]
+                health_artifacts = [a for a in artifacts if a["type"] == "health"]
                 if health_artifacts:
                     return {
                         "name": "teleport",
@@ -360,10 +360,9 @@ class KevinLink(BotInterface):
         if not self_data.get("shield_active", False) and distance <= 4 and cooldowns["shield"] == 0 and mana >= 20:
             if hp <= 70:
                 return {"name": "shield"}
-            # Proactive shield against likely fireball if opponent is in range and we are not critically low on mana
+            # Proactive shield against likely fireball; reduce frequency to conserve mana
             if distance <= 5 and mana >= 40:
-                # Add a small chance or other conditions if this becomes too frequent
-                if random.random() < 0.3: # Shield 30% of the time in this situation to be less predictable
+                if random.random() < 0.1: # Shield 10% of the time for unpredictability
                     return {"name": "shield"}
                 
         # Heal when moderately damaged and not under immediate threat

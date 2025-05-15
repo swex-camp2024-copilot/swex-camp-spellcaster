@@ -17,14 +17,15 @@ The bot follows a strict decision priority system:
    - Enables safer positioning in early game
 
 2. **Early Artifact Racing** (Turns 1-3)
-   - Teleports or blinks to high-value artifacts if not in safe range
-   - Prioritizes mana artifacts when mana < 60 to ensure spell availability
+   - Teleports or blinks to high-value health or mana artifacts if HP ≤ 60 or mana ≤ 40
+   - Avoids cooldown artifacts when not needed
+   - Prioritizes mana artifacts when mana < 60 and health artifacts when HP < 60 during early race
 
 3. **Emergency Response** (`_emergency_response`)
    - Shield if HP ≤ 60 and not already shielded
    - Emergency heal when HP ≤ 30
    - Emergency blink when opponent distance ≤ 3
-   - Emergency teleport to health artifacts when HP ≤ 35
+   - Emergency teleport to nearest health artifact when HP ≤ 35 (correctly references available artifacts)
 
 4. **Offensive Opportunity** (`_offensive_opportunity`)
    - Fireball when opponent is in range (≤ 5) and not shielded
@@ -32,9 +33,10 @@ The bot follows a strict decision priority system:
    - Aggressive blink to close distance when healthy
 
 5. **Resource Acquisition** (`_resource_strategy`)
-   - Teleport to critical resources when HP ≤ 30 or mana ≤ 30
-   - Blink toward resources when distance > 1
-   - Move toward best artifact based on weighted scoring system
+   - Trigger when HP ≤ 50 or mana ≤ 40
+   - Teleport to critical health or mana artifacts; avoid teleporting to cooldown artifacts unless no other options
+   - Blink toward resource artifacts when distance > 1
+   - Move toward weighted best artifact with lower preference for cooldown artifacts to conserve mana
 
 6. **Minion Management**
    - Summon first minion by turn 2
@@ -43,7 +45,7 @@ The bot follows a strict decision priority system:
    - Favor positions that maximize distance from opponent
 
 7. **Positional Advantage** (`_positional_advantage`)
-   - Proactive shielding when opponent is close or in fireball range
+   - Proactive shielding when opponent is within range (≤ 5), but only 10% likelihood to conserve mana
    - Healing when moderately damaged and not under immediate threat
    - Blink to maintain optimal combat distance
 
