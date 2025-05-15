@@ -69,8 +69,8 @@ class ReplayBuffer:
 class AIBot(BotInterface):
     def __init__(self):
         self._name = "DQNWizard"
-        self._sprite_path = "assets/wizards/sample_bot1.png"  # Temporarily using sample_bot1's sprite
-        self._minion_sprite_path = "assets/minions/minion_1.png"  # Temporarily using minion_1's sprite
+        self._sprite_path = "assets/wizards/ai_bot.png"  # Using new AI bot sprite
+        self._minion_sprite_path = "assets/minions/ai_minion.png"  # Using new AI minion sprite
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = DQN().to(self.device)
         self.target_model = DQN().to(self.device)
@@ -168,30 +168,42 @@ class AIBot(BotInterface):
             # Random action with strategic bias
             move = random.choice(DIRECTIONS)
             
-            # Increase probability of using summon when conditions are favorable
+            # Initialize spells and weights
             spells = [None] + list(SPELLS.keys())
-            weights = [1.0] * len(spells)  # Default weight
+            weights = [0.5] * len(spells)  # Lower base weight for no-spell action
             
             state_dict = self.tensor_to_state(state_tensor)
             if state_dict:
-                # Increase weight for summon if conditions are good
-                summon_idx = spells.index("summon") if "summon" in spells else -1
-                if summon_idx != -1:
-                    if (state_dict['self']['mana'] >= 50 and 
-                        state_dict['self']['cooldowns']['summon'] == 0):
-                        # Count current minions
-                        minion_count = len([m for m in state_dict.get('minions', []) 
-                                         if m['owner'] == state_dict['self']['name']])
-                        if minion_count < 2:  # If we have less than 2 minions
-                            weights[summon_idx] = 3.0  # Triple the chance of choosing summon
+                # Count current minions
+                friendly_minions = len([m for m in state_dict.get('minions', []) 
+                                     if m['owner'] == self.name])
+                
+                # Base spell weights with summon priority logic
+                spell_weights = {
+                    "summon": 3.0 if friendly_minions == 0 else 0.2,  # High priority when no minions, very low when we have them
+                    "fireball": 2.0,  # High weight for direct damage
+                    "melee_attack": 1.5,  # Good weight for melee
+                    "heal": 0.8  # Lower weight for healing
+                }
+                
+                for spell_name, weight in spell_weights.items():
+                    if spell_name in spells:
+                        spell_idx = spells.index(spell_name)
+                        # Check mana cost and cooldown
+                        if (state_dict['self']['mana'] >= SPELLS[spell_name]['cost'] and 
+                            state_dict['self']['cooldowns'][spell_name] == 0):
+                            weights[spell_idx] = weight
             
             spell_name = random.choices(spells, weights=weights)[0]
             spell = None if spell_name is None else {"name": spell_name}
             
-            # Add target for spells that require it
+            # Add intelligent targeting
             if spell and spell_name in ["fireball", "teleport", "blink", "melee_attack"]:
-                # For now, target the center of the board as a default
-                spell["target"] = [BOARD_SIZE // 2, BOARD_SIZE // 2]
+                if state_dict:
+                    opp_pos = state_dict['opponent'].get('position', [BOARD_SIZE // 2, BOARD_SIZE // 2])
+                    spell["target"] = opp_pos
+                else:
+                    spell["target"] = [BOARD_SIZE // 2, BOARD_SIZE // 2]
             
             return {'move': list(move), 'spell': spell}
         
@@ -207,10 +219,14 @@ class AIBot(BotInterface):
             spell_name = None if spell_idx == 0 else list(SPELLS.keys())[spell_idx - 1]
             spell = None if spell_name is None else {"name": spell_name}
             
-            # Add target for spells that require it
+            # Add intelligent targeting for spells
             if spell and spell_name in ["fireball", "teleport", "blink", "melee_attack"]:
-                # For now, target the center of the board as a default
-                spell["target"] = [BOARD_SIZE // 2, BOARD_SIZE // 2]
+                state_dict = self.tensor_to_state(state_tensor)
+                if state_dict:
+                    opp_pos = state_dict['opponent'].get('position', [BOARD_SIZE // 2, BOARD_SIZE // 2])
+                    spell["target"] = opp_pos
+                else:
+                    spell["target"] = [BOARD_SIZE // 2, BOARD_SIZE // 2]
             
             return {'move': list(move), 'spell': spell}
 
@@ -220,18 +236,52 @@ class AIBot(BotInterface):
         
         reward = 0
         
-        # Health changes
+        # Health changes with smart healing logic
         health_diff_self = current_state['self']['hp'] - prev_state['self']['hp']
         health_diff_opp = prev_state['opponent']['hp'] - current_state['opponent']['hp']
-        reward += health_diff_opp * 1.0  # Reward for damaging opponent
-        reward += health_diff_self * 0.8  # Reward for healing/penalty for damage
         
-        # Mana efficiency
+        # Enhanced reward for damaging opponent
+        reward += health_diff_opp * 1.5  # Increased reward for damaging opponent
+        
+        # Smart healing rewards/penalties
+        if health_diff_self > 0:  # If healing occurred
+            prev_hp = prev_state['self']['hp']
+            if prev_hp >= 100:  # If we were already at full HP
+                reward -= 2.0  # Significant penalty for wasting healing
+            elif prev_hp >= 80:  # If HP was already high
+                reward += health_diff_self * 0.2  # Small reward for topping off
+            else:  # If HP was low
+                reward += health_diff_self * 0.8  # Good reward for needed healing
+        elif health_diff_self < 0:  # If we took damage
+            reward += health_diff_self * 0.8  # Penalty for taking damage
+        
+        # Enhanced mana efficiency with spell usage encouragement
         mana_used = prev_state['self']['mana'] - current_state['self']['mana']
+        spell_used = current_state['self'].get('last_spell')
+        
         if mana_used > 0:
-            # Check if the mana usage resulted in opponent damage
-            if health_diff_opp > 0:
-                reward += 0.5  # Bonus for effective mana use
+            if health_diff_opp > 0:  # If we damaged the opponent
+                reward += 1.0  # Increased bonus for effective offensive mana use
+                if spell_used in ['fireball', 'melee_attack']:
+                    reward += 0.5  # Additional bonus for using offensive spells
+            elif health_diff_self > 0 and prev_state['self']['hp'] < 80:  # If we healed when actually needed
+                reward += 0.3  # Smaller bonus for necessary healing
+            else:  # If we used mana without good effect
+                reward -= 0.2  # Small penalty for ineffective mana use
+        
+        # Enhanced artifact (potion) collection rewards
+        curr_artifacts = len(current_state.get('artifacts', []))
+        prev_artifacts = len(prev_state.get('artifacts', []))
+        artifacts_collected = prev_artifacts - curr_artifacts
+        
+        if artifacts_collected > 0:
+            # Calculate distance-based bonus for artifact collection
+            artifact_positions = [a['position'] for a in prev_state.get('artifacts', [])]
+            if artifact_positions:
+                curr_pos = np.array(current_state['self']['position'])
+                min_distance = min(np.linalg.norm(curr_pos - np.array(pos)) for pos in artifact_positions)
+                distance_bonus = max(0, (10 - min_distance) * 0.1)  # More reward for collecting distant artifacts
+                reward += artifacts_collected * (3.0 + distance_bonus)  # Increased base reward plus distance bonus
         
         # Minion management
         curr_friendly_minions = len([m for m in current_state.get('minions', []) if m['owner'] == self.name])
@@ -241,31 +291,47 @@ class AIBot(BotInterface):
         if curr_friendly_minions > prev_friendly_minions:
             reward += 2.0
         
-        # Position control
+        # Enhanced position control with artifact awareness
         curr_pos = np.array(current_state['self']['position'])
         prev_pos = np.array(prev_state['self']['position'])
         opp_pos = np.array(current_state['opponent']['position'])
         
-        # Calculate optimal distance based on state
+        # Calculate optimal distance based on state and artifacts
         optimal_dist = 3  # Default medium range
         if current_state['self']['cooldowns'].get('fireball', 0) == 0 and current_state['self']['mana'] >= 30:
             optimal_dist = 4  # Fireball range
         elif curr_friendly_minions > 0:
             optimal_dist = 2  # Closer if we have minions
         
+        # Adjust optimal distance if there are nearby artifacts
+        if current_state.get('artifacts'):
+            nearest_artifact = min(
+                (np.linalg.norm(curr_pos - np.array(a['position'])) for a in current_state['artifacts']),
+                default=float('inf')
+            )
+            if nearest_artifact < 3:  # If artifact is close
+                optimal_dist = max(optimal_dist, nearest_artifact + 1)  # Prefer staying near artifacts
+        
         # Distance management reward
         current_dist = np.linalg.norm(curr_pos - opp_pos)
         distance_reward = -abs(current_dist - optimal_dist) * 0.2
         reward += distance_reward
         
-        # Artifact collection
-        curr_artifacts = len(current_state.get('artifacts', []))
-        prev_artifacts = len(prev_state.get('artifacts', []))
-        reward += (prev_artifacts - curr_artifacts) * 2.0  # Good reward for collecting artifacts
-        
-        # Encourage exploration of the board
+        # Encourage exploration of the board, especially towards artifacts
         if not np.array_equal(curr_pos, prev_pos):
-            reward += 0.1  # Small reward for moving
+            reward += 0.1  # Base reward for moving
+            if current_state.get('artifacts'):
+                # Additional reward for moving towards artifacts
+                prev_min_artifact_dist = min(
+                    (np.linalg.norm(prev_pos - np.array(a['position'])) for a in current_state['artifacts']),
+                    default=float('inf')
+                )
+                curr_min_artifact_dist = min(
+                    (np.linalg.norm(curr_pos - np.array(a['position'])) for a in current_state['artifacts']),
+                    default=float('inf')
+                )
+                if curr_min_artifact_dist < prev_min_artifact_dist:
+                    reward += 0.2  # Reward for moving closer to artifacts
         
         # Boundary penalty
         if (curr_pos[0] in [0, BOARD_SIZE-1] or curr_pos[1] in [0, BOARD_SIZE-1]):

@@ -4575,3 +4575,159 @@ Episode 413:
 vs_Sample Bot 1: {'DQNWizard': 0.04, 'Sample Bot 1': 0.68, 'Draw': 0.28}
 vs_Sample Bot 2: {'DQNWizard': 0.02, 'Sample Bot 2': 0.96, 'Draw': 0.02}
 
+Episode 1:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+
+Episode 2:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+
+Episode 3:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+
+Episode 4:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+
+Episode 5:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+
+Episode 6:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+
+Episode 7:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+
+Episode 8:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+
+Episode 9:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+
+Episode 10:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.04, 'Sample Bot 2': 0.94, 'Draw': 0.02}
+
+Episode 11:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.92, 'Draw': 0.08}
+vs_Sample Bot 2: {'DQNWizard': 0.12, 'Sample Bot 2': 0.74, 'Draw': 0.14}
+
+Episode 12:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 1.0, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.98, 'Draw': 0.02}
+
+Episode 13:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.98, 'Draw': 0.02}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+
+Episode 14:
+vs_Sample Bot 1: {'DQNWizard': 0.02, 'Sample Bot 1': 0.98, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.98, 'Draw': 0.02}
+
+Episode 15:
+vs_Sample Bot 1: {'DQNWizard': 0.02, 'Sample Bot 1': 0.94, 'Draw': 0.04}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 1.0, 'Draw': 0.0}
+
+Episode 16:
+vs_Sample Bot 1: {'DQNWizard': 0.02, 'Sample Bot 1': 0.94, 'Draw': 0.04}
+vs_Sample Bot 2: {'DQNWizard': 0.0, 'Sample Bot 2': 0.98, 'Draw': 0.02}
+
+Episode 17:
+vs_Sample Bot 1: {'DQNWizard': 0.02, 'Sample Bot 1': 0.98, 'Draw': 0.0}
+vs_Sample Bot 2: {'DQNWizard': 0.02, 'Sample Bot 2': 0.94, 'Draw': 0.04}
+
+Episode 18:
+vs_Sample Bot 1: {'DQNWizard': 0.04, 'Sample Bot 1': 0.88, 'Draw': 0.08}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.76, 'Draw': 0.14}
+
+Episode 19:
+vs_Sample Bot 1: {'DQNWizard': 0.1, 'Sample Bot 1': 0.82, 'Draw': 0.08}
+vs_Sample Bot 2: {'DQNWizard': 0.2, 'Sample Bot 2': 0.68, 'Draw': 0.12}
+
+Episode 20:
+vs_Sample Bot 1: {'DQNWizard': 0.14, 'Sample Bot 1': 0.58, 'Draw': 0.28}
+vs_Sample Bot 2: {'DQNWizard': 0.28, 'Sample Bot 2': 0.48, 'Draw': 0.24}
+
+Episode 21:
+vs_Sample Bot 1: {'DQNWizard': 0.2, 'Sample Bot 1': 0.7, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.64, 'Draw': 0.26}
+
+Episode 22:
+vs_Sample Bot 1: {'DQNWizard': 0.14, 'Sample Bot 1': 0.76, 'Draw': 0.1}
+vs_Sample Bot 2: {'DQNWizard': 0.14, 'Sample Bot 2': 0.7, 'Draw': 0.16}
+
+Episode 23:
+vs_Sample Bot 1: {'DQNWizard': 0.16, 'Sample Bot 1': 0.42, 'Draw': 0.42}
+vs_Sample Bot 2: {'DQNWizard': 0.24, 'Sample Bot 2': 0.48, 'Draw': 0.28}
+
+Episode 24:
+vs_Sample Bot 1: {'DQNWizard': 0.22, 'Sample Bot 1': 0.56, 'Draw': 0.22}
+vs_Sample Bot 2: {'DQNWizard': 0.16, 'Sample Bot 2': 0.76, 'Draw': 0.08}
+
+Episode 25:
+vs_Sample Bot 1: {'DQNWizard': 0.12, 'Sample Bot 1': 0.7, 'Draw': 0.18}
+vs_Sample Bot 2: {'DQNWizard': 0.08, 'Sample Bot 2': 0.72, 'Draw': 0.2}
+
+Episode 26:
+vs_Sample Bot 1: {'DQNWizard': 0.14, 'Sample Bot 1': 0.62, 'Draw': 0.24}
+vs_Sample Bot 2: {'DQNWizard': 0.18, 'Sample Bot 2': 0.62, 'Draw': 0.2}
+
+Episode 27:
+vs_Sample Bot 1: {'DQNWizard': 0.06, 'Sample Bot 1': 0.72, 'Draw': 0.22}
+vs_Sample Bot 2: {'DQNWizard': 0.14, 'Sample Bot 2': 0.64, 'Draw': 0.22}
+
+Episode 28:
+vs_Sample Bot 1: {'DQNWizard': 0.12, 'Sample Bot 1': 0.58, 'Draw': 0.3}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.68, 'Draw': 0.22}
+
+Episode 29:
+vs_Sample Bot 1: {'DQNWizard': 0.16, 'Sample Bot 1': 0.7, 'Draw': 0.14}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.74, 'Draw': 0.16}
+
+Episode 30:
+vs_Sample Bot 1: {'DQNWizard': 0.08, 'Sample Bot 1': 0.62, 'Draw': 0.3}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.84, 'Draw': 0.06}
+
+Episode 31:
+vs_Sample Bot 1: {'DQNWizard': 0.14, 'Sample Bot 1': 0.72, 'Draw': 0.14}
+vs_Sample Bot 2: {'DQNWizard': 0.08, 'Sample Bot 2': 0.7, 'Draw': 0.22}
+
+Episode 32:
+vs_Sample Bot 1: {'DQNWizard': 0.2, 'Sample Bot 1': 0.56, 'Draw': 0.24}
+vs_Sample Bot 2: {'DQNWizard': 0.1, 'Sample Bot 2': 0.64, 'Draw': 0.26}
+
+Episode 33:
+vs_Sample Bot 1: {'DQNWizard': 0.04, 'Sample Bot 1': 0.74, 'Draw': 0.22}
+vs_Sample Bot 2: {'DQNWizard': 0.16, 'Sample Bot 2': 0.68, 'Draw': 0.16}
+
+Episode 34:
+vs_Sample Bot 1: {'DQNWizard': 0.04, 'Sample Bot 1': 0.74, 'Draw': 0.22}
+vs_Sample Bot 2: {'DQNWizard': 0.06, 'Sample Bot 2': 0.68, 'Draw': 0.26}
+
+Episode 35:
+vs_Sample Bot 1: {'DQNWizard': 0.06, 'Sample Bot 1': 0.7, 'Draw': 0.24}
+vs_Sample Bot 2: {'DQNWizard': 0.08, 'Sample Bot 2': 0.72, 'Draw': 0.2}
+
+Episode 36:
+vs_Sample Bot 1: {'DQNWizard': 0.04, 'Sample Bot 1': 0.74, 'Draw': 0.22}
+vs_Sample Bot 2: {'DQNWizard': 0.06, 'Sample Bot 2': 0.76, 'Draw': 0.18}
+
+Episode 37:
+vs_Sample Bot 1: {'DQNWizard': 0.08, 'Sample Bot 1': 0.5, 'Draw': 0.42}
+vs_Sample Bot 2: {'DQNWizard': 0.02, 'Sample Bot 2': 0.78, 'Draw': 0.2}
+
+Episode 38:
+vs_Sample Bot 1: {'DQNWizard': 0.0, 'Sample Bot 1': 0.84, 'Draw': 0.16}
+vs_Sample Bot 2: {'DQNWizard': 0.02, 'Sample Bot 2': 0.82, 'Draw': 0.16}
+
+Episode 39:
+vs_Sample Bot 1: {'DQNWizard': 0.08, 'Sample Bot 1': 0.78, 'Draw': 0.14}
+vs_Sample Bot 2: {'DQNWizard': 0.18, 'Sample Bot 2': 0.58, 'Draw': 0.24}
+
