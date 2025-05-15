@@ -19,9 +19,7 @@ class KevinLink(BotInterface):
         self._minion_health = {}  # Track minion health
         self._damage_taken = 0  # Track damage taken in last 3 turns
         self._last_positions = []  # Track our own positions
-        self._opponent_behavior = None  # Will categorize opponent (aggressive, defensive, etc)
         self._early_game = True  # Track game phase
-        self._adaptation_turns = 0  # Count turns for adaptation
         self._minion_strategy = "defend"  # Default minion strategy
 
     @property
@@ -128,13 +126,6 @@ class KevinLink(BotInterface):
         self._enemy_positions.append(opp_pos)
         if len(self._enemy_positions) > 10:  # Track more positions for better analysis
             self._enemy_positions = self._enemy_positions[-10:]
-            
-        # Classify opponent behavior
-        self._classify_opponent(opp_data, minions)
-            
-        # Update adaptation strategy every 5 turns
-        if self._turn_count % 5 == 0:
-            self._adapt_strategy(opp_data, hp, mana)
 
         # Initialize decision variables
         move = [0, 0]
@@ -367,12 +358,11 @@ class KevinLink(BotInterface):
         
         # Shield when opponent is close and we're not already shielded
         if not self_data.get("shield_active", False) and distance <= 4 and cooldowns["shield"] == 0 and mana >= 20:
-            if hp <= 70 or (self._opponent_behavior == "aggressive" and distance <= 3):
+            if hp <= 70:
                 return {"name": "shield"}
             # Proactive shield against likely fireball if opponent is in range and we are not critically low on mana
-            # We don't have direct opponent cooldown/mana info, so we use distance and behavior as proxies.
-            if distance <= 5 and mana >= 40 and self._opponent_behavior != "defensive": # Don't waste shield if they are defensive
-                 # Add a small chance or other conditions if this becomes too frequent
+            if distance <= 5 and mana >= 40:
+                # Add a small chance or other conditions if this becomes too frequent
                 if random.random() < 0.3: # Shield 30% of the time in this situation to be less predictable
                     return {"name": "shield"}
                 
@@ -472,51 +462,6 @@ class KevinLink(BotInterface):
             return max(scored_artifacts, key=lambda x: x[0])[1]
         return None
         
-    def _classify_opponent(self, opp_data, minions):
-        """Classify opponent behavior to adapt strategy"""
-        if self._turn_count < 3:
-            # Not enough data yet
-            return
-            
-        # Check for aggressive behavior
-        if self._damage_taken >= 30 and self._turn_count <= 10:
-            self._opponent_behavior = "aggressive"
-            return
-            
-        # Check for defensive behavior (lots of shielding)
-        if opp_data.get("shield_active", False):
-            self._opponent_behavior = "defensive"
-            return
-            
-        # Check for minion focus
-        opp_minions = [m for m in minions if m["owner"] != self._name]
-        if len(opp_minions) >= 1 and self._turn_count <= 10:
-            self._opponent_behavior = "minion_focused"
-            return
-            
-        # Default to balanced
-        self._opponent_behavior = "balanced"
-        
-    def _adapt_strategy(self, opp_data, hp, mana):
-        """Adapt strategy based on opponent behavior and game state"""
-        self._adaptation_turns += 1
-        
-        if self._opponent_behavior == "aggressive":
-            # Against aggressive opponents, play defensive
-            self._minion_strategy = "defend"
-        elif self._opponent_behavior == "defensive":
-            # Against defensive opponents, be more aggressive
-            self._minion_strategy = "attack"
-        elif self._opponent_behavior == "minion_focused":
-            # Counter minion strategy
-            self._minion_strategy = "counter"
-        else:
-            # Balanced approach otherwise
-            if hp > 70 and mana > 60:
-                self._minion_strategy = "attack"
-            else:
-                self._minion_strategy = "defend"
-                
     def _calculate_optimal_distance(self, self_data, opp_data, hp, mana):
         """Calculate optimal distance based on situation"""
         fireball_ready = self_data["cooldowns"]["fireball"] == 0 and mana >= 30

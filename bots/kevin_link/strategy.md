@@ -1,14 +1,12 @@
-# Kevin Link Bot Strategy: Adaptive Combat System
+# Kevin Link Bot Strategy: Tactical Combat System
 
 ## Core Principles & State Tracking
 
-Kevin Link is an adaptive wizard bot that employs sophisticated state tracking and tactical decision-making to outmaneuver opponents. The bot maintains:
+Kevin Link is a tactical wizard bot that employs sophisticated state tracking and decision-making to outmaneuver opponents. The bot maintains:
 
 - **Dynamic State Tracking**: Monitors own/opponent HP, mana, cooldowns, positions, shield status, active minions, and artifacts
 - **Movement Pattern Analysis**: Tracks both opponent and self-movement patterns for better prediction and positioning
-- **Opponent Behavior Classification**: Categorizes opponents as aggressive, defensive, minion-focused, or balanced by turn 3
-- **Adaptive Strategy**: Adjusts tactics based on opponent behavior and current game state
-- **Game Phase Awareness**: Implements distinct strategies for early game (turns 1-5), mid game (6-15) and late game (16+)
+- **Game Phase Awareness**: Implements distinct strategies for early game (turns 1-10) and late game (11+)
 
 ## Decision Priority Hierarchy
 
@@ -57,17 +55,6 @@ The bot follows a strict decision priority system:
 
 ## Helper Strategies & Algorithms
 
-- **`_classify_opponent`**: Identifies opponent behavior by turn 3
-  - Aggressive: If damage taken ≥ 30 in early game
-  - Defensive: If opponent uses shield
-  - Minion-focused: If opponent maintains minions
-  - Balanced: Default classification
-
-- **`_adapt_strategy`**: Adjusts tactics based on opponent classification
-  - Against aggressive opponents: Defensive positioning, prioritize shield
-  - Against defensive opponents: More aggressive, focus on resource control
-  - Against minion-focused opponents: Counter with targeted attacks
-
 - **`_calculate_optimal_distance`**: Dynamically determines ideal spacing
   - 7 units when at very low health
   - 6 units when low health without shield
@@ -98,4 +85,4 @@ The bot follows a strict decision priority system:
   - Evaluates whether opponent might reach artifact first
   - Adjusts value based on game phase
 
-By combining these strategic elements, Kevin Link adapts to different opponents and situations, making it a formidable and unpredictable wizard in the arena.
+By combining these strategic elements, Kevin Link employs consistent tactical decision-making, making it a formidable and unpredictable wizard in the arena.
