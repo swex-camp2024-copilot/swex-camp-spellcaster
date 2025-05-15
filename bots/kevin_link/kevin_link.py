@@ -146,7 +146,7 @@ class KevinLink(BotInterface):
         if not spell and (hp <= 60 or mana <= 50):
             spell, action = self._resource_strategy(self_data, artifacts, cooldowns, mana, hp, self_pos, opp_pos)
             if action == "move_only":
-                move = self._calculate_move_toward_artifact(self_pos, artifacts, opp_pos)
+                move = self._calculate_move_toward_artifact(self_pos, artifacts, opp_pos, hp, mana)
                 return {"move": move, "spell": None}
                 
         # 4. MINION MANAGEMENT - Strategic advantage
@@ -391,7 +391,7 @@ class KevinLink(BotInterface):
         """Calculate optimal movement based on situation"""
         # Prioritize artifact collection if needed
         if artifacts and (hp <= 70 or mana <= 60):
-            return self._calculate_move_toward_artifact(self_pos, artifacts, opp_pos)
+            return self._calculate_move_toward_artifact(self_pos, artifacts, opp_pos, hp, mana)
             
         # Defensive retreat if low health
         if hp <= 40 and self.dist(self_pos, opp_pos) <= 3:
@@ -413,9 +413,14 @@ class KevinLink(BotInterface):
             # At optimal distance, strafe to avoid predictability
             return self._intelligent_strafe(self_data, self_pos, opp_pos, minions, artifacts)
             
-    def _calculate_move_toward_artifact(self, self_pos, artifacts, opp_pos):
+    def _calculate_move_toward_artifact(self, self_pos, artifacts, opp_pos, hp=None, mana=None):
         """Calculate movement toward best artifact"""
-        best_artifact = self._choose_best_artifact(artifacts, self_pos, opp_pos, 0, 0)
+        if hp is None or mana is None:
+            # If hp or mana not provided, use a neutral value for artifact selection
+            best_artifact = self._choose_best_artifact(artifacts, self_pos, opp_pos, 0, 0)
+        else:
+            best_artifact = self._choose_best_artifact(artifacts, self_pos, opp_pos, hp, mana)
+            
         if best_artifact:
             return self.move_toward(self_pos, best_artifact["position"])
         return [0, 0]
@@ -531,6 +536,7 @@ class KevinLink(BotInterface):
         possible_moves = []
         own_minion_positions = [m["position"] for m in all_minions if m["owner"] == self._name]
 
+        # Consider diagonal moves for better escape options
         for dx_option in [-1, 0, 1]:
             for dy_option in [-1, 0, 1]:
                 if dx_option == 0 and dy_option == 0:
@@ -565,60 +571,62 @@ class KevinLink(BotInterface):
             
             # Primary factor: distance from the main threat
             dist_to_primary_threat = self.dist(new_pos, primary_threat_pos)
-            safety_score += dist_to_primary_threat * 3 # Weight this heavily
+            safety_score += dist_to_primary_threat * 4  # Increased weight to prioritize getting away from primary threat
 
             # Secondary factor: sum of distances to all other threats
             for threat_idx, other_threat_pos in enumerate(threat_positions):
-                dist_to_other = self.dist(new_pos, other_threat_pos)
-                safety_score += dist_to_other
+                if other_threat_pos != primary_threat_pos:  # Don't double count primary threat
+                    dist_to_other = self.dist(new_pos, other_threat_pos)
+                    safety_score += dist_to_other * 1.5  # Increased weight
 
             # Bonus for moving perpendicular to primary threat
             move_vector = (move_option[0], move_option[1])
             threat_vector = (primary_threat_pos[0] - self_pos[0], primary_threat_pos[1] - self_pos[1])
-            # Dot product for perpendicularity: (v1.x * v2.x) + (v1.y * v2.y) == 0
-            if threat_vector[0] != 0 or threat_vector[1] != 0: # Avoid division by zero or no threat direction
-                dot_product = move_vector[0] * threat_vector[0] + move_vector[1] * threat_vector[1]
-                # Check if move is somewhat perpendicular (dot product close to 0 for normalized vectors)
-                # A simpler check: if not moving directly towards or away from the threat
-                # Not directly towards: move_vector != normalized(threat_vector)
-                # Not directly away: move_vector != normalized(-threat_vector)
-                # For 1-step moves, if abs(dot_product) is small relative to magnitudes, it's somewhat perpendicular.
-                # Let's try a simpler logic: if not moving directly along the threat line.
-                is_directly_aligned = False
-                if threat_vector[0] != 0 and move_vector[0] != 0 and threat_vector[1] == 0 and move_vector[1] == 0: # Pure X
-                    is_directly_aligned = True
-                elif threat_vector[1] != 0 and move_vector[1] != 0 and threat_vector[0] == 0 and move_vector[0] == 0: # Pure Y
-                    is_directly_aligned = True
-                elif threat_vector[0] != 0 and threat_vector[1] != 0 and move_vector[0] != 0 and move_vector[1] != 0 and \
-                     (threat_vector[0] / threat_vector[1] if threat_vector[1] != 0 else float('inf')) == \
-                     (move_vector[0] / move_vector[1] if move_vector[1] != 0 else float('inf')) : # Diagonal align
-                     is_directly_aligned = True
+            
+            # Check if vectors are meaningful for perpendicularity analysis
+            if threat_vector[0] != 0 or threat_vector[1] != 0:
+                # Calculate normalized dot product for perpendicularity check
+                # First, get magnitudes
+                move_mag = (move_vector[0]**2 + move_vector[1]**2)**0.5
+                threat_mag = (threat_vector[0]**2 + threat_vector[1]**2)**0.5
                 
-                if not is_directly_aligned and not (move_vector[0] == -threat_vector[0] and move_vector[1] == -threat_vector[1]): # Not perfectly away
-                    safety_score += 3 # Small bonus for perpendicular/oblique moves
-
-            # Penalty for moving towards edges/corners
+                if move_mag > 0 and threat_mag > 0:
+                    # Calculate actual dot product
+                    dot_product = (move_vector[0] * threat_vector[0] + move_vector[1] * threat_vector[1]) / (move_mag * threat_mag)
+                    
+                    # If close to perpendicular (dot product near 0)
+                    if abs(dot_product) < 0.3:  # More precisely defining "perpendicular"
+                        safety_score += 5  # Increased bonus for perpendicular movement
+                    # Penalize moving directly toward the threat
+                    elif dot_product > 0.7:
+                        safety_score -= 10  # Strong penalty for moving toward threat
+                    # Bonus for moving away from threat
+                    elif dot_product < -0.7:
+                        safety_score += 3
+            
+            # Even stronger penalty for edges and corners
             if new_pos[0] == 0 or new_pos[0] == 9 or new_pos[1] == 0 or new_pos[1] == 9: # Edge
-                safety_score -= 5
+                safety_score -= 10
             if (new_pos[0] == 0 and new_pos[1] == 0) or (new_pos[0] == 0 and new_pos[1] == 9) or \
                (new_pos[0] == 9 and new_pos[1] == 0) or (new_pos[0] == 9 and new_pos[1] == 9): # Corner
-                safety_score -= 10
+                safety_score -= 20
             
-            # Slight preference for moves that are different from the last move to reduce predictability
-            if len(self._last_positions) > 0:
+            # Add preference for diagonal moves in general (faster escape)
+            if move_option[0] != 0 and move_option[1] != 0:
+                safety_score += 2
+            
+            # Avoid repeating recent movement patterns to be less predictable
+            if len(self._last_positions) > 1:
                 last_move_dx = self_pos[0] - self._last_positions[-1][0]
                 last_move_dy = self_pos[1] - self._last_positions[-1][1]
                 if move_option[0] == last_move_dx and move_option[1] == last_move_dy:
-                    safety_score -= 2 # Small penalty for repeating exact vector of last actual move
+                    safety_score -= 4  # Increased penalty
 
             if safety_score > max_safety_score:
                 max_safety_score = safety_score
                 best_move_option = move_option
-            elif safety_score == max_safety_score: # Tie-breaking: prefer larger steps or random
-                if sum(abs(m_coord) for m_coord in move_option) > sum(abs(b_coord) for b_coord in best_move_option):
-                    best_move_option = move_option
-                elif random.choice([True, False]):
-                    best_move_option = move_option
+            elif safety_score == max_safety_score and random.random() < 0.3:  # Add some randomness for tied options
+                best_move_option = move_option
         
         return best_move_option
         
@@ -692,7 +700,7 @@ class KevinLink(BotInterface):
                     
             # Bonus for moving toward strategically valuable artifacts
             if artifacts:
-                best_artifact = self._choose_best_artifact(artifacts, self_pos, target_pos, self._last_hp, self_data["mana"]) # Use current HP/Mana
+                best_artifact = self._choose_best_artifact(artifacts, self_pos, target_pos, self_data["hp"], self_data["mana"]) # Use current HP/Mana
                 if best_artifact:
                     current_artifact_dist = self.dist(self_pos, best_artifact["position"])
                     new_artifact_dist = self.dist(new_pos, best_artifact["position"])
@@ -703,20 +711,20 @@ class KevinLink(BotInterface):
                         score -= 5
                     
             # Stronger penalty for board edges/corners
-            if new_x <= 0 or new_x >= 9 or new_y <= 0 or new_y >= 9: # Edge
-                score -= 25
-            if (new_x <= 0 and new_y <=0) or (new_x <=0 and new_y >=9) or \
-               (new_x >= 9 and new_y <=0) or (new_x >=9 and new_y >=9): # Corner
-                score -= 40
+            if new_x == 0 or new_x == 9 or new_y == 0 or new_y == 9: # Edge
+                score -= 30  # Increased penalty for edges
+            if (new_x == 0 and new_y == 0) or (new_x == 0 and new_y == 9) or \
+               (new_x == 9 and new_y == 0) or (new_x == 9 and new_y == 9): # Corner
+                score -= 50  # Increased penalty for corners
             elif new_x <= 1 or new_x >= 8 or new_y <= 1 or new_y >= 8: # Near Edge
-                score -= 15
+                score -= 20  # Increased penalty for near edges
 
             # Avoid repeating the exact same strafe move if previous move was also a strafe
             if len(self._last_positions) > 1:
                 prev_move_dx = self_pos[0] - self._last_positions[-2][0]
                 prev_move_dy = self_pos[1] - self._last_positions[-2][1]
                 if option[0] == prev_move_dx and option[1] == prev_move_dy and abs(prev_move_dx) + abs(prev_move_dy) == 1: # Was a 1-step move
-                    score -= 10 # Penalize repeating the last 1-step move
+                    score -= 15  # Increased penalty for repeating the last 1-step move
             
             if score > best_score:
                 best_score = score
@@ -735,7 +743,7 @@ class KevinLink(BotInterface):
             return fallback_move
         else: # If even fallback is bad, pick any valid adjacent move
             valid_moves = []
-            for opt_x, opt_y in [[0,1],[0,-1],[1,0],[-1,0]]:
+            for opt_x, opt_y in [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]]:  # Added diagonal moves
                 nx, ny = self_pos[0] + opt_x, self_pos[1] + opt_y
                 if 0 <= nx <= 9 and 0 <= ny <= 9:
                     valid_moves.append([opt_x, opt_y])
@@ -825,11 +833,39 @@ class KevinLink(BotInterface):
         return [dx, dy]
         
     def _direction_toward(self, start, target, distance=1):
-        """Calculate direction toward target"""
+        """Calculate direction toward target with improved distance handling for blink"""
         dx = target[0] - start[0]
         dy = target[1] - start[1]
         
-        # Normalize and scale
+        # For blink specifically (typically called with distance=2)
+        if distance == 2:
+            # Use Manhattan distance to maximize blink range usage
+            manhattan_dist = abs(dx) + abs(dy)
+            
+            # If Manhattan distance <= 4 (within blink range), try to get as close as possible
+            if manhattan_dist <= 4:
+                # Normalize to max absolute component = distance
+                max_component = max(abs(dx), abs(dy))
+                if max_component > 0:
+                    scale_factor = min(2, max_component) / max_component
+                    new_dx = int(round(dx * scale_factor))
+                    new_dy = int(round(dy * scale_factor))
+                    
+                    # Ensure we don't exceed blink range (dx + dy <= 4)
+                    while abs(new_dx) + abs(new_dy) > 4:
+                        if abs(new_dx) > abs(new_dy):
+                            new_dx = new_dx - (1 if new_dx > 0 else -1)
+                        else:
+                            new_dy = new_dy - (1 if new_dy > 0 else -1)
+                    
+                    # Check if resulting position is in bounds
+                    new_x = start[0] + new_dx
+                    new_y = start[1] + new_dy
+                    
+                    if 0 <= new_x <= 9 and 0 <= new_y <= 9:
+                        return [new_dx, new_dy]
+        
+        # Normalize and scale (standard approach for other cases)
         magnitude = max(1, abs(dx) + abs(dy))
         dx = int(round(dx * distance / magnitude))
         dy = int(round(dy * distance / magnitude))
@@ -845,14 +881,14 @@ class KevinLink(BotInterface):
         if not (0 <= new_x <= 9 and 0 <= new_y <= 9):
             # Adjust to stay in bounds
             if new_x < 0:
-                dx = 0
+                dx = -start[0]  # Move to edge
             elif new_x > 9:
-                dx = 0
+                dx = 9 - start[0]  # Move to edge
                 
             if new_y < 0:
-                dy = 0
+                dy = -start[1]  # Move to edge
             elif new_y > 9:
-                dy = 0
+                dy = 9 - start[1]  # Move to edge
                 
             # Ensure we're still moving
             if dx == 0 and dy == 0:

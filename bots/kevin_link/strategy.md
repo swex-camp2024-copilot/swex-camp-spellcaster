@@ -62,17 +62,30 @@ The bot follows a strict decision priority system:
   - 3 units when shielded and healthy
   - 5 units as default
 
-- **`_safe_retreat_direction`**: Advanced retreat calculation
-  - Weights distances from all threats
-  - Favors perpendicular movement away from threats
-  - Avoids board edges and corners
-  - Penalizes backtracking to previous positions
-
-- **`_intelligent_strafe`**: Unpredictable lateral movement
-  - Prefers perpendicular movement to main axis of distance
-  - Avoids minions and dangerous positions
+- **`_safe_retreat_direction`**: Enhanced evasion calculation
+  - Higher weights for distance from primary threat (4x) and secondary threats (1.5x)
+  - Precisely calculates perpendicularity using vector math and dot products
+  - Strong penalty for moving directly toward threats (-10)
+  - Significant bonus for perpendicular movement (+5)
+  - Heavily penalizes board edges (-10) and corners (-20)
+  - Prefers diagonal movement for faster escape (+2)
   - Includes randomization to reduce predictability
+  - Penalizes repeating previous movement patterns
+
+- **`_intelligent_strafe`**: Improved lateral movement system
+  - Prefers perpendicular movement to main axis of distance
+  - Stronger penalties for moving near board edges (-30) and corners (-50)
+  - Higher penalty for moving near own minions (-50) to avoid collisions
   - Considers proximity to valuable artifacts
+  - Includes diagonal movements in fallback options
+  - Uses increased randomization to avoid predictable patterns
+
+- **`_direction_toward`**: Optimized for blink ability
+  - Special handling for blink distance (typically 2 spaces)
+  - Maximizes blink range using Manhattan distance calculation
+  - Ensures moves stay within blink's 4-cell range limit
+  - Improved boundary adjustment logic
+  - Dynamic direction calculation based on target position
 
 - **`_predict_position`**: Anticipates opponent movement
   - Analyzes consistent movement patterns
@@ -85,4 +98,9 @@ The bot follows a strict decision priority system:
   - Evaluates whether opponent might reach artifact first
   - Adjusts value based on game phase
 
-By combining these strategic elements, Kevin Link employs consistent tactical decision-making, making it a formidable and unpredictable wizard in the arena.
+- **`_calculate_move_toward_artifact`**: Improved resource targeting
+  - Properly factors in current HP and mana for better prioritization
+  - Falls back to conservative estimation when health/mana unknown
+  - Integrates with general movement system for consistent behavior
+
+By combining these strategic elements, Kevin Link employs consistent tactical decision-making with enhanced positional awareness, making it a formidable and unpredictable wizard in the arena.
