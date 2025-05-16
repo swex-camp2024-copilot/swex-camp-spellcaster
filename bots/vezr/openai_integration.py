@@ -66,6 +66,8 @@ CURRENT STATE (Turn {turn}):
 - Enemy minions: {len(enemy_minions)} {', '.join([f"[{m['position'][0]},{m['position'][1]}]hp{m['hp']}" for m in enemy_minions]) if enemy_minions else ""}
 - Artifacts: {len(artifacts)} {', '.join([f"[{a['position'][0]},{a['position'][1]}]{a['type']}" for a in artifacts]) if artifacts else ""}
 
+Return a command that would maximize your chances of winning having in mind the opponent, artifacts, minions, current mana, health, cooldowns, positions and any other relevant factors.
+
 INSTRUCTIONS:
 Return JSON with:
 - "move": Array of 2 integers [-1,1] for x,y movement
