@@ -175,3 +175,4 @@ cython_debug/
 
 # IDE specific files
 .idea/
+.history/
