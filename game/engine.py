@@ -275,12 +275,20 @@ class GameEngine:
                 caster.position = dest
                 self.logger.log(f"{caster.name} teleported to {dest}")
                 self.logger.log_event_spell(self.turn, caster.name, "teleport", dest)
+
+                artifact = self.artifacts.check_pickup(caster)
+                if artifact:
+                    self.logger.log_event_artifact_pick_up(self.turn, caster.name, artifact)
         elif spell == "blink":
             dest = spell_action["target"]
             if self.in_range(caster.position, dest, SPELLS["blink"]["distance"]) and self.is_valid_tile(dest):
                 caster.position = dest
                 self.logger.log(f"{caster.name} blinked to {dest}")
                 self.logger.log_event_spell(self.turn, caster.name, "blink", dest)
+
+                artifact = self.artifacts.check_pickup(caster)
+                if artifact:
+                    self.logger.log_event_artifact_pick_up(self.turn, caster.name, artifact)
         elif spell == "summon":
             # Check if caster already has a minion
             if not any(m.owner == caster.name and m.is_alive() for m in self.minions):
