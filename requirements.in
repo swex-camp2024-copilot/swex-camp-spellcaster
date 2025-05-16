@@ -1,9 +1,12 @@
+# Game dependencies
+pygame>=2.0.0	# Core ML dependencies
+pydantic>=2.0.0
+
 # Core ML dependencies
 torch>=2.1.0
 numpy
 matplotlib
 tqdm
-pygame
 
 # Azure ML dependencies
 azure-ai-ml
