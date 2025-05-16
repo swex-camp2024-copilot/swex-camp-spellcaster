@@ -205,9 +205,8 @@ class RincewindBot(BotInterface):
                 }
 
         # 6. Try to summon a minion if we have enough mana and no active minion
-        # Only summon if we don't need emergency healing (prioritize healing when HP is low)
         own_minions = [m for m in minions if m["owner"] == self_data["name"]]
-        if not own_minions and cooldowns["summon"] == 0 and mana >= 50 and not (hp < 30 and cooldowns["heal"] == 0):
+        if not own_minions and cooldowns["summon"] == 0 and mana >= 50:
             return {"name": "summon"}
         # 7. If adjacent to opponent, try melee attack
         if self.manhattan_dist(self_pos, opp_pos) == 1 and cooldowns["melee_attack"] == 0:
