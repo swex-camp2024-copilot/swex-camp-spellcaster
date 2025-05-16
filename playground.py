@@ -58,6 +58,12 @@ def run_tournament_round(bots: List[BotInterface], round_num: int, losers_stats:
     # Create pairs for this round
     pairs, odd_bot = create_pairs(bots)
 
+    # If there's an odd bot, it gets a bye
+    for b1, b2 in pairs:
+        print(f"- {b1.name} vs {b2.name}")
+
+    print("odd bot:", odd_bot.name if odd_bot else "None")
+
     # Initialize round statistics
     round_stats = {"matches": [], "round_info": {}}
     round_losers_stats = {}
