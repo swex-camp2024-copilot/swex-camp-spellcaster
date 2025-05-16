@@ -73,25 +73,19 @@ class RincewindBot(BotInterface):
         mana = self_data["mana"]
         hp = self_data["hp"]
         
-        # Initialize spell
-        spell = None
-        
         # 1. Emergency healing if HP is low
         if hp < 30 and cooldowns["heal"] == 0 and mana >= 25:
-            spell = {"name": "heal"}
-            # Go into retreat mode
-            self.retreat_mode = True        
+            self.retreat_mode = True  # Go into retreat mode
+            return {"name": "heal"}
             
         # 2. Shield activation when exposed or when low on health
         if not self_data["shield_active"] and cooldowns["shield"] == 0 and mana >= 20:
             if hp < 50 or self.manhattan_dist(self_pos, opp_pos) <= 3:
-                spell = {"name": "shield"}
-                # When we activate shield, we should be more aggressive
-                self.retreat_mode = False
+                self.retreat_mode = False  # When we activate shield, be more aggressive
+                return {"name": "shield"}
         
-        # If shield is active, be more aggressive with melee attacks
+        # 3. If shield is active, be more aggressive with melee attacks
         if self_data["shield_active"] and hp > 30:
-            # Find enemy minions
             enemy_minions = [m for m in minions if m["owner"] != self_data["name"]]
             
             # First check for adjacent enemy minions
@@ -100,18 +94,18 @@ class RincewindBot(BotInterface):
             if adjacent_minions and cooldowns["melee_attack"] == 0:
                 # Attack the weakest minion first
                 target_minion = min(adjacent_minions, key=lambda m: m.get("hp", float('inf')))
-                spell = {
+                return {
                     "name": "melee_attack",
                     "target": target_minion["position"]
                 }
             # If no adjacent minions, check if opponent is nearby
             elif self.manhattan_dist(self_pos, opp_pos) <= 2 and cooldowns["melee_attack"] == 0:
-                spell = {
+                return {
                     "name": "melee_attack",
                     "target": opp_pos
                 }
                 
-        # 3. Fireball if enemy is in range and we have enough mana
+        # 4. Fireball if enemy is in range and we have enough mana
         fireball_range = 5
         if cooldowns["fireball"] == 0 and mana >= 30:
             # Find all valid targets (enemy wizard and enemy minions)
@@ -154,12 +148,12 @@ class RincewindBot(BotInterface):
                 
                 # Cast fireball at the selected target
                 if best_target:
-                    spell = {
+                    return {
                         "name": "fireball",
                         "target": best_target["position"]
                     }
 
-        # 4. Try to use blink to position strategically
+        # 5. Try to use blink to position strategically
         if cooldowns["blink"] == 0 and mana >= 10:
             blink_distance = 2
             
@@ -176,7 +170,7 @@ class RincewindBot(BotInterface):
                 target_x = min(max(0, self_pos[0] + dx), board_size - 1)
                 target_y = min(max(0, self_pos[1] + dy), board_size - 1)
                 
-                spell = {
+                return {
                     "name": "blink",
                     "target": [target_x, target_y]
                 }
@@ -193,18 +187,18 @@ class RincewindBot(BotInterface):
                 target_x = min(max(0, self_pos[0] + dx), board_size - 1)
                 target_y = min(max(0, self_pos[1] + dy), board_size - 1)
                 
-                spell = {
+                return {
                     "name": "blink",
                     "target": [target_x, target_y]
                 }
 
-        # 5. Try to summon a minion if we have enough mana and no active minion
+        # 6. Try to summon a minion if we have enough mana and no active minion
         # Only summon if we don't need emergency healing (prioritize healing when HP is low)
         own_minions = [m for m in minions if m["owner"] == self_data["name"]]
-        if not own_minions and cooldowns["summon"] == 0 and mana >= 50 and not (hp < 30 and cooldowns["heal"] == 0 and spell and spell["name"] == "heal"):
-            spell = {"name": "summon"}
+        if not own_minions and cooldowns["summon"] == 0 and mana >= 50 and not (hp < 30 and cooldowns["heal"] == 0):
+            return {"name": "summon"}
 
-        # 6. If we can do a melee attack, try to move adjacent to enemy
+        # 7. If we can do a melee attack, try to move adjacent to enemy
         if cooldowns["melee_attack"] == 0:
             # Check for adjacent enemy minions first
             enemy_minions = [m for m in minions if m["owner"] != self_data["name"]]
@@ -213,25 +207,25 @@ class RincewindBot(BotInterface):
             if adjacent_minions:
                 # Attack the weakest minion first (lowest HP)
                 target_minion = min(adjacent_minions, key=lambda m: m.get("hp", float('inf')))
-                spell = {
+                return {
                     "name": "melee_attack",
                     "target": target_minion["position"]
                 }
             # If no adjacent minions, check if opponent is adjacent
             elif self.manhattan_dist(self_pos, opp_pos) == 1:
-                spell = {
+                return {
                     "name": "melee_attack",
                     "target": opp_pos
                 }
        
-        # 7. Teleport strategy - use teleport to escape or to get close to artifacts
+        # 8. Teleport strategy - use teleport to escape or to get close to artifacts
         if cooldowns["teleport"] == 0 and mana >= 20:
             # Priority 1: Low HP - teleport to health artifact if available
             health_artifacts = [a for a in artifacts if a["type"] == "health"]
             if hp < 40 and health_artifacts:
                 # Find nearest health artifact
                 nearest_health = min(health_artifacts, key=lambda a: self.manhattan_dist(self_pos, a["position"]))
-                spell = {
+                return {
                     "name": "teleport",
                     "target": nearest_health["position"]
                 }
@@ -239,7 +233,7 @@ class RincewindBot(BotInterface):
             elif artifacts and hp > 30 and self.manhattan_dist(self_pos, opp_pos) > 2:
                 # Find nearest artifact
                 nearest_artifact = min(artifacts, key=lambda a: self.manhattan_dist(self_pos, a["position"]))
-                spell = {
+                return {
                     "name": "teleport",
                     "target": nearest_artifact["position"]
                 }
@@ -250,7 +244,7 @@ class RincewindBot(BotInterface):
                     # Ideally find one that's far from opponent
                     best_health = max(health_artifacts, 
                                      key=lambda a: self.manhattan_dist(a["position"], opp_pos))
-                    spell = {
+                    return {
                         "name": "teleport",
                         "target": best_health["position"]
                     }
@@ -259,12 +253,13 @@ class RincewindBot(BotInterface):
                     corners = [[0, 0], [0, board_size-1], [board_size-1, 0], [board_size-1, board_size-1]]
                     # Find the corner furthest from opponent
                     best_corner = max(corners, key=lambda c: self.manhattan_dist(c, opp_pos))
-                    spell = {
+                    return {
                         "name": "teleport",
                         "target": best_corner
                     }
                     
-        return spell
+        # No spell chosen
+        return None
         
     def determine_movement(self, self_data, opp_data, artifacts, minions, board_size, spell):
         """Determine the movement based on the current game state and selected spell."""
