@@ -10,10 +10,13 @@ from simulator.match import run_match
 from simulator.visualizer import Visualizer
 
 
-def run_tournament():
+def run_tournament(headless: bool = False):
     """
     Run a tournament with all bots from the bots folder.
     Returns the winner bot instance and tournament statistics.
+    
+    Args:
+        headless (bool): If True, run without visualization
     """
     # Step 1: Find and load all bots
     bots = discover_bots()
@@ -57,8 +60,10 @@ def run_tournament():
 
             turns_fought = logger.get_snapshots()[-1]["turn"]  # Get the last turn number
             snapshots = logger.get_snapshots()
-            visualizer = Visualizer(logger, b1, b2)
-            visualizer.run(snapshots, len(bots) > 2)
+            
+            if not headless:
+                visualizer = Visualizer(logger, b1, b2)
+                visualizer.run(snapshots, len(bots) > 2)
 
             draw_counter = 0
             while winner == "Draw":
@@ -67,8 +72,10 @@ def run_tournament():
                 winner, logger = run_match(b1, b2)
 
                 snapshots = logger.get_snapshots()
-                visualizer = Visualizer(logger, b1, b2)
-                visualizer.run(snapshots, len(bots) > 2)
+                
+                if not headless:
+                    visualizer = Visualizer(logger, b1, b2)
+                    visualizer.run(snapshots, len(bots) > 2)
 
                 if draw_counter > 2:
                     break
@@ -213,9 +220,16 @@ def create_pairs(bots: List[BotInterface], losers_stats: Dict[str, int]) -> Tupl
 
     return pairs, lucky_loser
 
-def run_single_match(bot1_name: str, bot2_name: str, verbose: bool = False):
+def run_single_match(bot1_name: str, bot2_name: str, verbose: bool = False, headless: bool = False, count: int = 1):
     """
-    Run a single match between two bots with the given names.
+    Run matches between two bots with the given names.
+    
+    Args:
+        bot1_name (str): Name of the first bot
+        bot2_name (str): Name of the second bot
+        verbose (bool): Whether to print detailed match logs
+        headless (bool): Whether to run without visualization
+        count (int): Number of matches to run
     """
     bot1 = find_bot_by_name(bot1_name)
     bot2 = find_bot_by_name(bot2_name)
@@ -228,16 +242,58 @@ def run_single_match(bot1_name: str, bot2_name: str, verbose: bool = False):
         print(f"Bot '{bot2_name}' not found. Use 'python main.py match list' to see available bots.")
         return
     
-    print(f"Match: {bot1.name} vs {bot2.name}")
-    winner, logger = run_match(bot1, bot2, verbose=verbose)
+    if count <= 0:
+        print("Count must be a positive integer")
+        return
+        
+    # Stats for multiple matches
+    stats = {
+        "bot1_wins": 0,
+        "bot2_wins": 0,
+        "draws": 0,
+        "total_turns": 0
+    }
     
-    turns_fought = logger.get_snapshots()[-1]["turn"]  # Get the last turn number
-    snapshots = logger.get_snapshots()
+    for match_num in range(1, count + 1):
+        if count > 1:
+            print(f"\nMatch {match_num}/{count}: {bot1.name} vs {bot2.name}")
+        else:
+            print(f"Match: {bot1.name} vs {bot2.name}")
+            
+        winner, logger = run_match(bot1, bot2, verbose=verbose)
+        
+        turns_fought = logger.get_snapshots()[-1]["turn"]  # Get the last turn number
+        stats["total_turns"] += turns_fought
+        
+        if winner == bot1:
+            stats["bot1_wins"] += 1
+        elif winner == bot2:
+            stats["bot2_wins"] += 1
+        else:
+            stats["draws"] += 1
+        
+        # Only visualize if not headless and (single match or last match in a series)
+        if not headless and (count == 1 or (match_num == count and count <= 5)):
+            snapshots = logger.get_snapshots()
+            visualizer = Visualizer(logger, bot1, bot2)
+            visualizer.run(snapshots, False)
+        
+        print(f"Winner: {winner.name if winner != 'Draw' else 'Draw'} after {turns_fought} turns")
     
-    visualizer = Visualizer(logger, bot1, bot2)
-    visualizer.run(snapshots, False)
-    
-    print(f"Winner: {winner.name if winner != 'Draw' else 'Draw'} after {turns_fought} turns")
+    # Print stats summary for multiple matches
+    if count > 1:
+        print("\n" + "="*50)
+        print(f"MATCH RESULTS: {bot1.name} vs {bot2.name} ({count} matches)")
+        print("="*50)
+        bot1_win_pct = (stats["bot1_wins"] / count) * 100
+        bot2_win_pct = (stats["bot2_wins"] / count) * 100
+        draws_pct = (stats["draws"] / count) * 100
+        avg_turns = stats["total_turns"] / count
+        
+        print(f"{bot1.name}: {stats['bot1_wins']} wins ({bot1_win_pct:.1f}%)")
+        print(f"{bot2.name}: {stats['bot2_wins']} wins ({bot2_win_pct:.1f}%)")
+        print(f"Draws: {stats['draws']} ({draws_pct:.1f}%)")
+        print(f"Average match length: {avg_turns:.1f} turns")
 
 def parse_arguments():
     """
@@ -248,12 +304,15 @@ def parse_arguments():
     
     # Tournament command
     tournament_parser = subparsers.add_parser("tournament", help="Run a full tournament with all bots")
+    tournament_parser.add_argument("--headless", action="store_true", help="Run without visualization")
     
     # Match command
     match_parser = subparsers.add_parser("match", help="Run a single match between two bots or list available bots")
     match_parser.add_argument("bot1", nargs="?", help="Name of the first bot")
     match_parser.add_argument("bot2", nargs="?", help="Name of the second bot")
     match_parser.add_argument("--verbose", "-v", action="store_true", help="Show detailed match logs")
+    match_parser.add_argument("--headless", action="store_true", help="Run without visualization")
+    match_parser.add_argument("--count", "-c", type=int, default=1, help="Number of matches to run")
     
     return parser.parse_args()
 
@@ -263,7 +322,8 @@ if __name__ == "__main__":
     
     if args.command == "tournament" or args.command is None:
         # Run the full tournament
-        winner, stats = run_tournament()
+        headless = getattr(args, 'headless', False)
+        winner, stats = run_tournament(headless=headless)
         print(f"Tournament completed with {len(stats['matches'])} matches across {len(stats['rounds'])} rounds")
     
     elif args.command == "match":
@@ -272,8 +332,10 @@ if __name__ == "__main__":
             list_available_bots()
         elif args.bot1 and args.bot2:
             # Run a match between two specific bots
-            run_single_match(args.bot1, args.bot2, args.verbose)
+            headless = getattr(args, 'headless', False)
+            count = getattr(args, 'count', 1)
+            run_single_match(args.bot1, args.bot2, args.verbose, headless=headless, count=count)
         else:
             print("Please provide two bot names or use 'list' to see available bots.")
-            print("Usage: python main.py match <bot1> <bot2>")
+            print("Usage: python main.py match <bot1> <bot2> [--headless] [--verbose] [--count N]")
             print("       python main.py match list")
