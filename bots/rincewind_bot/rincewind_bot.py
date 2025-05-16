@@ -84,22 +84,23 @@ class RincewindBot(BotInterface):
                 self.retreat_mode = False  # When we activate shield, be more aggressive
                 return {"name": "shield"}
         
-        # 3. If shield is active, be more aggressive with melee attacks
+        # 3. Check for melee attack opportunities
+        # First, check for adjacent enemy minions regardless of shield status
+        enemy_minions = [m for m in minions if m["owner"] != self_data["name"]]
+        adjacent_minions = [m for m in enemy_minions if self.manhattan_dist(self_pos, m["position"]) == 1]
+        
+        if adjacent_minions and cooldowns["melee_attack"] == 0:
+            # Attack the weakest minion first
+            target_minion = min(adjacent_minions, key=lambda m: m.get("hp", float('inf')))
+            return {
+                "name": "melee_attack",
+                "target": target_minion["position"]
+            }
+            
+        # If shield is active, be more aggressive with melee attacks on opponent
         if self_data["shield_active"] and hp > 30:
-            enemy_minions = [m for m in minions if m["owner"] != self_data["name"]]
-            
-            # First check for adjacent enemy minions
-            adjacent_minions = [m for m in enemy_minions if self.manhattan_dist(self_pos, m["position"]) == 1]
-            
-            if adjacent_minions and cooldowns["melee_attack"] == 0:
-                # Attack the weakest minion first
-                target_minion = min(adjacent_minions, key=lambda m: m.get("hp", float('inf')))
-                return {
-                    "name": "melee_attack",
-                    "target": target_minion["position"]
-                }
             # If no adjacent minions, check if opponent is nearby
-            elif self.manhattan_dist(self_pos, opp_pos) <= 2 and cooldowns["melee_attack"] == 0:
+            if self.manhattan_dist(self_pos, opp_pos) <= 2 and cooldowns["melee_attack"] == 0:
                 return {
                     "name": "melee_attack",
                     "target": opp_pos
@@ -197,26 +198,12 @@ class RincewindBot(BotInterface):
         own_minions = [m for m in minions if m["owner"] == self_data["name"]]
         if not own_minions and cooldowns["summon"] == 0 and mana >= 50 and not (hp < 30 and cooldowns["heal"] == 0):
             return {"name": "summon"}
-
-        # 7. If we can do a melee attack, try to move adjacent to enemy
-        if cooldowns["melee_attack"] == 0:
-            # Check for adjacent enemy minions first
-            enemy_minions = [m for m in minions if m["owner"] != self_data["name"]]
-            adjacent_minions = [m for m in enemy_minions if self.manhattan_dist(self_pos, m["position"]) == 1]
-            
-            if adjacent_minions:
-                # Attack the weakest minion first (lowest HP)
-                target_minion = min(adjacent_minions, key=lambda m: m.get("hp", float('inf')))
-                return {
-                    "name": "melee_attack",
-                    "target": target_minion["position"]
-                }
-            # If no adjacent minions, check if opponent is adjacent
-            elif self.manhattan_dist(self_pos, opp_pos) == 1:
-                return {
-                    "name": "melee_attack",
-                    "target": opp_pos
-                }
+        # 7. If adjacent to opponent, try melee attack
+        if self.manhattan_dist(self_pos, opp_pos) == 1 and cooldowns["melee_attack"] == 0:
+            return {
+                "name": "melee_attack",
+                "target": opp_pos
+            }
        
         # 8. Teleport strategy - use teleport to escape or to get close to artifacts
         if cooldowns["teleport"] == 0 and mana >= 20:
