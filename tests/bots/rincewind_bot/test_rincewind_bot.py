@@ -51,7 +51,13 @@ class TestRincewindBot(unittest.TestCase):
                 "name": "Enemy Bot"
             },
             "artifacts": [],
-            "minions": [],
+            "minions": [
+                {
+                    "position": [1, 1],  # Not adjacent to bot
+                    "owner": "Rincewind Bot",
+                    "hp": 10  # Lower HP than opponent
+                }
+            ],
             "board_size": 10,
             "turn": 1
         }
@@ -101,7 +107,7 @@ class TestRincewindBot(unittest.TestCase):
             "self": {
                 "position": [2, 2],
                 "hp": 80,
-                "mana": 50,
+                "mana": 10,
                 "cooldowns": {"fireball": 0, "shield": 0, "heal": 0, 
                              "teleport": 0, "blink": 0, "summon": 0, "melee_attack": 0},
                 "shield_active": False,
@@ -153,6 +159,11 @@ class TestRincewindBot(unittest.TestCase):
                     "position": [3, 2],  # Also adjacent to bot
                     "owner": "Enemy Bot",
                     "hp": 10  # Lower HP than opponent
+                },
+                {
+                    "position": [1, 1],  # Not adjacent to bot
+                    "owner": "Rincewind Bot",
+                    "hp": 10  # Lower HP than opponent
                 }
             ],
             "board_size": 10,
@@ -183,7 +194,13 @@ class TestRincewindBot(unittest.TestCase):
                 "name": "Enemy Bot"
             },
             "artifacts": [],
-            "minions": [],
+            "minions": [
+                {
+                    "position": [1, 1],  # Not adjacent to bot
+                    "owner": "Rincewind Bot",
+                    "hp": 10  # Lower HP than opponent
+                }
+            ],
             "board_size": 10,
             "turn": 1
         }
@@ -224,6 +241,11 @@ class TestRincewindBot(unittest.TestCase):
                     "position": [6, 7],  # Also adjacent to opponent, in fireball range
                     "owner": "Enemy Bot",
                     "hp": 30
+                },
+                {
+                    "position": [1, 1],  # Not adjacent to bot
+                    "owner": "Rincewind Bot",
+                    "hp": 10  # Lower HP than opponent
                 }
             ],
             "board_size": 10,

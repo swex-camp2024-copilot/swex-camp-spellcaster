@@ -115,8 +115,13 @@ class RincewindBot(BotInterface):
             if hp < 50 or self.manhattan_dist(self_pos, opp_pos) <= 3:
                 self.retreat_mode = False  # When we activate shield, be more aggressive
                 return {"name": "shield"}
+                
+        # 4. Try to summon a minion if we have enough mana and no active minion
+        own_minions = [m for m in minions if m["owner"] == self_data["name"]]
+        if not own_minions and cooldowns["summon"] == 0 and mana >= 50:
+            return {"name": "summon"}
         
-        # 4. Check for melee attack opportunities
+        # 5. Check for melee attack opportunities
         # First, check for adjacent enemy minions regardless of shield status
         enemy_minions = [m for m in minions if m["owner"] != self_data["name"]]
         adjacent_minions = [m for m in enemy_minions if self.manhattan_dist(self_pos, m["position"]) == 1]
@@ -138,7 +143,7 @@ class RincewindBot(BotInterface):
                     "target": opp_pos
                 }
                 
-        # 5. Fireball if enemy is in range and we have enough mana
+        # 6. Fireball if enemy is in range and we have enough mana
         fireball_range = 5
         if cooldowns["fireball"] == 0 and mana >= 30:
             # Find all valid targets (enemy wizard and enemy minions)
@@ -186,7 +191,7 @@ class RincewindBot(BotInterface):
                         "target": best_target["position"]
                     }
 
-        # 6. Try to use blink to position strategically
+        # 7. Try to use blink to position strategically
         if cooldowns["blink"] == 0 and mana >= 10:
             blink_distance = 2
             
@@ -223,20 +228,15 @@ class RincewindBot(BotInterface):
                 return {
                     "name": "blink",
                     "target": [target_x, target_y]
-                }
-
-        # 7. Try to summon a minion if we have enough mana and no active minion
-        own_minions = [m for m in minions if m["owner"] == self_data["name"]]
-        if not own_minions and cooldowns["summon"] == 0 and mana >= 50:
-            return {"name": "summon"}
-        # 8. If adjacent to opponent, try melee attack
+                    }        
+        # 7. If adjacent to opponent, try melee attack
         if self.manhattan_dist(self_pos, opp_pos) == 1 and cooldowns["melee_attack"] == 0:
             return {
                 "name": "melee_attack",
                 "target": opp_pos
             }
        
-        # 9. Teleport strategy - use teleport to escape or to get close to artifacts
+        # 8. Teleport strategy - use teleport to escape or to get close to artifacts
         if cooldowns["teleport"] == 0 and mana >= 20:
             # Priority 1: Teleport to any artifact if not in immediate danger
             if artifacts and hp > 30 and self.manhattan_dist(self_pos, opp_pos) > 2:
