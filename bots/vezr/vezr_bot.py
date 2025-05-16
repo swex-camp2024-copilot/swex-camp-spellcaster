@@ -7,8 +7,8 @@ from bots.vezr.openai_integration import create_openai_prompt, call_openai_api
 class Vezr(BotInterface):
     def __init__(self):
         self._name = "Gandalf the Gray"
-        self._sprite_path = "assets/wizards/sample_bot1.png"  # Using sample bot sprite for now
-        self._minion_sprite_path = "assets/minions/minion_1.png"  # Using sample minion sprite for now
+        self._sprite_path = "assets/wizards/gandalf.png"  # Using Gandalf sprite
+        self._minion_sprite_path = "assets/minions/vezrsminion.png"  # Using Vezr's minion sprite
         
         # Initialize a backup strategy flag in case the API call fails
         self.use_backup_strategy = False
