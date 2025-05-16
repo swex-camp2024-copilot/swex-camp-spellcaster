@@ -106,7 +106,13 @@ class GameEngine:
             # Add positions of alive minions
             occupied_positions.extend([m.position for m in self.minions if m.is_alive()])
 
-            self.artifacts.spawn_random(occupied_positions, self.turn)
+            artifact_spawned = self.artifacts.spawn_random(occupied_positions, self.turn)
+            
+            # Log artifact spawn event if an artifact was spawned
+            if artifact_spawned:
+                # Get the last spawned artifact
+                spawned_artifact = self.artifacts.artifacts[-1]
+                self.logger.log_event_spawn_artifact(self.turn, spawned_artifact)
 
     def log_turn(self):
         self.logger.log_state(self.build_input(self.wizard1, self.wizard2))
@@ -192,9 +198,9 @@ class GameEngine:
                                                                 "name") else f"{target_entity.owner}'s minion"
                     self.logger.log_damage(target_pos, damage, entity_name)
                     if hasattr(target_entity, "name"):
-                        self.logger.log_event_wizard_damage(self.turn, target_pos, damage, target_entity.name)
+                        self.logger.log_event_wizard_damage(self.turn, damage, target_entity.name, target_entity.hp)
                     else:
-                        self.logger.log_event_minion_damage(self.turn, target_pos, damage, target_entity.id)
+                        self.logger.log_event_minion_damage(self.turn, target_pos, damage, target_entity.id, target_entity.hp)
                     self.logger.log(f"{entity_name} took {damage} damage (HP: {target_entity.hp})")
                 else:
                     splash_damage_hit = False
@@ -226,11 +232,11 @@ class GameEngine:
                                         f"{splash_entity_name} took {splash_damage} splash damage (HP: {splash_entity.hp})")
 
                                     if hasattr(splash_entity, "name"):
-                                        self.logger.log_event_wizard_damage(self.turn, splash_pos, splash_damage,
-                                                                            splash_entity.name)
+                                        self.logger.log_event_wizard_damage(self.turn, splash_damage,
+                                                                            splash_entity.name, splash_entity.hp)
                                     else:
                                         self.logger.log_event_minion_damage(self.turn, splash_pos, splash_damage,
-                                                                            splash_entity.id)
+                                                                            splash_entity.id, splash_entity.hp)
                     if not splash_damage_hit:
                         self.logger.log(f"{caster.name}'s fireball missed!")
             else:
@@ -250,9 +256,9 @@ class GameEngine:
                 self.logger.log(
                     f"{entity_name} took {damage} damage from {caster.name}'s melee attack (HP: {target_entity.hp})")
                 if hasattr(target_entity, "name"):
-                    self.logger.log_event_wizard_damage(self.turn, target_pos, damage, target_entity.name)
+                    self.logger.log_event_wizard_damage(self.turn, damage, target_entity.name, target_entity.hp)
                 else:
-                    self.logger.log_event_minion_damage(self.turn, target_pos, damage, target_entity.id)
+                    self.logger.log_event_minion_damage(self.turn, target_pos, damage, target_entity.id, target_entity.hp)
             else:
                 self.logger.log(f"{caster.name}'s melee attack missed!")
         elif spell == "shield":
@@ -346,9 +352,9 @@ class GameEngine:
                 self.logger.log(
                     f"{minion.owner}'s minion attacked {target.owner if hasattr(target, 'owner') else target.name} for 10 dmg")
                 if hasattr(target, "name"):
-                    self.logger.log_event_wizard_damage(self.turn, target.position, 10, target.name)
+                    self.logger.log_event_wizard_damage(self.turn, 10, target.name, target.hp)
                 else:
-                    self.logger.log_event_minion_damage(self.turn, target.position, 10, target.id)
+                    self.logger.log_event_minion_damage(self.turn, target.position, 10, target.id, target.hp)
 
             self.logger.log_state(self.build_input(self.wizard1, self.wizard2))
 
@@ -506,14 +512,14 @@ class GameEngine:
         self.logger.log_damage(entity2.position, damage2, entity2.name if hasattr(entity2, "name") else f"{entity2.owner}'s minion")
 
         if hasattr(entity1, "name"):
-            self.logger.log_event_wizard_damage(self.turn, position, damage1, entity1.name)
+            self.logger.log_event_wizard_damage(self.turn, damage1, entity1.name, entity1.hp)
         else:
-            self.logger.log_event_minion_damage(self.turn, position, damage1, entity1.id)
+            self.logger.log_event_minion_damage(self.turn, position, damage1, entity1.id, entity1.hp)
 
         if hasattr(entity2, "name"):
-            self.logger.log_event_wizard_damage(self.turn, position, damage2, entity2.name)
+            self.logger.log_event_wizard_damage(self.turn, damage2, entity2.name, entity2.hp)
         else:
-            self.logger.log_event_minion_damage(self.turn, position, damage2, entity2.id)
+            self.logger.log_event_minion_damage(self.turn, position, damage2, entity2.id, entity2.hp)
 
     def scatter_entities(self, position, entity1, entity2):
         import random

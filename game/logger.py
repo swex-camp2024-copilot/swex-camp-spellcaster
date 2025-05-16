@@ -87,16 +87,22 @@ class GameLogger:
 
 
     # EVENT LOGS
+    
+    def _log_event(self, event_data):
+        """Print event data to console for debugging"""
+        print(f"Turn {event_data['turn']} | EVENT: {event_data['event']} | {event_data['details']}")
 
     def log_event_turn_start(self, turn):
-        self.events.append({
+        event_data = {
             "turn": turn,
             "event": EVENT_TURN_START,
             "details": {}
-        })
+        }
+        self.events.append(event_data)
+        self._log_event(event_data)
 
     def log_event_spell(self, turn, caster, spell_name, target):
-        self.events.append({
+        event_data = {
             "turn": turn,
             "event": EVENT_SPELL_CAST,
             "details": {
@@ -104,63 +110,79 @@ class GameLogger:
                 "spell": spell_name,
                 "target": target
             }
-        })
+        }
+        self.events.append(event_data)
+        self._log_event(event_data)
 
-    def log_event_wizard_damage(self, turn, position, amount, name):
-        self.events.append({
+    def log_event_wizard_damage(self, turn, amount, name, remaining_hp=None):
+        event_data = {
             "turn": turn,
             "event": EVENT_DAMAGE,
             "details": {
                 "entity": "wizard",
-                "position": position,
                 "amount": amount,
-                "name": name
+                "name": name,
+                "remaining_hp": remaining_hp
             }
-        })
+        }
+        self.events.append(event_data)
+        self._log_event(event_data)
 
-    def log_event_minion_damage(self, turn, position, amount, minion_id):
-        self.events.append({
+    def log_event_minion_damage(self, turn, position, amount, minion_id, remaining_hp=None):
+        event_data = {
             "turn": turn,
             "event": EVENT_DAMAGE,
             "details": {
                 "entity": "minion",
                 "position": position,
                 "amount": amount,
-                "minion_id": minion_id
+                "minion_id": minion_id,
+                "remaining_hp": remaining_hp
             }
-        })
+        }
+        self.events.append(event_data)
+        self._log_event(event_data)
 
     def log_event_wizard_move(self, turn, wiz1: Wizard, wiz1_new_position, wiz2: Wizard, wiz2_new_position):
-        self.events.append({
-            "turn": turn,
-            "event": EVENT_WIZARD_MOVE,
-            "details": {
-                "wizard1": {
-                    "name": wiz1.name,
-                    "start_position": wiz1.position,
-                    "new_position": wiz1_new_position
-                },
-                "wizard2": {
-                    "name": wiz2.name,
-                    "start_position": wiz2.position,
-                    "new_position": wiz2_new_position
-                }
+        # Only track wizards that actually move
+        details = {}
+        
+        if wiz1.position != wiz1_new_position:
+            details["wizard1"] = {
+                "name": wiz1.name,
+                "move": str(wiz1.position) + '->' + str(wiz1_new_position)
             }
-        })
+            
+        if wiz2.position != wiz2_new_position:
+            details["wizard2"] = {
+                "name": wiz2.name,
+                "move": str(wiz2.position) + '->' + str(wiz2_new_position)
+            }
+            
+        # Only log the event if at least one wizard moved
+        if details:
+            event_data = {
+                "turn": turn,
+                "event": EVENT_WIZARD_MOVE,
+                "details": details
+            }
+            self.events.append(event_data)
+            self._log_event(event_data)
 
     def log_event_minion_move(self, turn, minion_id, start_position, new_position):
-        self.events.append({
+        event_data = {
             "turn": turn,
             "event": EVENT_MINION_MOVE,
             "details": {
                 "minion_id": minion_id,
-                "start_position": start_position,
-                "new_position": new_position
+                "move": str(start_position) + '->' + str(new_position)
             }
-        })
+        }
+        self.events.append(event_data)
+        self._log_event(event_data)
 
     def log_event_collision(self, turn, position, entity1, entity1_bounce_position, entity2, entity2_bounce_position):
-        self.events.append({
+        event_data = {
             "turn": turn,
             "event": EVENT_COLLISION,
             "details": {
@@ -172,29 +194,35 @@ class GameLogger:
                 "entity2": entity2.name if hasattr(entity2, "name") else entity2.id,
                 "entity2_bounce_position": entity2_bounce_position
             }
-        })
+        }
+        self.events.append(event_data)
+        self._log_event(event_data)
 
     def log_event_shield_down(self, turn, wizard_name):
-        self.events.append({
+        event_data = {
             "turn": turn,
             "event": EVENT_SHIELD_DOWN,
             "details": {
                 "wizard": wizard_name
             }
-        })
+        }
+        self.events.append(event_data)
+        self._log_event(event_data)
 
     def log_event_spawn_artifact(self, turn, artifact):
-        self.events.append({
+        event_data = {
             "turn": turn,
             "event": EVENT_ARTIFACT_SPAWN,
             "details": {
-                "type": artifact["spawn"],
+                "type": artifact["type"],
                 "position": artifact["position"]
             }
-        })
+        }
+        self.events.append(event_data)
+        self._log_event(event_data)
 
     def log_event_artifact_pick_up(self, turn, wizard_name, artifact):
-        self.events.append({
+        event_data = {
             "turn": turn,
             "event": EVENT_ARTIFACT_PICK_UP,
             "details": {
@@ -202,7 +230,9 @@ class GameLogger:
                 "artifact_type": artifact["type"],
                 "artifact_position": artifact["position"]
             }
-        })
+        }
+        self.events.append(event_data)
+        self._log_event(event_data)
 
     def get_event_logs(self):
         return self.events
