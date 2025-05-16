@@ -78,10 +78,10 @@ class RincewindBot(BotInterface):
             self.retreat_mode = True  # Go into retreat mode
             return {"name": "heal"}
             
-        # 2. Teleport to health artifact when HP is low - prioritize over shield
-        if cooldowns["teleport"] == 0 and mana >= 20 and hp <= 40:
+        # 2. Teleport to health artifact when HP is low - highest priority after healing
+        if cooldowns["teleport"] == 0 and mana >= 20:
             health_artifacts = [a for a in artifacts if a["type"] == "health"]
-            if health_artifacts:
+            if hp <= 40 and health_artifacts:
                 # Find nearest health artifact
                 nearest_health = min(health_artifacts, key=lambda a: self.manhattan_dist(self_pos, a["position"]))
                 return {
@@ -89,13 +89,34 @@ class RincewindBot(BotInterface):
                     "target": nearest_health["position"]
                 }
             
+            # Priority 2: Emergency teleport if opponent is too close and we're weak
+            elif hp < 30 and self.manhattan_dist(self_pos, opp_pos) <= 2:
+                # First try to find a health artifact anywhere on the board
+                if health_artifacts:
+                    # Ideally find one that's far from opponent
+                    best_health = max(health_artifacts, 
+                                     key=lambda a: self.manhattan_dist(a["position"], opp_pos))
+                    return {
+                        "name": "teleport",
+                        "target": best_health["position"]
+                    }
+                # If no health artifacts, teleport to a corner opposite of the opponent
+                else:
+                    corners = [[0, 0], [0, board_size-1], [board_size-1, 0], [board_size-1, board_size-1]]
+                    # Find the corner furthest from opponent
+                    best_corner = max(corners, key=lambda c: self.manhattan_dist(c, opp_pos))
+                    return {
+                        "name": "teleport",
+                        "target": best_corner
+                    }
+        
         # 3. Shield activation when exposed or when low on health
         if not self_data["shield_active"] and cooldowns["shield"] == 0 and mana >= 20:
             if hp < 50 or self.manhattan_dist(self_pos, opp_pos) <= 3:
                 self.retreat_mode = False  # When we activate shield, be more aggressive
                 return {"name": "shield"}
         
-        # 3. Check for melee attack opportunities
+        # 4. Check for melee attack opportunities
         # First, check for adjacent enemy minions regardless of shield status
         enemy_minions = [m for m in minions if m["owner"] != self_data["name"]]
         adjacent_minions = [m for m in enemy_minions if self.manhattan_dist(self_pos, m["position"]) == 1]
@@ -117,7 +138,7 @@ class RincewindBot(BotInterface):
                     "target": opp_pos
                 }
                 
-        # 4. Fireball if enemy is in range and we have enough mana
+        # 5. Fireball if enemy is in range and we have enough mana
         fireball_range = 5
         if cooldowns["fireball"] == 0 and mana >= 30:
             # Find all valid targets (enemy wizard and enemy minions)
@@ -165,7 +186,7 @@ class RincewindBot(BotInterface):
                         "target": best_target["position"]
                     }
 
-        # 5. Try to use blink to position strategically
+        # 6. Try to use blink to position strategically
         if cooldowns["blink"] == 0 and mana >= 10:
             blink_distance = 2
             
@@ -204,18 +225,18 @@ class RincewindBot(BotInterface):
                     "target": [target_x, target_y]
                 }
 
-        # 6. Try to summon a minion if we have enough mana and no active minion
+        # 7. Try to summon a minion if we have enough mana and no active minion
         own_minions = [m for m in minions if m["owner"] == self_data["name"]]
         if not own_minions and cooldowns["summon"] == 0 and mana >= 50:
             return {"name": "summon"}
-        # 7. If adjacent to opponent, try melee attack
+        # 8. If adjacent to opponent, try melee attack
         if self.manhattan_dist(self_pos, opp_pos) == 1 and cooldowns["melee_attack"] == 0:
             return {
                 "name": "melee_attack",
                 "target": opp_pos
             }
        
-        # 8. Teleport strategy - use teleport to escape or to get close to artifacts
+        # 9. Teleport strategy - use teleport to escape or to get close to artifacts
         if cooldowns["teleport"] == 0 and mana >= 20:
             # Priority 1: Teleport to any artifact if not in immediate danger
             if artifacts and hp > 30 and self.manhattan_dist(self_pos, opp_pos) > 2:
