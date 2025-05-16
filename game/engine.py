@@ -309,7 +309,12 @@ class GameEngine:
                 continue
 
             enemy_targets = [self.wizard1, self.wizard2]
-            enemy = next(w for w in enemy_targets if w.name != minion.owner)
+            try:
+                enemy = next(w for w in enemy_targets if w.name != minion.owner)
+            except StopIteration:
+                # If no enemy wizard found (both wizards have same name as minion owner)
+                # Just use the first wizard as enemy
+                enemy = enemy_targets[0]
 
             # Find closest target
             targets = [enemy] + [m for m in self.minions if m.owner != minion.owner and m.is_alive()]
