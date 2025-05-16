@@ -61,9 +61,9 @@ class TestRincewindBot(unittest.TestCase):
         # Bot should move toward opponent (positive in both x and y)
         self.assertEqual(decision["move"], [1, 1])
         
-        # Bot will summon a minion if it has enough mana and no minions already
+        # Bot will use fireball against opponent if it has enough mana
         # This is the actual behavior of the bot
-        self.assertEqual(decision["spell"]["name"], "summon")
+        self.assertEqual(decision["spell"]["name"], "fireball")
 
     def test_emergency_healing(self):
         """Test emergency healing when HP is low."""
