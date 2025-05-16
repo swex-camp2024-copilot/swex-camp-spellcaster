@@ -1,0 +1,101 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Bot Development Guide
+
+## Bot Interface
+
+All bots must implement the [BotInterface](mdc:bots/bot_interface.py) abstract class, which requires:
+
+1. `name` property: Returns the bot's name
+2. `sprite_path` property (optional): Path to wizard sprite
+3. `minion_sprite_path` property (optional): Path to minion sprite
+4. `decide(state)` method: Takes game state and returns an action
+
+## Bot Implementation
+
+Create a new folder in the `bots/` directory for your bot:
+
+```
+bots/
+├── my_bot/
+│   ├── __init__.py
+│   └── my_bot.py
+```
+
+Your bot class should inherit from `BotInterface` with this structure:
+
+```python
+from bots.bot_interface import BotInterface
+
+class MyBot(BotInterface):
+    def __init__(self):
+        self._name = "My Bot Name"
+        self._sprite_path = "assets/wizards/my_wizard.png"  # Optional
+        self._minion_sprite_path = "assets/minions/my_minion.png"  # Optional
+        
+    @property
+    def name(self):
+        return self._name
+        
+    @property
+    def sprite_path(self):
+        return self._sprite_path
+        
+    @property
+    def minion_sprite_path(self):
+        return self._minion_sprite_path
+        
+    def decide(self, state):
+        # Your bot logic here
+        return {
+            "move": [dx, dy],
+            "spell": spell_data
+        }
+```
+
+## Game State
+
+The `state` parameter contains:
+
+- `turn`: Current turn number
+- `board_size`: Size of the board (10)
+- `self`: Your wizard's data
+  - `name`: Wizard name
+  - `position`: [x, y] coordinates
+  - `hp`: Current health
+  - `mana`: Current mana
+  - `cooldowns`: Spell cooldowns
+  - `shield_active`: Boolean if shield is active
+- `opponent`: Enemy wizard's data (same structure as `self`)
+- `artifacts`: List of artifacts on the board
+  - Each artifact: `{"type": type, "position": [x, y]}`
+- `minions`: List of active minions
+  - Each minion: `{"id": id, "owner": owner, "position": [x, y], "hp": hp}`
+
+## Action Format
+
+Return an action dictionary with:
+
+```python
+{
+    "move": [dx, dy],  # Direction: -1, 0, or 1 for each coordinate
+    "spell": {  # Optional
+        "name": "spell_name",
+        "target": [x, y]  # Optional for some spells
+    }
+}
+```
+
+- `move`: Required, must be a list of two integers from -1 to 1
+- `spell`: Optional, with required `name` and optional `target`
+  - `shield` and `heal` don't require a target
+  - Other spells need valid target coordinates
+
+## Sample Bots
+
+Study these sample bots for reference:
+- [Sample Bot 1](mdc:bots/sample_bot1/sample_bot_1.py)
+- [Sample Bot 2](mdc:bots/sample_bot2/sample_bot_2.py)
