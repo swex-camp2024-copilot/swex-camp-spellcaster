@@ -10,10 +10,13 @@ from simulator.match import run_match
 from simulator.visualizer import Visualizer
 
 
-def run_tournament():
+def run_tournament(headless: bool = False):
     """
     Run a tournament with all bots from the bots folder.
     Returns the winner bot instance and tournament statistics.
+    
+    Args:
+        headless (bool): If True, run without visualization
     """
     # Step 1: Find and load all bots
     bots = discover_bots()
@@ -57,8 +60,10 @@ def run_tournament():
 
             turns_fought = logger.get_snapshots()[-1]["turn"]  # Get the last turn number
             snapshots = logger.get_snapshots()
-            visualizer = Visualizer(logger, b1, b2)
-            visualizer.run(snapshots, len(bots) > 2)
+            
+            if not headless:
+                visualizer = Visualizer(logger, b1, b2)
+                visualizer.run(snapshots, len(bots) > 2)
 
             draw_counter = 0
             while winner == "Draw":
@@ -67,8 +72,10 @@ def run_tournament():
                 winner, logger = run_match(b1, b2)
 
                 snapshots = logger.get_snapshots()
-                visualizer = Visualizer(logger, b1, b2)
-                visualizer.run(snapshots, len(bots) > 2)
+                
+                if not headless:
+                    visualizer = Visualizer(logger, b1, b2)
+                    visualizer.run(snapshots, len(bots) > 2)
 
                 if draw_counter > 2:
                     break
@@ -213,7 +220,7 @@ def create_pairs(bots: List[BotInterface], losers_stats: Dict[str, int]) -> Tupl
 
     return pairs, lucky_loser
 
-def run_single_match(bot1_name: str, bot2_name: str, verbose: bool = False):
+def run_single_match(bot1_name: str, bot2_name: str, verbose: bool = False, headless: bool = False):
     """
     Run a single match between two bots with the given names.
     """
@@ -234,8 +241,9 @@ def run_single_match(bot1_name: str, bot2_name: str, verbose: bool = False):
     turns_fought = logger.get_snapshots()[-1]["turn"]  # Get the last turn number
     snapshots = logger.get_snapshots()
     
-    visualizer = Visualizer(logger, bot1, bot2)
-    visualizer.run(snapshots, False)
+    if not headless:
+        visualizer = Visualizer(logger, bot1, bot2)
+        visualizer.run(snapshots, False)
     
     print(f"Winner: {winner.name if winner != 'Draw' else 'Draw'} after {turns_fought} turns")
 
@@ -248,12 +256,14 @@ def parse_arguments():
     
     # Tournament command
     tournament_parser = subparsers.add_parser("tournament", help="Run a full tournament with all bots")
+    tournament_parser.add_argument("--headless", action="store_true", help="Run without visualization")
     
     # Match command
     match_parser = subparsers.add_parser("match", help="Run a single match between two bots or list available bots")
     match_parser.add_argument("bot1", nargs="?", help="Name of the first bot")
     match_parser.add_argument("bot2", nargs="?", help="Name of the second bot")
     match_parser.add_argument("--verbose", "-v", action="store_true", help="Show detailed match logs")
+    match_parser.add_argument("--headless", action="store_true", help="Run without visualization")
     
     return parser.parse_args()
 
@@ -263,7 +273,8 @@ if __name__ == "__main__":
     
     if args.command == "tournament" or args.command is None:
         # Run the full tournament
-        winner, stats = run_tournament()
+        headless = getattr(args, 'headless', False)
+        winner, stats = run_tournament(headless=headless)
         print(f"Tournament completed with {len(stats['matches'])} matches across {len(stats['rounds'])} rounds")
     
     elif args.command == "match":
@@ -272,8 +283,9 @@ if __name__ == "__main__":
             list_available_bots()
         elif args.bot1 and args.bot2:
             # Run a match between two specific bots
-            run_single_match(args.bot1, args.bot2, args.verbose)
+            headless = getattr(args, 'headless', False)
+            run_single_match(args.bot1, args.bot2, args.verbose, headless=headless)
         else:
             print("Please provide two bot names or use 'list' to see available bots.")
-            print("Usage: python main.py match <bot1> <bot2>")
+            print("Usage: python main.py match <bot1> <bot2> [--headless] [--verbose]")
             print("       python main.py match list")
