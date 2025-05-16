@@ -78,7 +78,18 @@ class RincewindBot(BotInterface):
             self.retreat_mode = True  # Go into retreat mode
             return {"name": "heal"}
             
-        # 2. Shield activation when exposed or when low on health
+        # 2. Teleport to health artifact when HP is low - prioritize over shield
+        if cooldowns["teleport"] == 0 and mana >= 20 and hp <= 40:
+            health_artifacts = [a for a in artifacts if a["type"] == "health"]
+            if health_artifacts:
+                # Find nearest health artifact
+                nearest_health = min(health_artifacts, key=lambda a: self.manhattan_dist(self_pos, a["position"]))
+                return {
+                    "name": "teleport",
+                    "target": nearest_health["position"]
+                }
+            
+        # 3. Shield activation when exposed or when low on health
         if not self_data["shield_active"] and cooldowns["shield"] == 0 and mana >= 20:
             if hp < 50 or self.manhattan_dist(self_pos, opp_pos) <= 3:
                 self.retreat_mode = False  # When we activate shield, be more aggressive
@@ -207,26 +218,18 @@ class RincewindBot(BotInterface):
        
         # 8. Teleport strategy - use teleport to escape or to get close to artifacts
         if cooldowns["teleport"] == 0 and mana >= 20:
-            # Priority 1: Low HP - teleport to health artifact if available
-            health_artifacts = [a for a in artifacts if a["type"] == "health"]
-            if hp < 40 and health_artifacts:
-                # Find nearest health artifact
-                nearest_health = min(health_artifacts, key=lambda a: self.manhattan_dist(self_pos, a["position"]))
-                return {
-                    "name": "teleport",
-                    "target": nearest_health["position"]
-                }
-            # Priority 2: Teleport to any artifact if not in immediate danger
-            elif artifacts and hp > 30 and self.manhattan_dist(self_pos, opp_pos) > 2:
+            # Priority 1: Teleport to any artifact if not in immediate danger
+            if artifacts and hp > 30 and self.manhattan_dist(self_pos, opp_pos) > 2:
                 # Find nearest artifact
                 nearest_artifact = min(artifacts, key=lambda a: self.manhattan_dist(self_pos, a["position"]))
                 return {
                     "name": "teleport",
                     "target": nearest_artifact["position"]
                 }
-            # Priority 3: Emergency teleport if opponent is too close and we're weak
+            # Priority 2: Emergency teleport if opponent is too close and we're weak
             elif hp < 30 and self.manhattan_dist(self_pos, opp_pos) <= 2:
                 # First try to find a health artifact anywhere on the board
+                health_artifacts = [a for a in artifacts if a["type"] == "health"]
                 if health_artifacts:
                     # Ideally find one that's far from opponent
                     best_health = max(health_artifacts, 
