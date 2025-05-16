@@ -6,7 +6,7 @@ from bots.bot_interface import BotInterface
 class RincewindBot(BotInterface):
     def __init__(self):
         self._name = "Rincewind Bot"
-        self._sprite_path = "assets/wizards/red_wizard.png"
+        self._sprite_path = "assets/wizards/rincewind.png"
         self._minion_sprite_path = "assets/minions/green_minion.png"
         self.previous_positions = []
         self.target_position = None

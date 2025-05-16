@@ -2,6 +2,8 @@ import os
 import random
 import importlib
 import inspect
+import sys
+import argparse
 from typing import List, Tuple, Dict, Optional
 from bots.bot_interface import BotInterface
 from simulator.match import run_match
@@ -152,6 +154,27 @@ def discover_bots() -> List[BotInterface]:
 
     return bots
 
+def find_bot_by_name(name: str) -> Optional[BotInterface]:
+    """
+    Find and instantiate a bot by its name.
+    Returns None if no bot with the given name is found.
+    """
+    all_bots = discover_bots()
+    for bot in all_bots:
+        if bot.name.lower() == name.lower():
+            return bot
+    return None
+
+def list_available_bots():
+    """
+    List all available bots in the bots directory.
+    """
+    bots = discover_bots()
+    print(f"Found {len(bots)} bots:")
+    for bot in bots:
+        print(f"- {bot.name}")
+    return bots
+
 def create_pairs(bots: List[BotInterface], losers_stats: Dict[str, int]) -> Tuple[List[Tuple[BotInterface, Optional[BotInterface]]], Optional[BotInterface]]:
     """
     Create pairs of bots for matches.
@@ -190,7 +213,67 @@ def create_pairs(bots: List[BotInterface], losers_stats: Dict[str, int]) -> Tupl
 
     return pairs, lucky_loser
 
+def run_single_match(bot1_name: str, bot2_name: str, verbose: bool = False):
+    """
+    Run a single match between two bots with the given names.
+    """
+    bot1 = find_bot_by_name(bot1_name)
+    bot2 = find_bot_by_name(bot2_name)
+    
+    if not bot1:
+        print(f"Bot '{bot1_name}' not found. Use 'python main.py match list' to see available bots.")
+        return
+    
+    if not bot2:
+        print(f"Bot '{bot2_name}' not found. Use 'python main.py match list' to see available bots.")
+        return
+    
+    print(f"Match: {bot1.name} vs {bot2.name}")
+    winner, logger = run_match(bot1, bot2, verbose=verbose)
+    
+    turns_fought = logger.get_snapshots()[-1]["turn"]  # Get the last turn number
+    snapshots = logger.get_snapshots()
+    
+    visualizer = Visualizer(logger, bot1, bot2)
+    visualizer.run(snapshots, False)
+    
+    print(f"Winner: {winner.name if winner != 'Draw' else 'Draw'} after {turns_fought} turns")
+
+def parse_arguments():
+    """
+    Parse command line arguments for the application.
+    """
+    parser = argparse.ArgumentParser(description="Wizard Battle Tournament")
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+    
+    # Tournament command
+    tournament_parser = subparsers.add_parser("tournament", help="Run a full tournament with all bots")
+    
+    # Match command
+    match_parser = subparsers.add_parser("match", help="Run a single match between two bots or list available bots")
+    match_parser.add_argument("bot1", nargs="?", help="Name of the first bot")
+    match_parser.add_argument("bot2", nargs="?", help="Name of the second bot")
+    match_parser.add_argument("--verbose", "-v", action="store_true", help="Show detailed match logs")
+    
+    return parser.parse_args()
+
 # Example usage
 if __name__ == "__main__":
-    winner, stats = run_tournament()
-    print(f"Tournament completed with {len(stats['matches'])} matches across {len(stats['rounds'])} rounds")
+    args = parse_arguments()
+    
+    if args.command == "tournament" or args.command is None:
+        # Run the full tournament
+        winner, stats = run_tournament()
+        print(f"Tournament completed with {len(stats['matches'])} matches across {len(stats['rounds'])} rounds")
+    
+    elif args.command == "match":
+        if args.bot1 == "list" or (args.bot1 is None and args.bot2 is None):
+            # List available bots
+            list_available_bots()
+        elif args.bot1 and args.bot2:
+            # Run a match between two specific bots
+            run_single_match(args.bot1, args.bot2, args.verbose)
+        else:
+            print("Please provide two bot names or use 'list' to see available bots.")
+            print("Usage: python main.py match <bot1> <bot2>")
+            print("       python main.py match list")
