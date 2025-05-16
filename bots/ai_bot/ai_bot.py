@@ -172,7 +172,7 @@ class PrioritizedReplayBuffer:
 class AIBot(BotInterface):
     def __init__(self):
         super().__init__()
-        self._name = "DQNWizard"
+        self._name = "LorenzosAiWizard"
         self._sprite_path = "assets/wizards/ai_bot.png"
         self._minion_sprite_path = "assets/minions/ai_minion.png"
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -349,121 +349,93 @@ class AIBot(BotInterface):
     def calculate_reward(self, current_state, prev_state):
         if not prev_state:
             return 0
-        
+            
         reward = 0
         
-        # Extract state information
+        # Extract current and previous state information
         curr_hp = current_state['self']['hp']
         prev_hp = prev_state['self']['hp']
-        curr_mana = current_state['self']['mana']
-        prev_mana = prev_state['self']['mana']
         curr_opp_hp = current_state['opponent']['hp']
         prev_opp_hp = prev_state['opponent']['hp']
+        curr_pos = current_state['self']['position']
+        prev_pos = prev_state['self']['position']
+        opp_pos = current_state['opponent']['position']
         
-        # Position-based calculations
-        curr_pos = np.array(current_state['self']['position'])
-        prev_pos = np.array(prev_state['self']['position'])
-        opp_pos = np.array(current_state['opponent']['position'])
-        center_pos = np.array([BOARD_SIZE/2, BOARD_SIZE/2])
+        # Calculate distances
+        dist_to_opp = np.sqrt((curr_pos[0] - opp_pos[0])**2 + (curr_pos[1] - opp_pos[1])**2)
+        prev_dist_to_opp = np.sqrt((prev_pos[0] - opp_pos[0])**2 + (prev_pos[1] - opp_pos[1])**2)
         
-        # 1. Strategic Positioning (0-10 points)
-        dist_to_opp = np.linalg.norm(curr_pos - opp_pos)
-        dist_to_center = np.linalg.norm(curr_pos - center_pos)
-        opp_dist_to_center = np.linalg.norm(opp_pos - center_pos)
-        
-        # Optimal distance varies based on situation
-        if curr_hp < 40:  # Low health - stay away
-            optimal_dist = 5
-        elif current_state['self']['cooldowns'].get('fireball', 0) == 0:  # Can cast fireball
-            optimal_dist = 4
-        else:  # Default medium range
-            optimal_dist = 3
+        # 1. Win/Loss/Draw Rewards (HIGHEST PRIORITY)
+        if curr_opp_hp <= 0:  # Win
+            base_win_reward = 200.0  # Massively increased win reward
+            # Bonus for winning with high health
+            health_bonus = (curr_hp / 100.0) * 100.0  # Increased health bonus
+            # Bonus for winning quickly
+            mana_efficiency = current_state['self']['mana'] / 100.0
+            efficiency_bonus = mana_efficiency * 50.0
+            reward += base_win_reward + health_bonus + efficiency_bonus
+            return reward  # Return immediately on win to emphasize its importance
+        elif curr_hp <= 0:  # Loss
+            penalty = -150.0  # Severe loss penalty
+            # Small reduction in penalty if dealt significant damage
+            if curr_opp_hp < 50:
+                penalty *= 0.9
+            return penalty  # Return immediately on loss
+        elif curr_opp_hp <= 0 and curr_hp <= 0:  # Draw
+            return 20.0  # Moderate reward for draw
             
-        # Position score based on optimal distance
-        position_score = 2.0 * (1.0 / (1.0 + abs(dist_to_opp - optimal_dist)))
+        # 2. Damage Dealing (Second Highest Priority)
+        hp_change = curr_hp - prev_hp
+        opp_hp_change = curr_opp_hp - prev_opp_hp
         
-        # Bonus for controlling center when advantageous
-        if dist_to_center < opp_dist_to_center and curr_hp >= curr_opp_hp:
-            position_score += 1.0
-            
-        reward += position_score
+        # Massive reward for damaging opponent
+        if opp_hp_change < 0:  # Dealt damage
+            damage_dealt = abs(opp_hp_change)
+            efficiency_bonus = 2.0 if hp_change >= 0 else 1.0  # Better reward if no damage taken
+            reward += (damage_dealt / 10.0) * efficiency_bonus * 10.0  # Greatly increased damage reward
         
-        # 2. Health Management (-10 to +10 points)
-        health_diff = curr_hp - prev_hp
-        if health_diff > 0:  # Healing
-            if prev_hp < 30:  # Critical healing
-                reward += health_diff * 0.3
-            elif prev_hp < 60:  # Needed healing
-                reward += health_diff * 0.2
-            else:  # Unnecessary healing
-                reward += health_diff * 0.1
-        else:  # Taking damage
-            if curr_hp < 30:  # Critical damage
-                reward += health_diff * 0.4
-            else:  # Normal damage
-                reward += health_diff * 0.3
-                
-        # 3. Mana Efficiency (-5 to +5 points)
+        # Reduced penalty for taking damage to encourage aggressive play
+        if hp_change < 0:  # Took damage
+            damage_taken = abs(hp_change)
+            trade_factor = 0.3 if opp_hp_change < 0 else 0.7  # Much less penalty if traded damage
+            reward -= (damage_taken / 10.0) * trade_factor * 2.0
+        
+        # 3. Positioning (Only if it helps deal damage)
+        optimal_dist = 3.0  # Optimal distance for spell casting
+        
+        # Only reward positioning if it helps maintain damage-dealing range
+        if abs(dist_to_opp - optimal_dist) < abs(prev_dist_to_opp - optimal_dist):
+            reward += 1.0  # Small reward for better positioning
+        
+        # 4. Resource Management (Focused on damage output)
+        curr_mana = current_state['self']['mana']
+        prev_mana = prev_state['self']['mana']
         mana_used = prev_mana - curr_mana
-        if mana_used > 0:
-            damage_dealt = prev_opp_hp - curr_opp_hp
-            mana_efficiency = damage_dealt / mana_used
-            reward += mana_efficiency * 0.5
-            
-        # 4. Combat Effectiveness (-10 to +10 points)
-        damage_dealt = prev_opp_hp - curr_opp_hp
-        if damage_dealt > 0:
-            # More reward for damaging low-health opponents
-            if curr_opp_hp < 30:
-                reward += damage_dealt * 0.4
-            else:
-                reward += damage_dealt * 0.3
-                
-        # 5. Resource Collection (0 to 5 points)
-        curr_artifacts = set((a['position'][0], a['position'][1]) for a in current_state.get('artifacts', []))
-        prev_artifacts = set((a['position'][0], a['position'][1]) for a in prev_state.get('artifacts', []))
-        collected_artifacts = len(prev_artifacts - curr_artifacts)
         
-        if collected_artifacts > 0:
-            # Higher reward for collecting when resources are low
-            if curr_hp < 50 or curr_mana < 40:
-                reward += collected_artifacts * 2.0
-            else:
-                reward += collected_artifacts * 1.0
-                
-        # 6. Minion Management (-5 to +5 points)
+        if mana_used > 0:  # Used mana
+            if opp_hp_change < 0:  # Mana used resulted in damage
+                reward += 3.0  # Reward for effective mana usage
+            elif hp_change > 0 and curr_hp < 50:  # Healing when low
+                reward += 1.0  # Small reward for necessary healing
+        
+        # 5. Minion Management (Focused on damage potential)
         curr_friendly_minions = len([m for m in current_state.get('minions', []) if m['owner'] == self.name])
         prev_friendly_minions = len([m for m in prev_state.get('minions', []) if m['owner'] == self.name])
-        curr_enemy_minions = len([m for m in current_state.get('minions', []) if m['owner'] != self.name])
         
-        # Reward for effective minion usage
+        # Reward for having damage-dealing minions
         if curr_friendly_minions > prev_friendly_minions:
-            if curr_enemy_minions > 0:  # Summoning against enemy minions
-                reward += 2.0
-            else:  # Normal summoning
-                reward += 1.0
+            reward += 5.0  # Increased reward for summoning
         elif curr_friendly_minions > 0:  # Keeping minions alive
-            reward += 0.5
-            
-        # 7. Tactical Penalties (-5 to 0 points)
-        # Penalize being in corners or edges
-        if (curr_pos[0] in [0, BOARD_SIZE-1] or curr_pos[1] in [0, BOARD_SIZE-1]):
-            reward -= 1.0
-            
-        # Penalize staying still when not beneficial
-        if np.array_equal(curr_pos, prev_pos) and dist_to_opp > optimal_dist:
-            reward -= 0.5
-            
-        # 8. Win/Loss Rewards (-30 to +50 points)
-        if curr_opp_hp <= 0:  # Win
-            base_win_reward = 30.0
-            # Bonus for winning with high health
-            health_bonus = (curr_hp / 100.0) * 20.0
-            reward += base_win_reward + health_bonus
-        elif curr_hp <= 0:  # Loss
-            reward -= 30.0
-        elif curr_opp_hp <= 0 and curr_hp <= 0:  # Draw
-            reward += 5.0
+            reward += 2.0  # Reward for maintaining damage sources
+        
+        # 6. Tactical Positioning (Minimal impact)
+        # Only penalize extremely bad positions
+        if curr_pos[0] in [0, BOARD_SIZE-1] and curr_pos[1] in [0, BOARD_SIZE-1]:
+            reward -= 1.0  # Reduced penalty for corners
+        
+        # Penalize staying still only if not dealing damage
+        if np.array_equal(curr_pos, prev_pos) and opp_hp_change >= 0:
+            reward -= 0.5  # Small penalty for passive play
             
         return reward
 

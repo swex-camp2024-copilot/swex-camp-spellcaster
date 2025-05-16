@@ -11,7 +11,7 @@ class CombatState(Enum):
 
 class TacticalBot(BotInterface):
     def __init__(self):
-        self._name = "Tactical Bot"
+        self._name = "LorenzosTacticalBot"
         self._sprite_path = "assets/wizards/tactical_bot.png"
         self._minion_sprite_path = "assets/minions/tactical_minion.png"
         
