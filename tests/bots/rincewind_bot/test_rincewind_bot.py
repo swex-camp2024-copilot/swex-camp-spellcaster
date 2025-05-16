@@ -57,7 +57,7 @@ class TestRincewindBot(unittest.TestCase):
         }
         
         decision = self.bot.decide(state)
-        
+
         # Bot should move toward opponent (positive in both x and y)
         self.assertEqual(decision["move"], [1, 1])
         
@@ -139,7 +139,7 @@ class TestRincewindBot(unittest.TestCase):
                 "mana": 50,
                 "cooldowns": {"fireball": 0, "shield": 0, "heal": 0, 
                              "teleport": 0, "blink": 0, "summon": 0, "melee_attack": 0},
-                "shield_active": False,
+                "shield_active": True,
                 "name": "Rincewind Bot"
             },
             "opponent": {
