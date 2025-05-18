@@ -1,6 +1,6 @@
 ---
-description:
-globs:
+description: 
+globs: bots/kevin_link/**
 alwaysApply: false
 ---
 # Bot Strategies and Tactics
