@@ -90,7 +90,7 @@ class GameLogger:
     
     def _log_event(self, event_data):
         """Print event data to console for debugging"""
-        print(f"Turn {event_data['turn']} | EVENT: {event_data['event']} | {event_data['details']}")
+        # print(f"Turn {event_data['turn']} | EVENT: {event_data['event']} | {event_data['details']}")
 
     def log_event_turn_start(self, turn):
         event_data = {

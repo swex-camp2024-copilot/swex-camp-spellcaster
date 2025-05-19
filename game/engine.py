@@ -218,7 +218,7 @@ class GameEngine:
                             ):
                                 # Only damage enemy entities
                                 splash_damage_hit = True
-                                print(self.turn, " splash_damage")
+                                # print(self.turn, " splash_damage")
                                 splash_damage = FIREBALL_SPLASH_DAMAGE
                                 if hasattr(splash_entity, "shield_active") and splash_entity.shield_active:
                                     splash_damage = max(0, splash_damage - SPELLS["shield"]["block"])
@@ -514,7 +514,7 @@ class GameEngine:
         self.logger.log(f"{name2} takes {damage2} damage (HP: {entity2.hp})")
 
         # Move entities apart to adjacent tiles
-        print("TURN ", self.turn, ": COLLISION")
+        # print("TURN ", self.turn, ": COLLISION")
         entity1.position = position
         entity2.position = position
         self.logger.log_state(self.build_input(self.wizard1, self.wizard2))

@@ -4,3 +4,5 @@ gymnasium
 azure-ai-ml
 azure-identity
 python-dotenv
+matplotlib
+tqdm

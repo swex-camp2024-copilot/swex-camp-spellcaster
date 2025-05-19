@@ -131,13 +131,19 @@ def discover_bots() -> List[BotInterface]:
 
     # Skip these directories as they don't contain bot implementations
     skip_dirs = {"__pycache__", "bot_interface"}
+    # Skip these files as they're not bot implementations
+    skip_files = {"bot_interface.py"}
 
     for root, dirs, files in os.walk(bots_dir):
         # Skip interface and __pycache__ directories
         dirs[:] = [d for d in dirs if d not in skip_dirs]
 
         for file in files:
-            if file.endswith(".py") and not file.startswith("__"):
+            # Skip the bot_interface.py file and any __init__ files
+            if (file.endswith(".py") and 
+                not file.startswith("__") and 
+                file not in skip_files):
+                
                 # Construct the module path
                 relative_path = os.path.relpath(root, os.getcwd())
                 module_path = relative_path.replace(os.sep, ".") + "." + file[:-3]
