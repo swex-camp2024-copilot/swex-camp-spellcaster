@@ -44,6 +44,20 @@ pip-compile requirements.in
 pip install -r requirements.txt
 ```
 
+### 4. Run a Tournament
+
+The `playground.py` script allows you to run tournaments between bots:
+
+```bash
+# Run a single tournament
+python playground.py 1
+
+# Run 100 tournaments and track win rates
+python playground.py 100
+```
+
+By default, the script tracks win rate for the "Kevin Link" bot. You can modify the target bot name in the script.
+
 ---
 
 ## 🧠 Bot Interface
@@ -81,6 +95,27 @@ Spell format is defined as below:
 Spell name must be one of the values defined in rules.py. Position is a tuple representing coordinates on the board.
 
 Spells shield and heal do not require target to be provided.
+
+---
+
+## 🤖 Testing Your Bot
+
+You can use the `playground.py` script to test your bot against others:
+
+1. **Run a Single Tournament**:
+   ```bash
+   python playground.py 1
+   ```
+   This will run one tournament with all available bots.
+
+2. **Run Multiple Tournaments**:
+   ```bash
+   python playground.py 100
+   ```
+   This will run 100 tournaments and calculate win rates for the target bot.
+
+3. **Analyze Bot Performance**:
+   The script outputs match results and final win rates, which you can use to analyze and improve your bot's strategy.
 
 ---
 
