@@ -69,7 +69,7 @@ class KevinLink(BotInterface):
                 return {"move": [0, 0], "spell": {"name": "shield"}}
         
         # Early Artifact Racing: teleport or blink to critical artifacts by turn 3 when health or mana is critical
-        if self._turn_count <= 3 and artifacts and (hp <= 60 or mana <= 40):
+        if self._turn_count <= 3 and artifacts and (hp <= 60 or mana <= 60):
             best_artifact = self._choose_best_artifact(artifacts, self_pos, opp_pos, hp, mana)
             if best_artifact:
                 art_pos = best_artifact["position"]
@@ -429,6 +429,11 @@ class KevinLink(BotInterface):
         if not artifacts:
             return None
             
+        # Check if there are health or mana artifacts available
+        has_health_artifacts = any(a["type"] == "health" for a in artifacts)
+        has_mana_artifacts = any(a["type"] == "mana" for a in artifacts)
+        has_critical_need = hp <= 50 or mana <= 40
+        
         scored_artifacts = []
         for artifact in artifacts:
             score = 0
@@ -444,7 +449,11 @@ class KevinLink(BotInterface):
             elif mana <= 40 and artifact["type"] == "mana":
                 score += 40 - mana  # Higher bonus when mana is lower
             elif artifact["type"] == "cooldown":
-                score += 25  # Increased value for cooldown reduction
+                # Avoid cooldown artifacts when health/mana artifacts are available and we have critical needs
+                if has_critical_need and (has_health_artifacts or has_mana_artifacts):
+                    score -= 20  # Heavy penalty when better options exist
+                else:
+                    score += 15  # Reduced value when it's the only option or no critical need
                 
             # Strategic positioning
             enemy_distance = self.dist(artifact_pos, opp_pos)
