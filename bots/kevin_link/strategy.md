@@ -106,3 +106,144 @@ The bot follows a strict decision priority system:
   - Integrates with general movement system for consistent behavior
 
 By combining these strategic elements, Kevin Link employs consistent tactical decision-making with enhanced positional awareness, making it a formidable and unpredictable wizard in the arena.
+
+## Decision Flow Visualization
+
+The following flowchart illustrates the complete decision-making process of the Kevin Link bot:
+
+```mermaid
+flowchart TD
+    A[Start Turn] --> B[Update State Tracking]
+    B --> C[Track Enemy Positions & Patterns]
+    C --> D[Update Game Phase & Attack Detection]
+    D --> E{First Round?}
+    
+    E -->|Yes| F[Cast Shield if Available]
+    E -->|No| G{Early Game & Critical Resources?}
+    
+    G -->|Yes, HP ≤ 60 OR Mana ≤ 60| H[Early Artifact Racing]
+    H --> I{Artifact Distance > 2?}
+    I -->|Yes| J[Teleport to Best Artifact]
+    I -->|No| K{Distance > 1?}
+    K -->|Yes| L[Blink Toward Artifact]
+    K -->|No| M[Continue to Priority System]
+    
+    G -->|No| M
+    F --> M
+    J --> END[Execute Action]
+    L --> END
+    
+    M --> N[Priority 1: Emergency Response]
+    N --> O{HP ≤ 60 & Not Shielded?}
+    O -->|Yes| P[Cast Shield]
+    O -->|No| Q{HP ≤ 30?}
+    Q -->|Yes| R[Emergency Heal]
+    Q -->|No| S{Under Heavy Attack?}
+    S -->|Yes| T{Distance ≤ 3?}
+    T -->|Yes| U[Emergency Blink Away]
+    T -->|No| V{HP ≤ 35?}
+    V -->|Yes| W[Teleport to Health Artifact]
+    V -->|No| X[Priority 2: Offensive Opportunity]
+    S -->|No| X
+    
+    X --> Y{HP > Opponent + 20?}
+    Y -->|Yes| Z{Opponent Shielded?}
+    Z -->|No| AA{Distance ≤ 5?}
+    AA -->|Yes| BB[Fireball with Prediction]
+    AA -->|No| CC{Adjacent?}
+    CC -->|Yes| DD[Melee Attack]
+    CC -->|No| EE[Aggressive Blink]
+    Z -->|Yes| FF[Priority 3: Resource Strategy]
+    Y -->|No| FF
+    
+    FF --> GG{HP ≤ 50 OR Mana ≤ 40?}
+    GG -->|Yes| HH[Find Best Artifact]
+    HH --> II{Critical Need & Better Options?}
+    II -->|Yes| JJ[Avoid Cooldown Artifacts]
+    II -->|No| KK[Consider All Artifacts]
+    JJ --> LL{Distance ≥ 5 OR Critical?}
+    KK --> LL
+    LL -->|Yes| MM[Teleport to Artifact]
+    LL -->|No| NN{Distance > 1?}
+    NN -->|Yes| OO[Blink Toward Artifact]
+    NN -->|No| PP[Move Toward Artifact]
+    GG -->|No| QQ[Priority 4: Minion Management]
+    
+    QQ --> RR{Turn ≤ 2 & No Minions?}
+    RR -->|Yes| SS[Summon Defensive Minion]
+    SS --> TT[Position 2+ Squares Away]
+    TT --> UU[Avoid Board Edges 1-8]
+    RR -->|No| VV{Need More Minions?}
+    VV -->|Yes| WW[Strategic Summon Position]
+    VV -->|No| XX[Priority 5: Positional Advantage]
+    
+    XX --> YY{Distance ≤ 4 & Not Shielded?}
+    YY -->|Yes| ZZ{HP ≤ 70?}
+    ZZ -->|Yes| AAA[Cast Shield]
+    ZZ -->|No| BBB{Distance ≤ 5 & Mana ≥ 40?}
+    BBB -->|Yes| CCC{Random 10%?}
+    CCC -->|Yes| DDD[Proactive Shield]
+    CCC -->|No| EEE[Priority 6: Movement]
+    YY -->|No| FFF{HP ≤ 75 & Distance ≥ 4?}
+    FFF -->|Yes| GGG[Heal]
+    FFF -->|No| HHH{Need Distance Adjustment?}
+    HHH -->|Yes| III[Blink to Optimal Distance]
+    HHH -->|No| EEE
+    BBB -->|No| EEE
+    
+    EEE --> JJJ{Need Artifacts?}
+    JJJ -->|Yes, HP ≤ 70 OR Mana ≤ 60| KKK[Move Toward Best Artifact]
+    JJJ -->|No| LLL{Low HP & Close?}
+    LLL -->|Yes, HP ≤ 40 & Distance ≤ 3| MMM[Safe Retreat]
+    LLL -->|No| NNN{At Optimal Distance?}
+    NNN -->|No| OOO{Too Close?}
+    OOO -->|Yes| PPP[Move Away]
+    OOO -->|No| QQQ[Move Closer]
+    NNN -->|Yes| RRR[Intelligent Strafe]
+    
+    %% All decision paths lead to action execution
+    P --> END
+    R --> END
+    U --> END
+    W --> END
+    BB --> END
+    DD --> END
+    EE --> END
+    MM --> END
+    OO --> END
+    PP --> END
+    UU --> END
+    WW --> END
+    AAA --> END
+    DDD --> END
+    GGG --> END
+    III --> END
+    KKK --> END
+    MMM --> END
+    PPP --> END
+    QQQ --> END
+    RRR --> END
+    
+    END --> SSS[Return Move + Spell Action]
+    
+    %% Styling for different priority levels
+    classDef emergency fill:#ff6b6b,stroke:#d63031,color:#fff
+    classDef offensive fill:#fd79a8,stroke:#e84393,color:#fff
+    classDef resource fill:#fdcb6e,stroke:#e17055,color:#000
+    classDef minion fill:#6c5ce7,stroke:#5f3dc4,color:#fff
+    classDef position fill:#74b9ff,stroke:#0984e3,color:#fff
+    classDef movement fill:#55a3ff,stroke:#2d3436,color:#fff
+    classDef decision fill:#00b894,stroke:#00a085,color:#fff
+    classDef artifact fill:#e17055,stroke:#d63031,color:#fff
+    
+    class N,O,P,Q,R,S,T,U,V,W emergency
+    class X,Y,Z,AA,BB,CC,DD,EE offensive
+    class FF,GG,HH,II,JJ,KK,LL,MM,NN,OO,PP resource
+    class QQ,RR,SS,TT,UU,VV,WW minion
+    class XX,YY,ZZ,AAA,BBB,CCC,DDD,FFF,GGG,HHH,III position
+    class EEE,JJJ,KKK,LLL,MMM,NNN,OOO,PPP,QQQ,RRR movement
+    class G,H,I,J,K,L artifact
+    class A,B,C,D,E,F,M,END,SSS decision
+```
+
+This flowchart demonstrates the sophisticated decision-making hierarchy that makes Kevin Link a formidable tactical wizard, with each priority level building upon comprehensive state analysis and strategic positioning.
