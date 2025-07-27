@@ -37,14 +37,14 @@ This implementation plan converts the feature design into a series of incrementa
 
 ### 2. Player Management System
 
-- [ ] 2.1 Implement `DatabaseService` class in `/backend/app/services/database.py`
+- [x] 2.1 Implement `DatabaseService` class in `/backend/app/services/database.py`
   - Create SQLite database connection and session management
   - Implement CRUD operations for players, sessions, and game results
   - Add database migration support and table creation
   - Handle database connection pooling and error recovery
   - **Requirements**: Database persistence for all player and session data
 
-- [ ] 2.2 Implement `PlayerRegistry` class in `/backend/app/services/player_registry.py`
+- [x] 2.2 Implement `PlayerRegistry` class in `/backend/app/services/player_registry.py`
   - Create player registration, retrieval, and statistics tracking
   - Integrate `DatabaseService` with `PlayerRegistry` for player storage
   - Implement built-in player pre-registration functionality
@@ -52,13 +52,13 @@ This implementation plan converts the feature design into a series of incrementa
   - Handle UUID generation and player data management
   - **Requirements**: 1.1, 1.3, 1.4, 1.5 (Persistent player registration and metadata)
 
-- [ ] 2.3 Create player registration API endpoints in `/backend/app/api/players.py`
+- [x] 2.3 Create player registration API endpoints in `/backend/app/api/players.py`
   - Implement `POST /players/register` endpoint
   - Add input validation and error handling
   - Wire endpoint to `PlayerRegistry` service
   - **Requirements**: 1.1, 1.6, 1.7 (Player registration endpoint with validation)
 
-- [ ] 2.4 Write comprehensive tests for player management
+- [x] 2.4 Write comprehensive tests for player management
   - Unit tests for `PlayerRegistry` functionality
   - Integration tests for player registration endpoints
   - Test error scenarios and edge cases
