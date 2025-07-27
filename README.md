@@ -24,39 +24,132 @@ Bots receive structured game state input each turn and return an action (move + 
 
 ## 🚀 Quick Start
 
-### 1. Create and Activate a Virtual Environment
+### Prerequisites
+
+- Python 3.9 or higher
+- [UV package manager](https://github.com/astral-sh/uv) (recommended) or pip
+
+### 1. Install UV (if not already installed)
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
+# On macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# On Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Or with pip
+pip install uv
 ```
 
-### 2. Install pip-tools and Compile Requirements
+### 2. Install Dependencies
 
 ```bash
-pip install pip-tools
-pip-compile requirements.in 
+# Install production dependencies
+uv sync
+
+# Or install with development tools
+uv sync --all-extras
 ```
 
-### 3. Install Dependencies
+### 3. Run a Tournament
 
 ```bash
-pip install -r requirements.txt
-```
+# Using UV
+uv run python main.py tournament
 
-### 4. Run a Tournament
+# Or run without visualization (headless mode)
+uv run python main.py tournament --headless
 
-The `playground.py` script allows you to run tournaments between bots:
-
-```bash
-# Run a single tournament
+# Using the convenience script (legacy)
 python playground.py 1
-
-# Run 100 tournaments and track win rates
-python playground.py 100
 ```
 
-By default, the script tracks win rate for the "Kevin Link" bot. You can modify the target bot name in the script.
+### 4. Development Setup (for contributors)
+
+```bash
+# Complete development setup
+uv sync --all-extras
+uv run pre-commit install
+```
+
+---
+
+## 🛠️ Development Tools
+
+This project uses modern Python development tools for code quality and consistency:
+
+### Package Management
+- **UV**: Fast Python package manager and resolver
+- **pyproject.toml**: Modern Python project configuration
+
+### Code Quality Tools
+- **Ruff**: Fast Python linter and formatter (replaces flake8, black, isort)
+- **Bandit**: Security vulnerability scanner
+- **pytest**: Testing framework with coverage reporting
+- **pre-commit**: Git hooks for code quality
+
+### Build Commands
+
+All development tasks can be run using UV commands:
+```bash
+# Development setup
+uv sync --all-extras                    # Install all dependencies
+uv run pre-commit install               # Setup git hooks
+
+# Code quality
+uv run ruff check .                     # Lint code
+uv run ruff format .                    # Format code
+uv run ruff format --check .            # Check formatting
+uv run bandit -r .                      # Security scan
+uv run pytest                          # Run tests
+uv run pytest --cov-report=html        # Generate coverage report
+
+# Pre-commit hooks
+uv run pre-commit run --all-files       # Run all hooks
+
+# Build and clean
+uv build                               # Build package
+rm -rf dist/ build/ *.egg-info/ .pytest_cache/ .coverage htmlcov/ .ruff_cache/
+
+# Run the game
+uv run python main.py tournament                # Run tournament
+uv run python main.py tournament --headless    # Run without visualization
+uv run python main.py match list               # List available bots
+uv run python main.py match <bot1> <bot2>      # Run specific match
+
+# Convenience aliases for common workflows
+uv run ruff check . && uv run ruff format --check . && uv run bandit -r . && uv run pytest  # Run all checks
+```
+
+### CI/CD Pipeline
+
+The project includes a comprehensive GitHub Actions workflow (`.github/workflows/ci.yml`) that runs on every push and pull request:
+
+1. **Linting**: Ruff checks for code style and potential issues
+2. **Security**: Bandit scans for security vulnerabilities  
+3. **Testing**: pytest runs tests across Python 3.9-3.12
+4. **Building**: Package build verification
+
+### Migration from Legacy Setup
+
+If you're migrating from the old pip-based setup:
+
+1. **Install UV**: Follow the installation instructions above
+2. **Remove old virtual environment**: `rm -rf venv/` (optional)
+3. **Install with UV**: `uv sync --all-extras`
+4. **Setup development tools**: `uv run pre-commit install`
+5. **Update your workflow**: Use `uv run` instead of direct Python calls
+
+**Legacy files maintained for compatibility:**
+- `requirements.txt` - Generated from `requirements.in`, still used by some bots
+- `playground.py` - Original tournament runner script
+- Virtual environment workflows still work if you prefer them
+
+**New recommended workflow:**
+- `pyproject.toml` - Modern Python project configuration
+- `uv` commands for dependency management and task execution
+- GitHub Actions for CI/CD
 
 ---
 
