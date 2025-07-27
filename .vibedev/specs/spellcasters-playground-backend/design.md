@@ -37,15 +37,17 @@ graph TB
     end
     
     subgraph "Bot Layer"
-        BUILTIN[Built-in Bots]
-        EVAL[Bot Evaluator]
         INTERFACE[Bot Interface]
+        BUILTIN[Built-in Bots]
+        PLAYER[Player Bots]
     end
     
     subgraph "Storage Layer"
         MEMORY[In-Memory State]
         LOGS[Match Logs]
         STATS[Player Stats]
+        HISTORY[Move History]
+        RESULTS[Game Results]
     end
     
     WEB --> API
@@ -54,15 +56,16 @@ graph TB
     API --> SESSION
     SESSION --> MATCH
     MATCH --> ENGINE
-    MATCH --> BUILTIN
-    MATCH --> EVAL
+    MATCH --> INTERFACE
     ENGINE --> RULES
     ENGINE --> LOGGER
-    EVAL --> INTERFACE
-    BUILTIN --> INTERFACE
+    INTERFACE --> BUILTIN
+    INTERFACE --> PLAYER
     SESSION --> MEMORY
     LOGGER --> LOGS
+    LOGGER --> HISTORY
     API --> STATS
+    MATCH --> RESULTS
 ```
 
 ### Technology Stack
@@ -77,47 +80,7 @@ graph TB
 
 ## Data Models
 
-### Core Database Schema
-
-While the system uses in-memory storage, here are the logical data models:
-
-```python
-# Player Management
-players: Dict[str, Player] = {}
-
-# Session State
-sessions: Dict[str, SessionState] = {}
-
-# Match Logs (File-based)
-# logs/playground/{session_id}.log
-
-# SSE Connections
-sse_connections: Dict[str, List[SSEConnection]] = {}
-```
-
-### State Management
-
-```python
-class StateManager:
-    """Centralized state management for all backend components"""
-    
-    def __init__(self):
-        self.players = PlayerRegistry()
-        self.sessions = SessionRegistry()
-        self.connections = SSEConnectionManager()
-    
-    async def cleanup_expired_sessions(self) -> None:
-        """Periodic cleanup of inactive sessions"""
-    
-    async def get_system_stats(self) -> SystemStats:
-        """Get current system statistics"""
-```
-
-## Components and Interfaces
-
-### 1. Player Registration System
-
-#### Data Models
+### Player Models
 
 ```python
 class PlayerRegistration(BaseModel):
@@ -133,7 +96,262 @@ class Player(BaseModel):
     losses: int = 0
     draws: int = 0
     created_at: datetime
+
+class PlayerRegistrationResponse(BaseModel):
+    player_id: str
+    message: str
 ```
+
+### Game State Models
+
+```python
+class GameState(BaseModel):
+    session_id: str
+    player_1: PlayerSlot
+    player_2: PlayerSlot
+    current_game_state: Dict[str, Any]
+    match_log: List[str]
+    turn_index: int
+    status: SessionStatus
+    created_at: datetime
+    last_activity: datetime
+
+class PlayerSlot(BaseModel):
+    player_id: Optional[str]  # None for built-in bots
+    bot_instance: Optional[BotInterface]
+    connection_handle: Optional[str]  # SSE connection ID
+    is_builtin: bool = False
+
+class SessionStatus(str, Enum):
+    WAITING = "waiting"
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+```
+
+### Game Action Models
+
+```python
+class PlayerAction(BaseModel):
+    player_id: str
+    turn: int
+    action: ActionData
+
+class ActionData(BaseModel):
+    move: Optional[List[int]] = None  # [dx, dy]
+    spell: Optional[SpellAction] = None
+
+class SpellAction(BaseModel):
+    name: str
+    target: Optional[List[int]] = None  # [x, y] for targeted spells
+
+class Move(BaseModel):
+    """Represent the move made by one player in a single round"""
+    player_id: str
+    turn: int
+    timestamp: datetime
+    move: Optional[List[int]]  # [dx, dy]
+    spell: Optional[SpellAction]
+    result: MoveResult
+
+class MoveResult(BaseModel):
+    success: bool
+    damage_dealt: int = 0
+    damage_received: int = 0
+    position_after: List[int]  # [x, y]
+    events: List[str]  # Descriptive events for this move
+
+class MoveHistory(BaseModel):
+    """Capture all the moves made by both players in a game"""
+    session_id: str
+    moves: List[Move]
+    total_turns: int
+    
+    def get_moves_by_player(self, player_id: str) -> List[Move]:
+        """Get all moves for a specific player"""
+        return [move for move in self.moves if move.player_id == player_id]
+    
+    def get_moves_by_turn(self, turn: int) -> List[Move]:
+        """Get all moves for a specific turn"""
+        return [move for move in self.moves if move.turn == turn]
+```
+
+### Game Result Models
+
+```python
+class GameResult(BaseModel):
+    """The outcome of the game and other stats"""
+    session_id: str
+    winner: Optional[str]  # player_id of winner, None for draw
+    loser: Optional[str]   # player_id of loser, None for draw
+    result_type: GameResultType
+    total_rounds: int
+    first_player: str  # player_id of who started first
+    game_duration: float  # Duration in seconds
+    final_scores: Dict[str, PlayerGameStats]
+    end_condition: str  # "hp_zero", "max_turns", "timeout", "forfeit"
+    created_at: datetime
+
+class GameResultType(str, Enum):
+    WIN = "win"
+    LOSS = "loss"
+    DRAW = "draw"
+
+class PlayerGameStats(BaseModel):
+    player_id: str
+    final_hp: int
+    final_mana: int
+    final_position: List[int]
+    damage_dealt: int
+    damage_received: int
+    spells_cast: int
+    artifacts_collected: int
+```
+
+### SSE Event Models
+
+```python
+class SSETurnEvent(BaseModel):
+    event: Literal["turn_update"] = "turn_update"
+    turn: int
+    game_state: Dict[str, Any]
+    actions: List[PlayerActionResult]
+    events: List[str]
+    log_line: str
+
+class SSEGameOverEvent(BaseModel):
+    event: Literal["game_over"] = "game_over"
+    winner: Optional[str]
+    final_state: Dict[str, Any]
+    match_summary: MatchSummary
+
+class PlayerActionResult(BaseModel):
+    player_id: str
+    action: ActionData
+    result: MoveResult
+
+class MatchSummary(BaseModel):
+    session_id: str
+    winner: Optional[str]
+    total_turns: int
+    duration: float
+    end_condition: str
+```
+
+### Bot Interface Models
+
+```python
+class BotInterface(ABC):
+    """Standardized interface for all bots (built-in and player)"""
+    
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Bot identification name"""
+    
+    @property
+    def player_id(self) -> str:
+        """Unique player ID for backend tracking"""
+    
+    @property
+    def sprite_path(self) -> Optional[str]:
+        """Return path to wizard sprite (optional)"""
+        return None
+    
+    @property
+    def minion_sprite_path(self) -> Optional[str]:
+        """Return path to minion sprite (optional)"""
+        return None
+    
+    @abstractmethod
+    def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Main decision method called by game engine"""
+    
+    @property
+    def is_builtin(self) -> bool:
+        """Flag indicating if this is a built-in bot"""
+        return False
+
+class BotInfo(BaseModel):
+    bot_id: str
+    name: str
+    player_id: str
+    difficulty: str
+    description: Optional[str] = None
+```
+
+### Error Models
+
+```python
+class ErrorResponse(BaseModel):
+    error: str
+    message: str
+    details: Optional[Dict[str, Any]] = None
+    session_id: Optional[str] = None
+
+class PlaygroundError(Exception):
+    """Base exception for all playground errors"""
+    
+class SessionNotFoundError(PlaygroundError):
+    """Session does not exist"""
+    
+class InvalidActionError(PlaygroundError):
+    """Player action is invalid"""
+    
+class BotExecutionError(PlaygroundError):
+    """Error in bot code execution"""
+    
+class TimeoutError(PlaygroundError):
+    """Operation timed out"""
+```
+
+### Core Database Schema
+
+While the system uses in-memory storage, here are the logical data models:
+
+```python
+# Player Management
+players: Dict[str, Player] = {}
+
+# Game State
+sessions: Dict[str, GameState] = {}
+
+# Match Logs (File-based)
+# logs/playground/{session_id}.log
+
+# SSE Connections
+sse_connections: Dict[str, List[SSEConnection]] = {}
+
+# Move History
+move_histories: Dict[str, MoveHistory] = {}
+
+# Game Results
+game_results: Dict[str, GameResult] = {}
+```
+
+### State Management
+
+```python
+class StateManager:
+    """Centralized state management for all backend components"""
+    
+    def __init__(self):
+        self.players = PlayerRegistry()
+        self.sessions = SessionRegistry()
+        self.connections = SSEConnectionManager()
+        self.move_histories = MoveHistoryManager()
+        self.game_results = GameResultManager()
+    
+    async def cleanup_expired_sessions(self) -> None:
+        """Periodic cleanup of inactive sessions"""
+    
+    async def get_system_stats(self) -> SystemStats:
+        """Get current system statistics"""
+```
+
+## Components and Interfaces
+
+### 1. Player Registration System
 
 #### API Endpoints
 
@@ -152,33 +370,12 @@ async def register_player(registration: PlayerRegistration) -> PlayerRegistratio
 
 ### 2. Session Management System
 
-#### Session State Model
-
-```python
-class SessionState(BaseModel):
-    session_id: str
-    player_1: PlayerSlot
-    player_2: PlayerSlot
-    current_game_state: Dict[str, Any]
-    match_log: List[str]
-    turn_index: int
-    status: SessionStatus
-    created_at: datetime
-    last_activity: datetime
-
-class PlayerSlot(BaseModel):
-    player_id: Optional[str]  # None for built-in bots
-    bot_instance: Optional[BotInterface]
-    connection_handle: Optional[str]  # SSE connection ID
-    is_builtin: bool = False
-```
-
 #### Session Manager Component
 
 ```python
 class SessionManager:
     def __init__(self):
-        self.sessions: Dict[str, SessionState] = {}
+        self.sessions: Dict[str, GameState] = {}
         self.match_loops: Dict[str, asyncio.Task] = {}
         self.sse_connections: Dict[str, List[SSEConnection]] = {}
     
@@ -190,24 +387,6 @@ class SessionManager:
 ```
 
 ### 3. Real-time Match Streaming (SSE)
-
-#### SSE Event Models
-
-```python
-class SSETurnEvent(BaseModel):
-    event: Literal["turn_update"] = "turn_update"
-    turn: int
-    game_state: Dict[str, Any]
-    actions: List[PlayerActionResult]
-    events: List[str]
-    log_line: str
-
-class SSEGameOverEvent(BaseModel):
-    event: Literal["game_over"] = "game_over"
-    winner: Optional[str]
-    final_state: Dict[str, Any]
-    match_summary: MatchSummary
-```
 
 #### SSE Implementation
 
@@ -274,41 +453,6 @@ class GameEngineAdapter:
 - **Logging Integration**: Connect game logger with match logging system
 
 ### 5. Built-in Bot System
-
-#### Bot Interface Standardization
-
-```python
-class BotInterface(ABC):
-    """Standardized interface for all bots (built-in and player)"""
-    
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Bot identification name"""
-    
-    @property
-    def player_id(self) -> str:
-        """Unique player ID for backend tracking"""
-    
-    @property
-    def sprite_path(self) -> Optional[str]:
-        """Return path to wizard sprite (optional)"""
-        return None
-    
-    @property
-    def minion_sprite_path(self) -> Optional[str]:
-        """Return path to minion sprite (optional)"""
-        return None
-    
-    @abstractmethod
-    def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Main decision method called by game engine"""
-    
-    @property
-    def is_builtin(self) -> bool:
-        """Flag indicating if this is a built-in bot"""
-        return False
-```
 
 #### Built-in Bot Registry
 
@@ -392,23 +536,6 @@ class PlayerBot(BotInterface):
 
 ### 6. Player Action Processing
 
-#### Action Models
-
-```python
-class PlayerAction(BaseModel):
-    player_id: str
-    turn: int
-    action: ActionData
-
-class ActionData(BaseModel):
-    move: Optional[List[int]] = None  # [dx, dy]
-    spell: Optional[SpellAction] = None
-
-class SpellAction(BaseModel):
-    name: str
-    target: Optional[List[int]] = None  # [x, y] for targeted spells
-```
-
 #### Turn Processing Pipeline
 
 ```python
@@ -433,34 +560,7 @@ class TurnProcessor:
 
 ## Error Handling
 
-### Error Hierarchy
 
-```python
-class PlaygroundError(Exception):
-    """Base exception for all playground errors"""
-    
-class SessionNotFoundError(PlaygroundError):
-    """Session does not exist"""
-    
-class InvalidActionError(PlaygroundError):
-    """Player action is invalid"""
-    
-class BotExecutionError(PlaygroundError):
-    """Error in bot code execution"""
-    
-class TimeoutError(PlaygroundError):
-    """Operation timed out"""
-```
-
-### Error Response Models
-
-```python
-class ErrorResponse(BaseModel):
-    error: str
-    message: str
-    details: Optional[Dict[str, Any]] = None
-    session_id: Optional[str] = None
-```
 
 ### Global Error Handlers
 
@@ -501,14 +601,10 @@ tests/
 │   ├── test_bot_evaluator.py
 │   ├── test_game_engine_adapter.py
 │   └── test_sse_streaming.py
-├── integration/
-│   ├── test_full_match_flow.py
-│   ├── test_builtin_bots.py
-│   └── test_concurrent_sessions.py
-└── security/
-    ├── test_bot_sandbox.py
-    ├── test_input_validation.py
-    └── test_timeout_enforcement.py
+└── integration/
+    ├── test_full_match_flow.py
+    ├── test_builtin_bots.py
+    └── test_concurrent_sessions.py
 ```
 
 ### Testing Frameworks and Tools
@@ -524,9 +620,6 @@ tests/
 
 1. **Unit Tests**: Individual component testing
 2. **Integration Tests**: Full workflow testing
-3. **Security Tests**: Bot sandbox and input validation
-4. **Performance Tests**: Concurrent session handling
-5. **Regression Tests**: Ensure existing functionality
 
 ### Mock Strategies
 
@@ -567,20 +660,6 @@ class MockSSEConnection:
 3. **XSS Prevention**: HTML escaping for any displayed content
 4. **Rate Limiting**: Prevent abuse of endpoints
 
-### Session Security
-
-1. **Session Isolation**: Separate session state per match
-2. **Connection Management**: Proper SSE connection cleanup
-3. **Access Control**: Validate player permissions for actions
-4. **Audit Logging**: Log all security-relevant events
-
-### Infrastructure Security
-
-1. **CORS Configuration**: Restrict cross-origin requests
-2. **HTTPS Only**: Force secure connections in production
-3. **Header Security**: Implement security headers
-4. **Resource Limits**: Prevent DoS via resource exhaustion
-
 ## Performance Optimization
 
 ### Concurrency Design
@@ -589,13 +668,6 @@ class MockSSEConnection:
 - **Connection Pooling**: Efficient SSE connection management
 - **Task Queues**: Background processing for heavy operations
 - **Batch Processing**: Group operations where possible
-
-### Memory Management
-
-- **Session Cleanup**: Automatic cleanup of expired sessions
-- **Connection Limits**: Maximum concurrent SSE connections
-- **Data Structures**: Efficient data structures for state storage
-- **Garbage Collection**: Explicit cleanup of large objects
 
 ### Monitoring and Metrics
 
@@ -705,7 +777,4 @@ backend/
 - **Type Hints**: Full type annotation for all functions
 - **Documentation**: Comprehensive docstrings
 - **Linting**: Black formatting and pylint compliance
-- **Testing**: Minimum 80% code coverage
 - **Security**: Regular security reviews
-
-This design provides a comprehensive foundation for implementing the spellcasters-playground-backend with proper security, scalability, and maintainability considerations. 
