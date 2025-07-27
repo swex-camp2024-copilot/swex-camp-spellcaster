@@ -51,12 +51,13 @@ graph TB
     end
     
     WEB --> API
-    BOT --> API
+    BOT --> PLAYER
     API --> SSE
     API --> SESSION
     SESSION --> MATCH
     MATCH --> ENGINE
     MATCH --> INTERFACE
+    PLAYER --> MATCH
     ENGINE --> RULES
     ENGINE --> LOGGER
     INTERFACE --> BUILTIN
@@ -86,20 +87,52 @@ graph TB
 class PlayerRegistration(BaseModel):
     player_name: str = Field(..., min_length=1, max_length=50)
     submitted_from: Literal["pasted", "upload"] = "pasted"
+    sprite_path: Optional[str] = None
+    minion_sprite_path: Optional[str] = None
 
 class Player(BaseModel):
     player_id: str = Field(..., description="UUID string")
     player_name: str
     submitted_from: str
+    sprite_path: Optional[str] = None
+    minion_sprite_path: Optional[str] = None
     total_matches: int = 0
     wins: int = 0
     losses: int = 0
     draws: int = 0
     created_at: datetime
+```
 
-class PlayerRegistrationResponse(BaseModel):
+### Bot Interface Models
+
+```python
+class BotInterface(ABC):
+    """Standardized interface for all bots (built-in and player)"""
+    
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Bot identification name"""
+    
+    @property
+    def player_id(self) -> str:
+        """Unique player ID for backend tracking"""
+    
+    @abstractmethod
+    def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Main decision method called by game engine"""
+    
+    @property
+    def is_builtin(self) -> bool:
+        """Flag indicating if this is a built-in bot"""
+        return False
+
+class BotInfo(BaseModel):
+    bot_id: str
+    name: str
     player_id: str
-    message: str
+    difficulty: str
+    description: Optional[str] = None
 ```
 
 ### Game State Models
@@ -112,7 +145,7 @@ class GameState(BaseModel):
     current_game_state: Dict[str, Any]
     match_log: List[str]
     turn_index: int
-    status: SessionStatus
+    status: TurnStatus
     created_at: datetime
     last_activity: datetime
 
@@ -122,7 +155,7 @@ class PlayerSlot(BaseModel):
     connection_handle: Optional[str]  # SSE connection ID
     is_builtin: bool = False
 
-class SessionStatus(str, Enum):
+class TurnStatus(str, Enum):
     WAITING = "waiting"
     ACTIVE = "active"
     COMPLETED = "completed"
@@ -132,19 +165,6 @@ class SessionStatus(str, Enum):
 ### Game Action Models
 
 ```python
-class PlayerAction(BaseModel):
-    player_id: str
-    turn: int
-    action: ActionData
-
-class ActionData(BaseModel):
-    move: Optional[List[int]] = None  # [dx, dy]
-    spell: Optional[SpellAction] = None
-
-class SpellAction(BaseModel):
-    name: str
-    target: Optional[List[int]] = None  # [x, y] for targeted spells
-
 class Move(BaseModel):
     """Represent the move made by one player in a single round"""
     player_id: str
@@ -153,6 +173,10 @@ class Move(BaseModel):
     move: Optional[List[int]]  # [dx, dy]
     spell: Optional[SpellAction]
     result: MoveResult
+
+class SpellAction(BaseModel):
+    name: str
+    target: Optional[List[int]] = None  # [x, y] for targeted spells
 
 class MoveResult(BaseModel):
     success: bool
@@ -208,76 +232,27 @@ class PlayerGameStats(BaseModel):
     artifacts_collected: int
 ```
 
-### SSE Event Models
+### Turn Event Models
 
 ```python
-class SSETurnEvent(BaseModel):
+class TurnEvent(BaseModel):
     event: Literal["turn_update"] = "turn_update"
     turn: int
     game_state: Dict[str, Any]
-    actions: List[PlayerActionResult]
+    actions: List[MoveResult]
     events: List[str]
     log_line: str
 
-class SSEGameOverEvent(BaseModel):
+class GameOverEvent(BaseModel):
     event: Literal["game_over"] = "game_over"
     winner: Optional[str]
     final_state: Dict[str, Any]
-    match_summary: MatchSummary
+    game_result: GameResult
 
-class PlayerActionResult(BaseModel):
+class PlayerTurnResult(BaseModel):
     player_id: str
-    action: ActionData
+    action: Move
     result: MoveResult
-
-class MatchSummary(BaseModel):
-    session_id: str
-    winner: Optional[str]
-    total_turns: int
-    duration: float
-    end_condition: str
-```
-
-### Bot Interface Models
-
-```python
-class BotInterface(ABC):
-    """Standardized interface for all bots (built-in and player)"""
-    
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Bot identification name"""
-    
-    @property
-    def player_id(self) -> str:
-        """Unique player ID for backend tracking"""
-    
-    @property
-    def sprite_path(self) -> Optional[str]:
-        """Return path to wizard sprite (optional)"""
-        return None
-    
-    @property
-    def minion_sprite_path(self) -> Optional[str]:
-        """Return path to minion sprite (optional)"""
-        return None
-    
-    @abstractmethod
-    def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Main decision method called by game engine"""
-    
-    @property
-    def is_builtin(self) -> bool:
-        """Flag indicating if this is a built-in bot"""
-        return False
-
-class BotInfo(BaseModel):
-    bot_id: str
-    name: str
-    player_id: str
-    difficulty: str
-    description: Optional[str] = None
 ```
 
 ### Error Models
@@ -289,18 +264,6 @@ class ErrorResponse(BaseModel):
     details: Optional[Dict[str, Any]] = None
     session_id: Optional[str] = None
 
-class PlaygroundError(Exception):
-    """Base exception for all playground errors"""
-    
-class SessionNotFoundError(PlaygroundError):
-    """Session does not exist"""
-    
-class InvalidActionError(PlaygroundError):
-    """Player action is invalid"""
-    
-class BotExecutionError(PlaygroundError):
-    """Error in bot code execution"""
-    
 class TimeoutError(PlaygroundError):
     """Operation timed out"""
 ```
@@ -356,9 +319,9 @@ class StateManager:
 #### API Endpoints
 
 ```python
-@app.post("/players/register", response_model=PlayerRegistrationResponse)
-async def register_player(registration: PlayerRegistration) -> PlayerRegistrationResponse:
-    """Register a new player and return generated player_id"""
+@app.post("/players/register", response_model=Player)
+async def register_player(registration: PlayerRegistration) -> Player:
+    """Register a new player and return player data with generated player_id"""
 ```
 
 #### Storage Design
@@ -382,7 +345,7 @@ class SessionManager:
     async def create_session(self, player_configs: List[PlayerConfig]) -> str
     async def start_match_loop(self, session_id: str) -> None
     async def add_sse_connection(self, session_id: str, connection: SSEConnection) -> None
-    async def submit_action(self, session_id: str, player_id: str, action: PlayerAction) -> None
+    async def submit_action(self, session_id: str, player_id: str, action: Move) -> None
     async def cleanup_session(self, session_id: str) -> None
 ```
 
@@ -435,7 +398,7 @@ class GameEngineAdapter:
     def initialize_match(self, bot1: BotInterface, bot2: BotInterface) -> GameEngine:
         """Initialize game engine with bot instances"""
         
-    def execute_turn(self, actions: List[PlayerAction]) -> TurnResult:
+    def execute_turn(self, actions: List[Move]) -> TurnResult:
         """Execute a single turn with player actions"""
         
     def get_game_state(self) -> Dict[str, Any]:
@@ -467,10 +430,16 @@ class BuiltinBotRegistry:
             "class": SampleBot1,
             "difficulty": "easy"
         },
-        "tactical_bot": {
-            "name": "Tactical Bot",
-            "player_id": "builtin_tactical",
-            "class": TacticalBot,
+        "sample_bot_2": {
+            "name": "Sample Bot 1",
+            "player_id": "builtin_sample_2",
+            "class": SampleBot2,
+            "difficulty": "easy"
+        },
+        "sample_bot_3": {
+            "name": "Sample Bot 3",
+            "player_id": "builtin_sample_3",
+            "class": SampleBot3,
             "difficulty": "medium"
         }
     }
@@ -496,8 +465,6 @@ class PlayerBot(BotInterface):
         self._player_id = player_id
         self._name = player_name
         self._bot_code = bot_code
-        self._sprite_path = None  # Default sprite
-        self._minion_sprite_path = None  # Default minion sprite
     
     @property
     def name(self) -> str:
@@ -506,14 +473,6 @@ class PlayerBot(BotInterface):
     @property
     def player_id(self) -> str:
         return self._player_id
-    
-    @property
-    def sprite_path(self) -> Optional[str]:
-        return self._sprite_path
-    
-    @property
-    def minion_sprite_path(self) -> Optional[str]:
-        return self._minion_sprite_path
     
     def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Execute player's bot code with the given game state"""
@@ -544,15 +503,15 @@ class TurnProcessor:
     
     def __init__(self, timeout_seconds: float = 5.0):
         self.timeout = timeout_seconds
-        self.pending_actions: Dict[str, Dict[str, PlayerAction]] = {}
+        self.pending_actions: Dict[str, Dict[str, Move]] = {}
     
-    async def collect_actions(self, session_id: str, expected_players: List[str]) -> Dict[str, PlayerAction]:
+    async def collect_actions(self, session_id: str, expected_players: List[str]) -> Dict[str, Move]:
         """Collect actions from all players with timeout"""
     
-    async def validate_action(self, action: PlayerAction, game_state: Dict[str, Any]) -> bool:
+    async def validate_action(self, action: Move, game_state: Dict[str, Any]) -> bool:
         """Validate action against current game rules"""
     
-    async def process_turn(self, session_id: str, actions: Dict[str, PlayerAction]) -> TurnResult:
+    async def process_turn(self, session_id: str, actions: Dict[str, Move]) -> TurnResult:
         """Process complete turn with all player actions"""
 ```
 
