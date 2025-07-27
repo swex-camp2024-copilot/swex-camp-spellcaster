@@ -1,13 +1,15 @@
 """Result models for game outcomes in the Spellcasters Playground Backend."""
 
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, List
 from datetime import datetime
 from enum import Enum
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class GameResultType(str, Enum):
     """Enumeration of possible game result types."""
+
     WIN = "win"
     LOSS = "loss"
     DRAW = "draw"
@@ -15,6 +17,7 @@ class GameResultType(str, Enum):
 
 class PlayerGameStats(BaseModel):
     """Individual player statistics for a completed game."""
+
     player_id: str = Field(..., description="Player identifier")
     player_name: str = Field(..., description="Player display name")
     final_hp: int = Field(..., description="Final hit points")
@@ -25,7 +28,7 @@ class PlayerGameStats(BaseModel):
     spells_cast: int = Field(default=0, description="Number of spells cast")
     artifacts_collected: int = Field(default=0, description="Number of artifacts collected")
     turns_played: int = Field(default=0, description="Number of turns participated")
-    
+
     @property
     def survived(self) -> bool:
         """Check if player survived the match."""
@@ -34,6 +37,7 @@ class PlayerGameStats(BaseModel):
 
 class GameResult(BaseModel):
     """Complete game result with all details."""
+
     session_id: str = Field(..., description="Session identifier")
     winner: Optional[str] = Field(default=None, description="Winner player ID (None for draw)")
     loser: Optional[str] = Field(default=None, description="Loser player ID (None for draw)")
@@ -44,23 +48,23 @@ class GameResult(BaseModel):
     final_scores: Dict[str, PlayerGameStats] = Field(..., description="Final statistics for each player")
     end_condition: str = Field(..., description="How the game ended")
     created_at: datetime = Field(default_factory=datetime.now, description="Result timestamp")
-    
+
     def get_player_stats(self, player_id: str) -> Optional[PlayerGameStats]:
         """Get statistics for a specific player."""
         return self.final_scores.get(player_id)
-    
+
     def get_winner_stats(self) -> Optional[PlayerGameStats]:
         """Get statistics for the winner."""
         if self.winner:
             return self.final_scores.get(self.winner)
         return None
-    
+
     def get_loser_stats(self) -> Optional[PlayerGameStats]:
         """Get statistics for the loser."""
         if self.loser:
             return self.final_scores.get(self.loser)
         return None
-    
+
     def determine_result_for_player(self, player_id: str) -> GameResultType:
         """Determine the result type from a specific player's perspective."""
         if self.result_type == GameResultType.DRAW:
@@ -73,6 +77,7 @@ class GameResult(BaseModel):
 
 class MatchOutcome(BaseModel):
     """Simple match outcome model for quick results."""
+
     session_id: str = Field(..., description="Session identifier")
     winner_id: Optional[str] = Field(default=None, description="Winner player ID")
     winner_name: Optional[str] = Field(default=None, description="Winner player name")
@@ -86,9 +91,10 @@ class MatchOutcome(BaseModel):
 
 class PlayerMatchResult(BaseModel):
     """Player-specific match result for statistics updates."""
+
     player_id: str = Field(..., description="Player identifier")
     result: GameResultType = Field(..., description="Result from this player's perspective")
     opponent_id: str = Field(..., description="Opponent player identifier")
     session_id: str = Field(..., description="Session identifier")
     stats: PlayerGameStats = Field(..., description="Player's game statistics")
-    match_date: datetime = Field(default_factory=datetime.now, description="When the match completed") 
+    match_date: datetime = Field(default_factory=datetime.now, description="When the match completed")

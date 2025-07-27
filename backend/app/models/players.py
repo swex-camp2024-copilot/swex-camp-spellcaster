@@ -1,13 +1,14 @@
 """Player models for the Spellcasters Playground Backend."""
 
-from pydantic import BaseModel, Field
-from typing import Optional, Literal
 from datetime import datetime
-from uuid import uuid4
+from typing import Literal, Optional
+
+from pydantic import BaseModel, Field
 
 
 class PlayerRegistration(BaseModel):
     """Request model for player registration."""
+
     player_name: str = Field(..., min_length=1, max_length=50, description="Player display name")
     submitted_from: Literal["pasted", "upload"] = Field(default="pasted", description="How the bot was submitted")
     sprite_path: Optional[str] = Field(default=None, description="Path to player sprite image")
@@ -16,6 +17,7 @@ class PlayerRegistration(BaseModel):
 
 class Player(BaseModel):
     """Player model with complete player information and statistics."""
+
     player_id: str = Field(..., description="Unique player identifier (UUID)")
     player_name: str = Field(..., description="Player display name")
     submitted_from: str = Field(..., description="How the bot was submitted")
@@ -48,7 +50,8 @@ class Player(BaseModel):
 
 class PlayerConfig(BaseModel):
     """Configuration for players in a game session."""
+
     player_id: str = Field(..., description="Player ID to use in the session")
     bot_type: Literal["builtin", "player"] = Field(..., description="Type of bot")
     bot_id: Optional[str] = Field(default=None, description="Bot ID for built-in bots")
-    is_human: bool = Field(default=False, description="True if this is a human player using SSE") 
+    is_human: bool = Field(default=False, description="True if this is a human player using SSE")

@@ -1,26 +1,21 @@
 """Database configuration and management for the Spellcasters Playground Backend."""
 
-from sqlmodel import SQLModel, create_engine
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from typing import AsyncGenerator
 import logging
+from collections.abc import AsyncGenerator
+
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel
 
 from .config import settings
 
 logger = logging.getLogger(__name__)
 
 # Create async engine
-engine = create_async_engine(
-    settings.database_url,
-    echo=settings.database_echo,
-    future=True
-)
+engine = create_async_engine(settings.database_url, echo=settings.database_echo, future=True)
 
 # Async session factory
-async_session_factory = sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
-)
+async_session_factory = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
 async def create_tables() -> None:
@@ -28,8 +23,7 @@ async def create_tables() -> None:
     try:
         async with engine.begin() as conn:
             # Import all models to ensure they are registered
-            from ..models.database import PlayerDB, SessionDB, GameResultDB
-            
+
             await conn.run_sync(SQLModel.metadata.create_all)
             logger.info("Database tables created/verified successfully")
     except Exception as e:
@@ -53,4 +47,4 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 async def close_db() -> None:
     """Close database connections."""
     await engine.dispose()
-    logger.info("Database connections closed") 
+    logger.info("Database connections closed")
