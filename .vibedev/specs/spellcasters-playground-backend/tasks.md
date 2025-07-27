@@ -10,7 +10,8 @@ This implementation plan converts the feature design into a series of incrementa
 
 - [ ] 1.1 Create FastAPI project structure in `/backend` directory
   - Set up directory structure with `app/`, `tests/`, and configuration files
-  - Create `requirements.txt` with FastAPI, Pydantic, asyncio dependencies
+  - Update `pyproject.toml`/`requirements.txt` with FastAPI, Pydantic, SQLModel, SQLite dependencies
+  - Initialize SQLite database and create database directory structure
   - Initialize `main.py` with basic FastAPI app
   - **Requirements**: Foundation for all backend functionality
 
@@ -20,6 +21,8 @@ This implementation plan converts the feature design into a series of incrementa
   - Create `events.py` with SSE event models (`SSETurnEvent`, `SSEGameOverEvent`)
   - Create `actions.py` with `PlayerAction`, `ActionData`, `Move`, `MoveHistory` models
   - Create `results.py` with `GameResult`, `GameResultType`, `PlayerGameStats` models
+  - Create `database.py` with SQLModel database models (`PlayerDB`, `SessionDB`, `GameResultDB`)
+  - Set up database connection and table creation logic
   - **Requirements**: 1.4, 2.3, 3.2, 4.3, 7.3, 8.4 (Data models for all system components)
 
 - [ ] 1.3 Create error handling framework in `/backend/app/core/exceptions.py`
@@ -34,19 +37,28 @@ This implementation plan converts the feature design into a series of incrementa
 
 ### 2. Player Management System
 
-- [ ] 2.1 Implement `PlayerRegistry` class in `/backend/app/services/player_registry.py`
-  - Create player registration, retrieval, and statistics tracking
-  - Implement built-in player pre-registration functionality
-  - Handle UUID generation and player data management
-  - **Requirements**: 1.1, 1.3, 1.4, 1.5 (Player registration and metadata tracking)
+- [ ] 2.1 Implement `DatabaseService` class in `/backend/app/services/database.py`
+  - Create SQLite database connection and session management
+  - Implement CRUD operations for players, sessions, and game results
+  - Add database migration support and table creation
+  - Handle database connection pooling and error recovery
+  - **Requirements**: Database persistence for all player and session data
 
-- [ ] 2.2 Create player registration API endpoints in `/backend/app/api/players.py`
+- [ ] 2.2 Implement `PlayerRegistry` class in `/backend/app/services/player_registry.py`
+  - Create player registration, retrieval, and statistics tracking
+  - Integrate `DatabaseService` with `PlayerRegistry` for player storage
+  - Implement built-in player pre-registration functionality
+  - Replace in-memory storage with database operations
+  - Handle UUID generation and player data management
+  - **Requirements**: 1.1, 1.3, 1.4, 1.5 (Persistent player registration and metadata)
+
+- [ ] 2.3 Create player registration API endpoints in `/backend/app/api/players.py`
   - Implement `POST /players/register` endpoint
   - Add input validation and error handling
   - Wire endpoint to `PlayerRegistry` service
   - **Requirements**: 1.1, 1.6, 1.7 (Player registration endpoint with validation)
 
-- [ ] 2.3 Write comprehensive tests for player management
+- [ ] 2.4 Write comprehensive tests for player management
   - Unit tests for `PlayerRegistry` functionality
   - Integration tests for player registration endpoints
   - Test error scenarios and edge cases
@@ -204,43 +216,73 @@ This implementation plan converts the feature design into a series of incrementa
   - Verify log file format and data integrity
   - **Requirements**: Testing strategy for data persistence and replay accuracy
 
-### 9. System Integration and Error Handling
+### 9. Admin Management System
 
-- [ ] 9.1 Implement global error handlers in `/backend/app/core/error_handlers.py`
+- [ ] 9.1 Implement `AdminService` class in `/backend/app/services/admin_service.py`
+  - Create admin operations for player and session management
+  - Implement player statistics aggregation and formatting
+  - Add active session monitoring and cleanup functionality
+  - Handle administrative logging and audit trails
+  - **Requirements**: 12.1, 12.2, 12.3, 12.4 (Administrative monitoring and management capabilities)
+
+- [ ] 9.2 Create admin API endpoints in `/backend/app/api/admin.py`
+  - Implement `GET /admin/players` endpoint with player statistics
+  - Implement `GET /playground/active` endpoint for session monitoring
+  - Implement `DELETE /playground/{session_id}` endpoint for session cleanup
+  - Add proper error handling and validation for admin operations
+  - **Requirements**: 12.1, 12.3, 12.5, 12.8 (Admin endpoints for system monitoring and management)
+
+- [ ] 9.3 Integrate admin functionality with existing services
+  - Connect `AdminService` with `SessionManager` for session cleanup
+  - Wire admin endpoints to database service for player information
+  - Implement graceful session termination with SSE client notification
+  - Add admin action logging for audit purposes
+  - **Requirements**: 12.6, 12.7 (Complete admin system integration)
+
+- [ ] 9.4 Write tests for admin management system
+  - Unit tests for `AdminService` functionality
+  - Integration tests for admin API endpoints
+  - Test session cleanup and client notification scenarios
+  - Test error handling for invalid admin operations
+  - **Requirements**: Testing strategy for admin system reliability
+
+### 10. System Integration and Error Handling
+
+- [ ] 10.1 Implement global error handlers in `/backend/app/core/error_handlers.py`
   - Create FastAPI exception handlers for all custom exceptions
   - Add proper HTTP status codes and error responses
   - Implement security-aware error logging
-  - **Requirements**: 9.1, 9.3, 9.4, 9.5, 9.6 (Global error handling and meaningful messages)
+  - **Requirements**: 10.1, 10.3, 10.4, 10.5, 10.6 (Global error handling and meaningful messages)
 
-- [ ] 9.2 Create application state management in `/backend/app/core/state.py`
+- [ ] 10.2 Create application state management in `/backend/app/core/state.py`
   - Implement `StateManager` with all service integrations
   - Add lifecycle management for all components
   - Create system health and statistics endpoints
   - **Requirements**: Central state coordination and system monitoring
 
-- [ ] 9.3 Wire all components together in `/backend/app/main.py`
+- [ ] 10.3 Wire all components together in `/backend/app/main.py`
   - Initialize all services and register API routes
   - Add proper dependency injection and configuration
   - Implement application startup and shutdown hooks
   - **Requirements**: Complete system integration
 
-- [ ] 9.4 Write comprehensive integration tests
+- [ ] 10.4 Write comprehensive integration tests
   - End-to-end tests for complete match workflows
   - Test concurrent session handling and SSE streaming
   - Verify proper component integration and data flow
   - **Requirements**: Testing strategy for system reliability
 
-### 10. Security and Validation
+### 11. Security and Validation
 
-- [ ] 10.1 Implement input validation middleware in `/backend/app/core/validation.py`
+- [ ] 11.1 Implement input validation middleware in `/backend/app/core/validation.py`
   - Add comprehensive request validation for all endpoints
   - Implement rate limiting and abuse prevention
   - Create security headers and CORS configuration
   - Test input validation and error scenarios
   - Security tests for malformed requests and edge cases
-  - **Requirements**: 9.7 (Input validation and security measures)
+  - **Requirements**: 10.7 (Input validation and security measures)
 
-- [ ] 10.2 Add bot execution safety measures
+- [ ] 11.2 Add bot execution safety measures
   - Implement timeout enforcement for bot decisions
   - Add error handling for bot execution failures
   - Create resource monitoring and limits

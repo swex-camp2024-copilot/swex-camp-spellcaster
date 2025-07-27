@@ -149,6 +149,22 @@ The Spellcasters Playground Backend is a FastAPI-based system that powers the "P
 2. The system SHALL use asyncio for efficient async request handling
 3. The system SHALL implement single-threaded match loops per session for isolation
 4. The system SHALL maintain acceptable response times under concurrent load
-5. The system SHALL manage memory usage efficiently for session state storage
-6. The system SHALL handle SSE connections efficiently for multiple clients
-7. The system SHALL provide performance monitoring capabilities for system health 
+5. The system SHALL persist session state and player data to SQLite database
+6. The system SHALL manage database connections efficiently for concurrent access
+7. The system SHALL provide database migration support for schema changes
+8. The system SHALL handle SSE connections efficiently for multiple clients
+9. The system SHALL provide performance monitoring capabilities for system health
+
+### 12. Admin Management System
+
+**User Story**: As a system administrator, I want to monitor and manage the playground system so that I can ensure smooth operation during the hackathon.
+
+**Acceptance Criteria**:
+1. The system SHALL provide a GET /admin/players endpoint to list all registered players
+2. The system SHALL include player statistics and registration details in the admin player listing
+3. The system SHALL provide a GET /playground/active endpoint to list all currently active sessions
+4. The system SHALL include session status, participants, and duration in active session listings
+5. The system SHALL provide a DELETE /playground/{session_id} endpoint for administrative session cleanup
+6. The system SHALL gracefully terminate sessions and notify connected clients during admin cleanup
+7. The system SHALL log all administrative actions for audit purposes
+8. The system SHALL return appropriate error responses for invalid session IDs in admin operations 

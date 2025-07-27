@@ -40,10 +40,9 @@ graph TB
     end
     
     subgraph "Storage Layer"
-        MEMORY[In-Memory State]
+        DATABASE[SQLite Database]
         LOGS[Match Logs]
-        HISTORY[Move History]
-        RESULTS[Game Results]
+        MEMORY[Session Cache]
     end
     
     WEB --> API
@@ -63,9 +62,9 @@ graph TB
     INTERFACE --> PLAYERBOT
     SESSION --> MEMORY
     LOGGER --> LOGS
-    LOGGER --> HISTORY
-    PLAYERS --> RESULTS
-    MATCH --> RESULTS
+    PLAYERS --> DATABASE
+    MATCH --> DATABASE
+    SESSION --> DATABASE
 ```
 
 ### Technology Stack
@@ -73,6 +72,7 @@ graph TB
 - **Framework**: FastAPI 0.104+ with async/await support
 - **Real-time**: Server-Sent Events (SSE) via StreamingResponse
 - **Concurrency**: asyncio for session management
+- **Database**: SQLite with SQLModel for data persistence and ORM
 - **Security**: Restricted execution sandbox for bot code
 - **Validation**: Pydantic models for request/response validation
 - **Game Engine**: Integration with existing `/game` directory components
@@ -345,28 +345,100 @@ class TimeoutError(PlaygroundError):
     """Operation timed out"""
 ```
 
-### Core Database Schema
-
-While the system uses in-memory storage, here are the logical data models:
+### Database Models (SQLModel)
 
 ```python
-# Player Management
-player_registry: PlayerRegistry = PlayerRegistry()
+class PlayerDB(SQLModel, table=True):
+    """Database model for persistent player storage"""
+    __tablename__ = "players"
+    
+    player_id: str = Field(primary_key=True)
+    player_name: str = Field(index=True)
+    submitted_from: str
+    sprite_path: Optional[str] = None
+    minion_sprite_path: Optional[str] = None
+    total_matches: int = 0
+    wins: int = 0
+    losses: int = 0
+    draws: int = 0
+    created_at: datetime = Field(default_factory=datetime.now)
+    is_builtin: bool = False
 
-# Game State
+class SessionDB(SQLModel, table=True):
+    """Database model for session persistence"""
+    __tablename__ = "sessions"
+    
+    session_id: str = Field(primary_key=True)
+    player_1_id: str = Field(foreign_key="players.player_id")
+    player_2_id: str = Field(foreign_key="players.player_id")
+    status: str
+    created_at: datetime = Field(default_factory=datetime.now)
+    completed_at: Optional[datetime] = None
+    winner_id: Optional[str] = None
+
+class GameResultDB(SQLModel, table=True):
+    """Database model for persistent game results"""
+    __tablename__ = "game_results"
+    
+    session_id: str = Field(primary_key=True, foreign_key="sessions.session_id")
+    winner_id: Optional[str] = Field(foreign_key="players.player_id")
+    loser_id: Optional[str] = Field(foreign_key="players.player_id")
+    result_type: str
+    total_rounds: int
+    game_duration: float
+    end_condition: str
+    created_at: datetime = Field(default_factory=datetime.now)
+```
+
+### Core Data Storage
+
+```python
+# Database (SQLite with SQLModel)
+database_service: DatabaseService = DatabaseService("sqlite:///./playground.db")
+
+# In-Memory Cache for Active Sessions
 sessions: Dict[str, GameState] = {}
 
 # Match Logs (File-based)
 # logs/playground/{session_id}.log
 
-# SSE Connections
+# SSE Connections (In-Memory)
 sse_connections: Dict[str, List[SSEConnection]] = {}
+```
 
-# Move History
-move_histories: Dict[str, MoveHistory] = {}
+### State Management
 
-# Game Results
-game_results: Dict[str, GameResult] = {}
+```python
+### Database Service
+
+```python
+class DatabaseService:
+    """Centralized database operations for all models"""
+    
+    def __init__(self, database_url: str = "sqlite:///./playground.db"):
+        self.engine = create_engine(database_url)
+        SQLModel.metadata.create_all(self.engine)
+    
+    async def create_player(self, player: Player) -> PlayerDB:
+        """Persist player to database"""
+        
+    async def get_player(self, player_id: str) -> Optional[PlayerDB]:
+        """Retrieve player from database"""
+        
+    async def update_player_stats(self, player_id: str, result: GameResult) -> None:
+        """Update player statistics in database"""
+        
+    async def list_all_players(self) -> List[PlayerDB]:
+        """List all players for admin endpoint"""
+        
+    async def create_session_record(self, session: GameState) -> SessionDB:
+        """Create session record in database"""
+        
+    async def get_active_sessions(self) -> List[SessionDB]:
+        """Get all active sessions for admin endpoint"""
+        
+    async def complete_session(self, session_id: str, result: GameResult) -> None:
+        """Mark session as completed and store result"""
 ```
 
 ### State Management
@@ -376,11 +448,11 @@ class StateManager:
     """Centralized state management for all backend components"""
     
     def __init__(self):
-        self.player_registry = PlayerRegistry()  # Manages both user and built-in players
-        self.sessions = SessionRegistry()
+        self.database = DatabaseService()  # Database persistence
+        self.player_registry = PlayerRegistry(self.database)  # Manages both user and built-in players
+        self.sessions = SessionRegistry()  # In-memory active sessions
         self.connections = SSEConnectionManager()
-        self.move_histories = MoveHistoryManager()
-        self.game_results = GameResultManager()
+        self.admin_service = AdminService(self.database)
     
     async def cleanup_expired_sessions(self) -> None:
         """Periodic cleanup of inactive sessions"""
@@ -395,6 +467,68 @@ class StateManager:
     def get_builtin_bot(self, bot_id: str) -> BotInterface:
         """Get built-in bot instance"""
         return BuiltinBotRegistry.create_bot(bot_id)
+```
+
+### Admin Management System
+
+#### Admin Service Component
+
+```python
+class AdminService:
+    """Service for administrative operations"""
+    
+    def __init__(self, db_service: DatabaseService, session_manager: SessionManager):
+        self.db = db_service
+        self.session_manager = session_manager
+    
+    async def list_all_players(self) -> List[AdminPlayerInfo]:
+        """Get all players with statistics for admin view"""
+        
+    async def get_active_sessions(self) -> List[AdminSessionInfo]:
+        """Get all currently active playground sessions"""
+        
+    async def cleanup_session(self, session_id: str) -> bool:
+        """Administratively terminate a session"""
+
+class AdminPlayerInfo(BaseModel):
+    """Player information for admin endpoints"""
+    player_id: str
+    player_name: str
+    submitted_from: str
+    total_matches: int
+    wins: int
+    losses: int
+    draws: int
+    win_rate: float
+    created_at: datetime
+    is_builtin: bool
+
+class AdminSessionInfo(BaseModel):
+    """Session information for admin endpoints"""
+    session_id: str
+    player_1_name: str
+    player_2_name: str
+    status: str
+    turn_index: int
+    duration_minutes: float
+    created_at: datetime
+    last_activity: datetime
+```
+
+#### Admin API Endpoints
+
+```python
+@app.get("/admin/players", response_model=List[AdminPlayerInfo])
+async def list_all_players() -> List[AdminPlayerInfo]:
+    """List all registered players with statistics"""
+
+@app.get("/playground/active", response_model=List[AdminSessionInfo])  
+async def list_active_sessions() -> List[AdminSessionInfo]:
+    """List all currently active playground sessions"""
+
+@app.delete("/playground/{session_id}")
+async def cleanup_session(session_id: str) -> Dict[str, str]:
+    """Administratively cleanup a session"""
 ```
 
 ## Components and Interfaces
