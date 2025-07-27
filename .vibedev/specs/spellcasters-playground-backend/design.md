@@ -4,14 +4,6 @@
 
 The Spellcasters Playground Backend is a FastAPI-based real-time multiplayer bot battle system designed for hackathon environments. The system enables participants to register, submit Python bots, and engage in turn-based matches with live streaming via Server-Sent Events (SSE). The backend integrates with the existing game engine while providing comprehensive match logging, replay functionality, and secure bot code execution.
 
-### Key Design Principles
-
-- **Real-time Communication**: SSE-based streaming for live match updates
-- **Security First**: Restricted bot code execution and input validation
-- **Scalability**: Support for concurrent matches using asyncio
-- **Integration**: Seamless integration with existing game engine
-- **Incremental Development**: Each component builds on previous implementations
-
 ## Architecture
 
 ### High-Level Architecture
@@ -110,17 +102,61 @@ class Player(BaseModel):
     draws: int = 0
     created_at: datetime
     is_builtin: bool = False  # True for built-in players
-
-class BuiltinPlayerConfig(BaseModel):
-    """Configuration for built-in players"""
-    player_id: str
-    player_name: str
-    sprite_path: str
-    minion_sprite_path: str
-    description: Optional[str] = None
 ```
 
-### Bot Interface Models
+### Player Registry
+
+```python
+class PlayerRegistry:
+    """Manages all players (both user-registered and built-in)"""
+    
+    def __init__(self):
+        self.players: Dict[str, Player] = {}
+        # Pre-register built-in players
+        self._register_builtin_players()
+    
+    def _register_builtin_players(self) -> None:
+        """Register all built-in players at startup"""
+        for player in BuiltinBotRegistry.BUILTIN_PLAYERS.values():
+            self.players[player.player_id] = player
+    
+    def register_player(self, registration: PlayerRegistration) -> Player:
+        """Register a new user player"""
+        player = Player(
+            player_id=str(uuid4()),
+            player_name=registration.player_name,
+            submitted_from=registration.submitted_from,
+            sprite_path=registration.sprite_path,
+            minion_sprite_path=registration.minion_sprite_path,
+            created_at=datetime.now()
+        )
+        self.players[player.player_id] = player
+        return player
+    
+    def get_player(self, player_id: str) -> Optional[Player]:
+        """Get player by ID"""
+        return self.players.get(player_id)
+    
+    def update_player_stats(self, player_id: str, result: GameResult) -> None:
+        """Update player statistics after a match"""
+        player = self.players.get(player_id)
+        if player:
+            player.total_matches += 1
+            if result.winner == player_id:
+                player.wins += 1
+            elif result.result_type == GameResultType.DRAW:
+                player.draws += 1
+            else:
+                player.losses += 1
+    
+    def list_players(self, include_builtin: bool = True) -> List[Player]:
+        """List all players"""
+        if include_builtin:
+            return list(self.players.values())
+        return [p for p in self.players.values() if not p.is_builtin]
+```
+
+### Bot Models
 
 ```python
 class BotInterface(ABC):
@@ -309,58 +345,6 @@ class TimeoutError(PlaygroundError):
     """Operation timed out"""
 ```
 
-### Player Registry
-
-```python
-class PlayerRegistry:
-    """Manages all players (both user-registered and built-in)"""
-    
-    def __init__(self):
-        self.players: Dict[str, Player] = {}
-        # Pre-register built-in players
-        self._register_builtin_players()
-    
-    def _register_builtin_players(self) -> None:
-        """Register all built-in players at startup"""
-        for player in BuiltinBotRegistry.BUILTIN_PLAYERS.values():
-            self.players[player.player_id] = player
-    
-    def register_player(self, registration: PlayerRegistration) -> Player:
-        """Register a new user player"""
-        player = Player(
-            player_id=str(uuid4()),
-            player_name=registration.player_name,
-            submitted_from=registration.submitted_from,
-            sprite_path=registration.sprite_path,
-            minion_sprite_path=registration.minion_sprite_path,
-            created_at=datetime.now()
-        )
-        self.players[player.player_id] = player
-        return player
-    
-    def get_player(self, player_id: str) -> Optional[Player]:
-        """Get player by ID"""
-        return self.players.get(player_id)
-    
-    def update_player_stats(self, player_id: str, result: GameResult) -> None:
-        """Update player statistics after a match"""
-        player = self.players.get(player_id)
-        if player:
-            player.total_matches += 1
-            if result.winner == player_id:
-                player.wins += 1
-            elif result.result_type == GameResultType.DRAW:
-                player.draws += 1
-            else:
-                player.losses += 1
-    
-    def list_players(self, include_builtin: bool = True) -> List[Player]:
-        """List all players"""
-        if include_builtin:
-            return list(self.players.values())
-        return [p for p in self.players.values() if not p.is_builtin]
-```
-
 ### Core Database Schema
 
 While the system uses in-memory storage, here are the logical data models:
@@ -415,7 +399,7 @@ class StateManager:
 
 ## Components and Interfaces
 
-### 1. Player Registration System
+### 1. Player Registration
 
 #### API Endpoints
 
@@ -432,91 +416,7 @@ async def register_player(registration: PlayerRegistration) -> Player:
 - **Data Persistence**: Players stored for session duration
 - **Statistics Tracking**: Real-time win/loss/draw updates
 
-### 2. Session Management System
-
-#### Session Manager Component
-
-```python
-class SessionManager:
-    def __init__(self):
-        self.sessions: Dict[str, GameState] = {}
-        self.match_loops: Dict[str, asyncio.Task] = {}
-        self.sse_connections: Dict[str, List[SSEConnection]] = {}
-    
-    async def create_session(self, player_configs: List[PlayerConfig]) -> str
-    async def start_match_loop(self, session_id: str) -> None
-    async def add_sse_connection(self, session_id: str, connection: SSEConnection) -> None
-    async def submit_action(self, session_id: str, player_id: str, action: Move) -> None
-    async def cleanup_session(self, session_id: str) -> None
-```
-
-### 3. Real-time Match Streaming (SSE)
-
-#### SSE Implementation
-
-```python
-async def stream_match_events(session_id: str, request: Request) -> StreamingResponse:
-    """Stream real-time match events via SSE"""
-    
-    async def event_generator():
-        connection = SSEConnection(session_id, request)
-        try:
-            await session_manager.add_sse_connection(session_id, connection)
-            
-            while not await request.is_disconnected():
-                event = await connection.wait_for_event(timeout=30.0)
-                if event:
-                    yield f"data: {event.json()}\n\n"
-                else:
-                    # Heartbeat
-                    yield "data: {\"event\": \"heartbeat\"}\n\n"
-                    
-        except asyncio.CancelledError:
-            await session_manager.remove_sse_connection(session_id, connection)
-    
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"  # Nginx optimization
-        }
-    )
-```
-
-### 4. Game Engine Integration
-
-#### Game Engine Adapter
-
-```python
-class GameEngineAdapter:
-    """Adapter between backend and existing game engine"""
-    
-    def __init__(self):
-        self.engine = None
-    
-    def initialize_match(self, bot1: BotInterface, bot2: BotInterface) -> GameEngine:
-        """Initialize game engine with bot instances"""
-        
-    def execute_turn(self, actions: List[Move]) -> TurnResult:
-        """Execute a single turn with player actions"""
-        
-    def get_game_state(self) -> Dict[str, Any]:
-        """Get current game state for SSE streaming"""
-        
-    def check_game_over(self) -> Optional[GameResult]:
-        """Check if game has ended and return result"""
-```
-
-#### Integration Modifications
-
-- **Async Compatibility**: Modify game engine to support async operation
-- **State Extraction**: Add methods to extract game state for SSE streaming
-- **Action Validation**: Integrate backend action validation with game rules
-- **Logging Integration**: Connect game logger with match logging system
-
-### 5. Built-in Bot System
+### 2. Built-in Bot System
 
 #### Built-in Bot Registry
 
@@ -655,6 +555,91 @@ class PlayerBotFactory:
 4. Must execute within timeout and resource constraints
 5. Bot code evaluation happens within the `decide()` method
 
+
+### 3. Session Management System
+
+#### Session Manager Component
+
+```python
+class SessionManager:
+    def __init__(self):
+        self.sessions: Dict[str, GameState] = {}
+        self.match_loops: Dict[str, asyncio.Task] = {}
+        self.sse_connections: Dict[str, List[SSEConnection]] = {}
+    
+    async def create_session(self, player_configs: List[PlayerConfig]) -> str
+    async def start_match_loop(self, session_id: str) -> None
+    async def add_sse_connection(self, session_id: str, connection: SSEConnection) -> None
+    async def submit_action(self, session_id: str, player_id: str, action: Move) -> None
+    async def cleanup_session(self, session_id: str) -> None
+```
+
+### 4. Real-time Match Streaming (SSE)
+
+#### SSE Implementation
+
+```python
+async def stream_match_events(session_id: str, request: Request) -> StreamingResponse:
+    """Stream real-time match events via SSE"""
+    
+    async def event_generator():
+        connection = SSEConnection(session_id, request)
+        try:
+            await session_manager.add_sse_connection(session_id, connection)
+            
+            while not await request.is_disconnected():
+                event = await connection.wait_for_event(timeout=30.0)
+                if event:
+                    yield f"data: {event.json()}\n\n"
+                else:
+                    # Heartbeat
+                    yield "data: {\"event\": \"heartbeat\"}\n\n"
+                    
+        except asyncio.CancelledError:
+            await session_manager.remove_sse_connection(session_id, connection)
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Nginx optimization
+        }
+    )
+```
+
+### 5. Game Engine Integration
+
+#### Game Engine Adapter
+
+```python
+class GameEngineAdapter:
+    """Adapter between backend and existing game engine"""
+    
+    def __init__(self):
+        self.engine = None
+    
+    def initialize_match(self, bot1: BotInterface, bot2: BotInterface) -> GameEngine:
+        """Initialize game engine with bot instances"""
+        
+    def execute_turn(self, actions: List[Move]) -> TurnResult:
+        """Execute a single turn with player actions"""
+        
+    def get_game_state(self) -> Dict[str, Any]:
+        """Get current game state for SSE streaming"""
+        
+    def check_game_over(self) -> Optional[GameResult]:
+        """Check if game has ended and return result"""
+```
+
+#### Integration Modifications
+
+- **Async Compatibility**: Modify game engine to support async operation
+- **State Extraction**: Add methods to extract game state for SSE streaming
+- **Action Validation**: Integrate backend action validation with game rules
+- **Logging Integration**: Connect game logger with match logging system
+
 ### 6. Player Action Processing
 
 #### Turn Processing Pipeline
@@ -677,11 +662,7 @@ class TurnProcessor:
         """Process complete turn with all player actions"""
 ```
 
-
-
 ## Error Handling
-
-
 
 ### Global Error Handlers
 
@@ -766,94 +747,16 @@ class MockSSEConnection:
 
 ## Security Considerations
 
-### Bot Execution Security
+### Bot Execution
 
 1. **Interface Compliance**: All player bots must conform to the BotInterface
 2. **Timeout Enforcement**: Prevent infinite loops and CPU burning
-3. **Memory Limits**: Restrict memory usage per bot
-4. **Input Validation**: Validate bot actions against game rules
-5. **Error Handling**: Graceful handling of bot execution errors
+3. **Error Handling**: Graceful handling of bot execution errors
 
 ### Input Validation
 
 1. **Request Validation**: Pydantic models for all inputs
-2. **SQL Injection Prevention**: Parameterized queries (if database used)
-3. **XSS Prevention**: HTML escaping for any displayed content
-4. **Rate Limiting**: Prevent abuse of endpoints
-
-## Performance Optimization
-
-### Concurrency Design
-
-- **AsyncIO**: Non-blocking I/O for all operations
-- **Connection Pooling**: Efficient SSE connection management
-- **Task Queues**: Background processing for heavy operations
-- **Batch Processing**: Group operations where possible
-
-### Monitoring and Metrics
-
-```python
-class MetricsCollector:
-    """Collect system performance metrics"""
-    
-    def __init__(self):
-        self.active_sessions = 0
-        self.total_matches = 0
-        self.sse_connections = 0
-        self.bot_execution_times = []
-    
-    async def record_match_completion(self, duration: float) -> None:
-        """Record match completion metrics"""
-    
-    async def get_health_status(self) -> HealthStatus:
-        """Get current system health"""
-```
-
-## Implementation Plan
-
-### Phase 1: Core Infrastructure (Increment 1)
-- FastAPI application setup
-- Player registration system
-- Basic session management
-- In-memory storage implementation
-
-### Phase 2: Game Engine Integration (Increment 2)
-- Game engine adapter
-- Built-in bot system
-- Basic turn processing
-- Game state management
-
-### Phase 3: Real-time Streaming (Increment 3)
-- SSE endpoint implementation
-- Event streaming system
-- Connection management
-- Basic error handling
-
-### Phase 4: Player Actions (Increment 4)
-- Action submission endpoints
-- Turn synchronization
-- Timeout handling
-- Action validation
-
-### Phase 5: Security and Bot Evaluation (Increment 5)
-- Bot code sandbox
-- Security validation
-- Resource limits
-- Input sanitization
-
-### Phase 6: Logging and Replay (Increment 6)
-- Match logging system
-- Replay functionality
-- Statistics tracking
-- File management
-
-### Phase 7: Testing and Optimization (Increment 7)
-- Comprehensive test suite
-- Performance optimization
-- Security hardening
-- Documentation completion
-
-Each increment will be fully testable and provide incremental value, allowing for validation and feedback at each stage.
+2. **Input Validation**: Validate bot actions against game rules
 
 ## Development Guidelines
 
