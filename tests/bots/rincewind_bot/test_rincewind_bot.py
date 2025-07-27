@@ -25,14 +25,12 @@ class TestRincewindBot(unittest.TestCase):
     def test_initialization(self):
         """Test the bot is initialized with the correct name and sprite paths."""
         self.assertEqual(self.bot.name, "Rincewind Bot")
-        self.assertEqual(self.bot.sprite_path, "assets/wizards/red_wizard.png")
+        self.assertEqual(self.bot.sprite_path, "assets/wizards/rincewind.png")
         self.assertEqual(self.bot.minion_sprite_path, "assets/minions/green_minion.png")
         self.assertEqual(self.bot.previous_positions, [])
         self.assertFalse(self.bot.retreat_mode)
         self.assertEqual(self.bot.consecutive_same_position, 0)
 
-    
-        
     def test_basic_movement_toward_opponent(self):
         """Test basic movement toward opponent when health is good."""
         state = {
@@ -61,12 +59,12 @@ class TestRincewindBot(unittest.TestCase):
             "board_size": 10,
             "turn": 1
         }
-        
+
         decision = self.bot.decide(state)
 
         # Bot should move toward opponent (positive in both x and y)
         self.assertEqual(decision["move"], [1, 1])
-        
+
         # Bot will use fireball against opponent if it has enough mana
         # This is the actual behavior of the bot
         self.assertEqual(decision["spell"]["name"], "fireball")
@@ -93,9 +91,9 @@ class TestRincewindBot(unittest.TestCase):
             "board_size": 10,
             "turn": 1
         }
-        
+
         decision = self.bot.decide(state)
-        
+
         # Bot should cast heal
         self.assertEqual(decision["spell"]["name"], "heal")
         # The bot should enter retreat mode
@@ -129,9 +127,9 @@ class TestRincewindBot(unittest.TestCase):
             "board_size": 10,
             "turn": 1
         }
-        
+
         decision = self.bot.decide(state)
-        
+
         # Bot should attack the adjacent minion
         self.assertEqual(decision["spell"]["name"], "melee_attack")
         self.assertEqual(decision["spell"]["target"], [2, 3])
@@ -169,9 +167,9 @@ class TestRincewindBot(unittest.TestCase):
             "board_size": 10,
             "turn": 1
         }
-        
+
         decision = self.bot.decide(state)
-        
+
         # Bot should attack the weaker minion instead of opponent
         self.assertEqual(decision["spell"]["name"], "melee_attack")
         self.assertEqual(decision["spell"]["target"], [3, 2])
@@ -204,9 +202,9 @@ class TestRincewindBot(unittest.TestCase):
             "board_size": 10,
             "turn": 1
         }
-        
+
         decision = self.bot.decide(state)
-        
+
         # Bot should attack opponent when shield is active
         self.assertEqual(decision["spell"]["name"], "melee_attack")
         self.assertEqual(decision["spell"]["target"], [2, 3])
@@ -251,9 +249,9 @@ class TestRincewindBot(unittest.TestCase):
             "board_size": 10,
             "turn": 1
         }
-        
+
         decision = self.bot.decide(state)
-        
+
         # Bot should use fireball targeting the position that can hit multiple enemies
         self.assertEqual(decision["spell"]["name"], "fireball")
         self.assertEqual(decision["spell"]["target"], [6, 6])  # Targeting opponent position to hit all 3
@@ -285,9 +283,9 @@ class TestRincewindBot(unittest.TestCase):
             "board_size": 10,
             "turn": 1
         }
-        
+
         decision = self.bot.decide(state)
-        
+
         # Bot should teleport to the health artifact
         self.assertEqual(decision["spell"]["name"], "teleport")
         self.assertEqual(decision["spell"]["target"], [5, 5])
@@ -296,7 +294,7 @@ class TestRincewindBot(unittest.TestCase):
         """Test behavior when in retreat mode."""
         # First set the bot in retreat mode
         self.bot.retreat_mode = True
-        
+
         state = {
             "self": {
                 "position": [5, 5],
@@ -317,17 +315,17 @@ class TestRincewindBot(unittest.TestCase):
             "board_size": 10,
             "turn": 1
         }
-        
+
         decision = self.bot.decide(state)
-        
+
         # Bot should move away from opponent when in retreat mode
         self.assertEqual(decision["move"], [1, 1])  # Moving away in both dimensions
-        
+
         # Test that the bot exits retreat mode when HP is high enough
         state["self"]["hp"] = 70  # Higher HP
-        
+
         decision = self.bot.decide(state)
-        
+
         # Retreat mode should be turned off
         self.assertFalse(self.bot.retreat_mode)
 
@@ -336,7 +334,7 @@ class TestRincewindBot(unittest.TestCase):
         # Setup the bot as if it's been in the same position for 3 turns
         self.bot.previous_positions = [[3, 3], [3, 3], [3, 3]]
         self.bot.consecutive_same_position = 3
-        
+
         state = {
             "self": {
                 "position": [3, 3],  # Same position as previous turns
@@ -357,11 +355,11 @@ class TestRincewindBot(unittest.TestCase):
             "board_size": 10,
             "turn": 1
         }
-        
+
         # Use a patch to control the random movement
         with patch('random.randint', return_value=1):
             decision = self.bot.decide(state)
-            
+
             # Bot should make a random move when stuck
             self.assertEqual(decision["move"], [1, 1])
 
