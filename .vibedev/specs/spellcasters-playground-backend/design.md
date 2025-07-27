@@ -39,33 +39,40 @@ graph TB
     subgraph "Bot Layer"
         INTERFACE[Bot Interface]
         BUILTIN[Built-in Bots]
-        PLAYER[Player Bots]
+        PLAYERBOT[Player Bots]
+    end
+    
+    subgraph "Player Layer"
+        PLAYERS[Player Registry]
+        BUILTINPLAYERS[Built-in Players]
     end
     
     subgraph "Storage Layer"
         MEMORY[In-Memory State]
         LOGS[Match Logs]
-        STATS[Player Stats]
         HISTORY[Move History]
         RESULTS[Game Results]
     end
     
     WEB --> API
-    BOT --> PLAYER
+    BOT --> PLAYERBOT
     API --> SSE
     API --> SESSION
+    API --> PLAYERS
     SESSION --> MATCH
     MATCH --> ENGINE
     MATCH --> INTERFACE
-    PLAYER --> MATCH
+    PLAYERBOT --> MATCH
+    PLAYERBOT --> PLAYERS
+    BUILTIN --> BUILTINPLAYERS
     ENGINE --> RULES
     ENGINE --> LOGGER
     INTERFACE --> BUILTIN
-    INTERFACE --> PLAYER
+    INTERFACE --> PLAYERBOT
     SESSION --> MEMORY
     LOGGER --> LOGS
     LOGGER --> HISTORY
-    API --> STATS
+    PLAYERS --> RESULTS
     MATCH --> RESULTS
 ```
 
@@ -91,6 +98,7 @@ class PlayerRegistration(BaseModel):
     minion_sprite_path: Optional[str] = None
 
 class Player(BaseModel):
+    """Encapsulates visible details: ID, name, sprite, game stats"""
     player_id: str = Field(..., description="UUID string")
     player_name: str
     submitted_from: str
@@ -101,38 +109,70 @@ class Player(BaseModel):
     losses: int = 0
     draws: int = 0
     created_at: datetime
+    is_builtin: bool = False  # True for built-in players
+
+class BuiltinPlayerConfig(BaseModel):
+    """Configuration for built-in players"""
+    player_id: str
+    player_name: str
+    sprite_path: str
+    minion_sprite_path: str
+    description: Optional[str] = None
 ```
 
 ### Bot Interface Models
 
 ```python
 class BotInterface(ABC):
-    """Standardized interface for all bots (built-in and player)"""
+    """
+    Standardized interface for all bots (built-in and player).
+    Encapsulates in-game execution: game strategy, turn actions etc.
+    Maintains strong one-directional reference to Player instance.
+    """
+    
+    def __init__(self, player: Player):
+        """Initialize bot with reference to Player instance"""
+        self._player = player
     
     @property
-    @abstractmethod
+    def player(self) -> Player:
+        """Get the Player instance this bot represents"""
+        return self._player
+    
+    @property
     def name(self) -> str:
-        """Bot identification name"""
+        """Bot identification name (delegates to player)"""
+        return self._player.player_name
     
     @property
     def player_id(self) -> str:
-        """Unique player ID for backend tracking"""
+        """Unique player ID (delegates to player)"""
+        return self._player.player_id
     
     @abstractmethod
     def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Main decision method called by game engine"""
+        pass
     
     @property
     def is_builtin(self) -> bool:
         """Flag indicating if this is a built-in bot"""
-        return False
+        return self._player.is_builtin
+
+class BotCreationRequest(BaseModel):
+    """Request to create a new player bot"""
+    bot_code: str
+    player_id: Optional[str] = None  # If None, must provide player_registration
+    player_registration: Optional[PlayerRegistration] = None
 
 class BotInfo(BaseModel):
+    """Information about available bots"""
+    bot_type: Literal["builtin", "player"]
     bot_id: str
-    name: str
     player_id: str
-    difficulty: str
+    player_name: str
     description: Optional[str] = None
+    difficulty: Optional[str] = None  # For built-in bots
 ```
 
 ### Game State Models
@@ -150,10 +190,11 @@ class GameState(BaseModel):
     last_activity: datetime
 
 class PlayerSlot(BaseModel):
-    player_id: Optional[str]  # None for built-in bots
-    bot_instance: Optional[BotInterface]
-    connection_handle: Optional[str]  # SSE connection ID
-    is_builtin: bool = False
+    """Represents a slot in a game session"""
+    player_id: str  # References Player.player_id
+    bot_instance: BotInterface  # Bot instance that references the player
+    connection_handle: Optional[str] = None  # SSE connection ID for human players
+    is_builtin_bot: bool = False  # True if using built-in bot
 
 class TurnStatus(str, Enum):
     WAITING = "waiting"
@@ -268,13 +309,65 @@ class TimeoutError(PlaygroundError):
     """Operation timed out"""
 ```
 
+### Player Registry
+
+```python
+class PlayerRegistry:
+    """Manages all players (both user-registered and built-in)"""
+    
+    def __init__(self):
+        self.players: Dict[str, Player] = {}
+        # Pre-register built-in players
+        self._register_builtin_players()
+    
+    def _register_builtin_players(self) -> None:
+        """Register all built-in players at startup"""
+        for player in BuiltinBotRegistry.BUILTIN_PLAYERS.values():
+            self.players[player.player_id] = player
+    
+    def register_player(self, registration: PlayerRegistration) -> Player:
+        """Register a new user player"""
+        player = Player(
+            player_id=str(uuid4()),
+            player_name=registration.player_name,
+            submitted_from=registration.submitted_from,
+            sprite_path=registration.sprite_path,
+            minion_sprite_path=registration.minion_sprite_path,
+            created_at=datetime.now()
+        )
+        self.players[player.player_id] = player
+        return player
+    
+    def get_player(self, player_id: str) -> Optional[Player]:
+        """Get player by ID"""
+        return self.players.get(player_id)
+    
+    def update_player_stats(self, player_id: str, result: GameResult) -> None:
+        """Update player statistics after a match"""
+        player = self.players.get(player_id)
+        if player:
+            player.total_matches += 1
+            if result.winner == player_id:
+                player.wins += 1
+            elif result.result_type == GameResultType.DRAW:
+                player.draws += 1
+            else:
+                player.losses += 1
+    
+    def list_players(self, include_builtin: bool = True) -> List[Player]:
+        """List all players"""
+        if include_builtin:
+            return list(self.players.values())
+        return [p for p in self.players.values() if not p.is_builtin]
+```
+
 ### Core Database Schema
 
 While the system uses in-memory storage, here are the logical data models:
 
 ```python
 # Player Management
-players: Dict[str, Player] = {}
+player_registry: PlayerRegistry = PlayerRegistry()
 
 # Game State
 sessions: Dict[str, GameState] = {}
@@ -299,7 +392,7 @@ class StateManager:
     """Centralized state management for all backend components"""
     
     def __init__(self):
-        self.players = PlayerRegistry()
+        self.player_registry = PlayerRegistry()  # Manages both user and built-in players
         self.sessions = SessionRegistry()
         self.connections = SSEConnectionManager()
         self.move_histories = MoveHistoryManager()
@@ -310,6 +403,14 @@ class StateManager:
     
     async def get_system_stats(self) -> SystemStats:
         """Get current system statistics"""
+    
+    def create_bot(self, request: BotCreationRequest) -> BotInterface:
+        """Create bot instance with proper player reference"""
+        return PlayerBotFactory.create_bot(request, self.player_registry)
+    
+    def get_builtin_bot(self, bot_id: str) -> BotInterface:
+        """Get built-in bot instance"""
+        return BuiltinBotRegistry.create_bot(bot_id)
 ```
 
 ## Components and Interfaces
@@ -421,69 +522,130 @@ class GameEngineAdapter:
 
 ```python
 class BuiltinBotRegistry:
-    """Registry and factory for built-in bots"""
+    """Registry and factory for built-in bots with their default players"""
     
+    # Built-in players (hard-coded)
+    BUILTIN_PLAYERS = {
+        "builtin_sample_1": Player(
+            player_id="builtin_sample_1",
+            player_name="Sample Bot 1",
+            submitted_from="builtin",
+            sprite_path="assets/wizards/sample_bot1.png",
+            minion_sprite_path="assets/minions/minion_1.png",
+            is_builtin=True,
+            created_at=datetime.now()
+        ),
+        "builtin_tactical": Player(
+            player_id="builtin_tactical",
+            player_name="Tactical Bot",
+            submitted_from="builtin",
+            sprite_path="assets/wizards/tactical_bot.png",
+            minion_sprite_path="assets/minions/tactical_minion.png",
+            is_builtin=True,
+            created_at=datetime.now()
+        )
+    }
+    
+    # Built-in bot configurations
     BUILTIN_BOTS = {
         "sample_bot_1": {
-            "name": "Sample Bot 1",
             "player_id": "builtin_sample_1",
-            "class": SampleBot1,
-            "difficulty": "easy"
+            "bot_class": SampleBot1,
+            "difficulty": "easy",
+            "description": "A simple bot for beginners"
         },
-        "sample_bot_2": {
-            "name": "Sample Bot 1",
-            "player_id": "builtin_sample_2",
-            "class": SampleBot2,
-            "difficulty": "easy"
-        },
-        "sample_bot_3": {
-            "name": "Sample Bot 3",
-            "player_id": "builtin_sample_3",
-            "class": SampleBot3,
-            "difficulty": "medium"
+        "tactical_bot": {
+            "player_id": "builtin_tactical", 
+            "bot_class": TacticalBot,
+            "difficulty": "medium",
+            "description": "An advanced tactical bot"
         }
     }
     
     @classmethod
+    def get_builtin_player(cls, player_id: str) -> Player:
+        """Get built-in player instance"""
+        if player_id not in cls.BUILTIN_PLAYERS:
+            raise ValueError(f"Built-in player {player_id} not found")
+        return cls.BUILTIN_PLAYERS[player_id]
+    
+    @classmethod
     def create_bot(cls, bot_id: str) -> BotInterface:
-        """Create built-in bot instance"""
+        """Create built-in bot instance with its default player"""
+        if bot_id not in cls.BUILTIN_BOTS:
+            raise ValueError(f"Built-in bot {bot_id} not found")
+        
+        config = cls.BUILTIN_BOTS[bot_id]
+        player = cls.get_builtin_player(config["player_id"])
+        bot_class = config["bot_class"]
+        
+        return bot_class(player)
     
     @classmethod
     def list_available_bots(cls) -> List[BotInfo]:
         """List all available built-in bots"""
+        bots = []
+        for bot_id, config in cls.BUILTIN_BOTS.items():
+            player = cls.get_builtin_player(config["player_id"])
+            bots.append(BotInfo(
+                bot_type="builtin",
+                bot_id=bot_id,
+                player_id=player.player_id,
+                player_name=player.player_name,
+                description=config.get("description"),
+                difficulty=config.get("difficulty")
+            ))
+        return bots
 ```
 
 #### Player Bot Implementation
 
-Player-submitted bots must conform to the same `BotInterface` as built-in bots:
+Player-submitted bots must conform to the same `BotInterface` as built-in bots and reference an existing Player:
 
 ```python
 class PlayerBot(BotInterface):
-    """Player-submitted bot implementation"""
+    """
+    Player-submitted bot implementation.
+    Encapsulates in-game execution with strong reference to Player instance.
+    """
     
-    def __init__(self, player_id: str, player_name: str, bot_code: str):
-        self._player_id = player_id
-        self._name = player_name
+    def __init__(self, player: Player, bot_code: str):
+        """Initialize with Player instance and bot code"""
+        super().__init__(player)  # Initialize base class with player reference
         self._bot_code = bot_code
-    
-    @property
-    def name(self) -> str:
-        return self._name
-    
-    @property
-    def player_id(self) -> str:
-        return self._player_id
     
     def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Execute player's bot code with the given game state"""
         # Execute player's bot code safely within the decide method
         # The bot code should implement the decision logic
         # Return format: {"move": [dx, dy], "spell": {...}}
+        # Bot execution happens here while maintaining player stats in self._player
         pass
+
+class PlayerBotFactory:
+    """Factory for creating player bots with proper player references"""
     
-    @property
-    def is_builtin(self) -> bool:
-        return False
+    @staticmethod
+    def create_bot(request: BotCreationRequest, player_registry: 'PlayerRegistry') -> PlayerBot:
+        """
+        Create a player bot with reference to existing or new player.
+        
+        User can choose to:
+        1. Reuse existing Player (provide player_id)
+        2. Register new Player (provide player_registration) - fresh stats
+        """
+        if request.player_id:
+            # Option 1: Reuse existing player
+            player = player_registry.get_player(request.player_id)
+            if not player:
+                raise ValueError(f"Player {request.player_id} not found")
+        elif request.player_registration:
+            # Option 2: Register new player for fresh stats
+            player = player_registry.register_player(request.player_registration)
+        else:
+            raise ValueError("Must provide either player_id or player_registration")
+        
+        return PlayerBot(player, request.bot_code)
 ```
 
 **Key Requirements for Player Bots**:
