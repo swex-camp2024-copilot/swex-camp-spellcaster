@@ -8,14 +8,14 @@ This implementation plan converts the feature design into a series of incrementa
 
 ### 1. Project Foundation and Data Models
 
-- [ ] 1.1 Create FastAPI project structure in `/backend` directory
-  - Set up directory structure with `app/`, `tests/`, and configuration files
+- [x] 1.1 Create FastAPI project structure in `/backend` directory
+  - Set up directory structure with `app/`, `tsts/`, and configuration files
   - Update `pyproject.toml`/`requirements.txt` with FastAPI, Pydantic, SQLModel, SQLite dependencies
   - Initialize SQLite database and create database directory structure
   - Initialize `main.py` with basic FastAPI app
   - **Requirements**: Foundation for all backend functionality
 
-- [ ] 1.2 Implement core data models in `/backend/app/models/`
+- [x] 1.2 Implement core data models in `/backend/app/models/`
   - Create `players.py` with `PlayerRegistration` and `Player` models
   - Create `sessions.py` with `GameState`, `PlayerSlot`, and `TurnStatus` models
   - Create `events.py` with SSE event models (`SSETurnEvent`, `SSEGameOverEvent`)
@@ -25,12 +25,12 @@ This implementation plan converts the feature design into a series of incrementa
   - Set up database connection and table creation logic
   - **Requirements**: 1.4, 2.3, 3.2, 4.3, 7.3, 8.4 (Data models for all system components)
 
-- [ ] 1.3 Create error handling framework in `/backend/app/core/exceptions.py`
+- [x] 1.3 Create error handling framework in `/backend/app/core/exceptions.py`
   - Implement `PlaygroundError` base exception and derived classes
   - Create `ErrorResponse` model for consistent error responses
   - **Requirements**: 9.1, 9.5 (Error handling and meaningful error messages)
 
-- [ ] 1.4 Write unit tests for all data models
+- [x] 1.4 Write unit tests for all data models
   - Test model validation, serialization, and edge cases
   - Ensure proper type checking and field constraints
   - **Requirements**: Testing strategy for data integrity
