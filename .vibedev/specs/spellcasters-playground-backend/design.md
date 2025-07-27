@@ -75,6 +75,44 @@ graph TB
 - **Game Engine**: Integration with existing `/game` directory components
 - **Logging**: Structured logging with session context
 
+## Data Models
+
+### Core Database Schema
+
+While the system uses in-memory storage, here are the logical data models:
+
+```python
+# Player Management
+players: Dict[str, Player] = {}
+
+# Session State
+sessions: Dict[str, SessionState] = {}
+
+# Match Logs (File-based)
+# logs/playground/{session_id}.log
+
+# SSE Connections
+sse_connections: Dict[str, List[SSEConnection]] = {}
+```
+
+### State Management
+
+```python
+class StateManager:
+    """Centralized state management for all backend components"""
+    
+    def __init__(self):
+        self.players = PlayerRegistry()
+        self.sessions = SessionRegistry()
+        self.connections = SSEConnectionManager()
+    
+    async def cleanup_expired_sessions(self) -> None:
+        """Periodic cleanup of inactive sessions"""
+    
+    async def get_system_stats(self) -> SystemStats:
+        """Get current system statistics"""
+```
+
 ## Components and Interfaces
 
 ### 1. Player Registration System
@@ -252,6 +290,16 @@ class BotInterface(ABC):
     def player_id(self) -> str:
         """Unique player ID for backend tracking"""
     
+    @property
+    def sprite_path(self) -> Optional[str]:
+        """Return path to wizard sprite (optional)"""
+        return None
+    
+    @property
+    def minion_sprite_path(self) -> Optional[str]:
+        """Return path to minion sprite (optional)"""
+        return None
+    
     @abstractmethod
     def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Main decision method called by game engine"""
@@ -292,6 +340,56 @@ class BuiltinBotRegistry:
         """List all available built-in bots"""
 ```
 
+#### Player Bot Implementation
+
+Player-submitted bots must conform to the same `BotInterface` as built-in bots:
+
+```python
+class PlayerBot(BotInterface):
+    """Player-submitted bot implementation"""
+    
+    def __init__(self, player_id: str, player_name: str, bot_code: str):
+        self._player_id = player_id
+        self._name = player_name
+        self._bot_code = bot_code
+        self._sprite_path = None  # Default sprite
+        self._minion_sprite_path = None  # Default minion sprite
+    
+    @property
+    def name(self) -> str:
+        return self._name
+    
+    @property
+    def player_id(self) -> str:
+        return self._player_id
+    
+    @property
+    def sprite_path(self) -> Optional[str]:
+        return self._sprite_path
+    
+    @property
+    def minion_sprite_path(self) -> Optional[str]:
+        return self._minion_sprite_path
+    
+    def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute player's bot code with the given game state"""
+        # Execute player's bot code safely within the decide method
+        # The bot code should implement the decision logic
+        # Return format: {"move": [dx, dy], "spell": {...}}
+        pass
+    
+    @property
+    def is_builtin(self) -> bool:
+        return False
+```
+
+**Key Requirements for Player Bots**:
+1. Must implement all required `BotInterface` methods
+2. Must return actions in the same format as built-in bots
+3. Must handle the same game state structure as built-in bots
+4. Must execute within timeout and resource constraints
+5. Bot code evaluation happens within the `decide()` method
+
 ### 6. Player Action Processing
 
 #### Action Models
@@ -331,94 +429,7 @@ class TurnProcessor:
         """Process complete turn with all player actions"""
 ```
 
-### 7. Security and Bot Code Evaluation
 
-#### Restricted Execution Sandbox
-
-Based on research into Python security practices, we'll implement a multi-layered security approach:
-
-```python
-class BotCodeEvaluator:
-    """Secure evaluation of player-submitted bot code"""
-    
-    def __init__(self):
-        self.restricted_builtins = {
-            'abs', 'bool', 'dict', 'float', 'int', 'len', 'list', 
-            'max', 'min', 'range', 'str', 'sum', 'tuple'
-        }
-        self.timeout_seconds = 2.0
-        self.memory_limit_mb = 50
-    
-    async def evaluate_bot_code(self, code: str, context: Dict[str, Any]) -> Any:
-        """Safely evaluate bot code with restrictions"""
-        
-        # 1. Static analysis of code
-        ast_tree = ast.parse(code)
-        self._validate_ast(ast_tree)
-        
-        # 2. Create restricted environment
-        restricted_globals = {
-            '__builtins__': {k: __builtins__[k] for k in self.restricted_builtins}
-        }
-        
-        # 3. Execute with timeout and resource limits
-        return await self._execute_with_limits(code, restricted_globals, context)
-    
-    def _validate_ast(self, tree: ast.AST) -> None:
-        """Validate AST for dangerous operations"""
-        # Check for imports, exec, eval, etc.
-        
-    async def _execute_with_limits(self, code: str, globals_dict: Dict, locals_dict: Dict) -> Any:
-        """Execute code with timeout and memory limits"""
-        # Use asyncio with subprocess for isolation
-```
-
-#### Security Measures Implementation
-
-1. **AST Validation**: Check for dangerous operations before execution
-2. **Restricted Builtins**: Limited set of available built-in functions
-3. **Timeout Enforcement**: Maximum execution time per bot decision
-4. **Memory Limits**: Resource constraints on bot execution
-5. **Subprocess Isolation**: Execute bot code in separate processes
-6. **Input Sanitization**: Validate all user inputs before processing
-
-## Data Models
-
-### Core Database Schema
-
-While the system uses in-memory storage, here are the logical data models:
-
-```python
-# Player Management
-players: Dict[str, Player] = {}
-
-# Session State
-sessions: Dict[str, SessionState] = {}
-
-# Match Logs (File-based)
-# logs/playground/{session_id}.log
-
-# SSE Connections
-sse_connections: Dict[str, List[SSEConnection]] = {}
-```
-
-### State Management
-
-```python
-class StateManager:
-    """Centralized state management for all backend components"""
-    
-    def __init__(self):
-        self.players = PlayerRegistry()
-        self.sessions = SessionRegistry()
-        self.connections = SSEConnectionManager()
-    
-    async def cleanup_expired_sessions(self) -> None:
-        """Periodic cleanup of inactive sessions"""
-    
-    async def get_system_stats(self) -> SystemStats:
-        """Get current system statistics"""
-```
 
 ## Error Handling
 
@@ -541,13 +552,13 @@ class MockSSEConnection:
 
 ## Security Considerations
 
-### Bot Code Execution Security
+### Bot Execution Security
 
-1. **Sandboxing**: Execute bot code in restricted environment
+1. **Interface Compliance**: All player bots must conform to the BotInterface
 2. **Timeout Enforcement**: Prevent infinite loops and CPU burning
 3. **Memory Limits**: Restrict memory usage per bot
-4. **AST Validation**: Check code structure before execution
-5. **Process Isolation**: Use subprocess for critical isolation
+4. **Input Validation**: Validate bot actions against game rules
+5. **Error Handling**: Graceful handling of bot execution errors
 
 ### Input Validation
 
