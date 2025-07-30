@@ -28,7 +28,7 @@ class TestDatabaseService:
         """Sample player registration data."""
         return PlayerRegistration(
             player_name="TestPlayer",
-            submitted_from="pasted",
+            submitted_from="online",
             sprite_path="assets/wizards/test.png"
         )
 
@@ -38,7 +38,7 @@ class TestDatabaseService:
         return Player(
             player_id=str(uuid4()),
             player_name="TestPlayer",
-            submitted_from="pasted",
+            submitted_from="online",
             sprite_path="assets/wizards/test.png",
             total_matches=0,
             wins=0,
@@ -109,7 +109,7 @@ class TestDatabaseService:
             mock_player_db = AsyncMock()
             mock_player_db.player_id = player_id
             mock_player_db.player_name = "TestPlayer"
-            mock_player_db.submitted_from = "pasted"
+            mock_player_db.submitted_from = "online"
             mock_player_db.sprite_path = None
             mock_player_db.minion_sprite_path = None
             mock_player_db.total_matches = 5
@@ -228,7 +228,7 @@ class TestDatabaseService:
             mock_player1 = AsyncMock()
             mock_player1.player_id = "player1"
             mock_player1.player_name = "Player 1"
-            mock_player1.submitted_from = "pasted"
+            mock_player1.submitted_from = "online"
             mock_player1.sprite_path = None
             mock_player1.minion_sprite_path = None
             mock_player1.total_matches = 0
@@ -286,7 +286,7 @@ class TestPlayerRegistry:
         """Sample player registration data."""
         return PlayerRegistration(
             player_name="TestPlayer",
-            submitted_from="pasted"
+            submitted_from="online"
         )
 
     @pytest.mark.asyncio
@@ -335,7 +335,7 @@ class TestPlayerRegistry:
         expected_player = Player(
             player_id=player_id,
             player_name="TestPlayer",
-            submitted_from="pasted",
+            submitted_from="online",
             created_at=datetime.now(),
             is_builtin=False
         )
@@ -365,7 +365,7 @@ class TestPlayerRegistry:
         expected_player = Player(
             player_id=player_id,
             player_name="TestPlayer",
-            submitted_from="pasted",
+            submitted_from="online",
             created_at=datetime.now(),
             is_builtin=False
         )
@@ -410,7 +410,7 @@ class TestPlayerRegistry:
         expected_player = Player(
             player_id=player_id,
             player_name="TestPlayer",
-            submitted_from="pasted",
+            submitted_from="online",
             created_at=datetime.now(),
             is_builtin=False
         )
@@ -440,7 +440,7 @@ class TestPlayerAPI:
         """Sample player registration data."""
         return {
             "player_name": "TestPlayer",
-            "submitted_from": "pasted",
+            "submitted_from": "online",
             "sprite_path": "assets/wizards/test.png"
         }
 
@@ -461,7 +461,7 @@ class TestPlayerAPI:
         """Test player registration with validation errors."""
         invalid_registration = {
             "player_name": "",  # Empty name should fail
-            "submitted_from": "pasted"
+            "submitted_from": "online"
         }
 
         response = await async_client.post("/players/register", json=invalid_registration)
@@ -472,7 +472,7 @@ class TestPlayerAPI:
     async def test_register_player_endpoint_missing_field(self, async_client):
         """Test player registration with missing required field."""
         invalid_registration = {
-            "submitted_from": "pasted"
+            "submitted_from": "online"
             # Missing player_name
         }
 
@@ -568,7 +568,7 @@ class TestPlayerManagementIntegration:
         # 1. Register a new player
         registration_data = {
             "player_name": "IntegrationTestPlayer",
-            "submitted_from": "pasted",
+            "submitted_from": "online",
             "sprite_path": "assets/wizards/integration_test.png"
         }
 
@@ -639,7 +639,7 @@ class TestPlayerManagementIntegration:
     async def test_error_handling_integration(self, async_client):
         """Test error handling in various scenarios."""
         # Test invalid registration data
-        invalid_data = {"submitted_from": "pasted"}  # Missing player_name
+        invalid_data = {"submitted_from": "online"}  # Missing player_name
         response = await async_client.post("/players/register", json=invalid_data)
         assert response.status_code == 422
         

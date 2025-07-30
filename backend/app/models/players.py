@@ -10,7 +10,7 @@ class PlayerRegistration(BaseModel):
     """Request model for player registration."""
 
     player_name: str = Field(..., min_length=1, max_length=50, description="Player display name")
-    submitted_from: Literal["pasted", "upload"] = Field(default="pasted", description="How the bot was submitted")
+    submitted_from: Literal["online", "upload"] = Field(default="online", description="How the bot was submitted")
     sprite_path: Optional[str] = Field(default=None, description="Path to player sprite image")
     minion_sprite_path: Optional[str] = Field(default=None, description="Path to player minion sprite image")
 

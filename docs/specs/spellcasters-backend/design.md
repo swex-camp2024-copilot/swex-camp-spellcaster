@@ -85,7 +85,7 @@ graph TB
 ```python
 class PlayerRegistration(BaseModel):
     player_name: str = Field(..., min_length=1, max_length=50)
-    submitted_from: Literal["pasted", "upload"] = "pasted"
+    submitted_from: Literal["online", "upload"] = "online"
     sprite_path: Optional[str] = None
     minion_sprite_path: Optional[str] = None
 

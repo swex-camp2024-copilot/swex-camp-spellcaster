@@ -34,7 +34,7 @@ POST /players/register
 ```json
 {
   "player_name": "FireMage",
-  "submitted_from": "pasted"
+  "submitted_from": "online"
 }
 ```
 

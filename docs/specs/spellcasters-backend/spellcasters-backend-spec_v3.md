@@ -30,7 +30,7 @@ This document supersedes **“Spellcasters Backend”**. It fixes open points an
 ```jsonc
 {
   "player_name": "FireMage",
-  "submitted_from": "pasted" // optional
+  "submitted_from": "online" // optional
 }
 ```
 

@@ -27,7 +27,7 @@ Framework: **FastAPI** Language: **Python 3.10+** Execution model: **Single-thre
 ```json
 {
   "player_name": "FireMage",
-  "submitted_from": "pasted"
+  "submitted_from": "online"
 }
 ```
 
@@ -39,7 +39,7 @@ Framework: **FastAPI** Language: **Python 3.10+** Execution model: **Single-thre
 {
   "player_name": str,
   "player_id": str,
-  "submitted_from": str,  # e.g., "upload", "pasted"
+  "submitted_from": str,  # e.g., "upload", "online"
   "total_matches": int,
   "wins": int,
   "losses": int,

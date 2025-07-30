@@ -58,14 +58,14 @@ async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
 @pytest.fixture
 def sample_player_registration():
     """Create a sample player registration."""
-    return PlayerRegistration(player_name="TestPlayer", submitted_from="pasted", sprite_path="assets/wizards/test.png")
+    return PlayerRegistration(player_name="TestPlayer", submitted_from="online", sprite_path="assets/wizards/test.png")
 
 
 @pytest.fixture
 def sample_player():
     """Create a sample player."""
     return Player(
-        player_id=str(uuid4()), player_name="TestPlayer", submitted_from="pasted", sprite_path="assets/wizards/test.png"
+        player_id=str(uuid4()), player_name="TestPlayer", submitted_from="online", sprite_path="assets/wizards/test.png"
     )
 
 
@@ -105,7 +105,7 @@ async def sample_player_db(test_session):
     player = PlayerDB(
         player_id=str(uuid4()),
         player_name="TestPlayer",
-        submitted_from="pasted",
+        submitted_from="online",
         total_matches=0,
         wins=0,
         losses=0,

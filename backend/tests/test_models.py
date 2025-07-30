@@ -39,16 +39,16 @@ class TestPlayerModels:
     def test_player_registration_valid(self):
         """Test valid player registration."""
         registration = PlayerRegistration(
-            player_name="TestPlayer", submitted_from="pasted", sprite_path="assets/wizards/test.png"
+            player_name="TestPlayer", submitted_from="online", sprite_path="assets/wizards/test.png"
         )
         assert registration.player_name == "TestPlayer"
-        assert registration.submitted_from == "pasted"
+        assert registration.submitted_from == "online"
         assert registration.sprite_path == "assets/wizards/test.png"
 
     def test_player_registration_defaults(self):
         """Test player registration with defaults."""
         registration = PlayerRegistration(player_name="TestPlayer")
-        assert registration.submitted_from == "pasted"
+        assert registration.submitted_from == "online"
         assert registration.sprite_path is None
         assert registration.minion_sprite_path is None
 
@@ -71,7 +71,7 @@ class TestPlayerModels:
         player = Player(
             player_id=str(uuid4()),
             player_name="TestPlayer",
-            submitted_from="pasted",
+            submitted_from="online",
             total_matches=10,
             wins=7,
             losses=2,
@@ -83,7 +83,7 @@ class TestPlayerModels:
 
     def test_player_stats_update(self):
         """Test player statistics updates."""
-        player = Player(player_id=str(uuid4()), player_name="TestPlayer", submitted_from="pasted")
+        player = Player(player_id=str(uuid4()), player_name="TestPlayer", submitted_from="online")
 
         # Test win
         player.update_stats("win")
@@ -423,7 +423,7 @@ class TestDatabaseModels:
         player = PlayerDB(
             player_id=str(uuid4()),
             player_name="TestPlayer",
-            submitted_from="pasted",
+            submitted_from="online",
             total_matches=5,
             wins=3,
             losses=1,
@@ -519,7 +519,7 @@ class TestErrorModels:
 @pytest.fixture
 def sample_player():
     """Create a sample player for testing."""
-    return Player(player_id=str(uuid4()), player_name="TestPlayer", submitted_from="pasted")
+    return Player(player_id=str(uuid4()), player_name="TestPlayer", submitted_from="online")
 
 
 @pytest.fixture
