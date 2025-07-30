@@ -284,6 +284,53 @@ class DatabaseService:
             logger.error(f"Error ensuring tables exist: {e}")
             raise DatabaseError(f"Failed to create/verify tables: {str(e)}")
 
+    async def delete_player(self, player_id: str) -> bool:
+        """Delete a player from the database with constraint validation."""
+        try:
+            async with self._session_factory() as session:
+                # First, get the player to check if it exists and is not built-in
+                result = await session.execute(select(PlayerDB).where(PlayerDB.player_id == player_id))
+                player_db = result.scalar_one_or_none()
+
+                if not player_db:
+                    raise PlayerNotFoundError(player_id)
+
+                if player_db.is_builtin:
+                    raise DatabaseError("Cannot delete built-in players")
+
+                # Check for active sessions
+                active_sessions_result = await session.execute(
+                    select(SessionDB).where(
+                        ((SessionDB.player_1_id == player_id) | (SessionDB.player_2_id == player_id)) &
+                        (SessionDB.status == "active")
+                    )
+                )
+                active_sessions = active_sessions_result.scalars().all()
+
+                if active_sessions:
+                    raise DatabaseError(f"Cannot delete player with {len(active_sessions)} active sessions")
+
+                # Delete related game results (cascade)
+                from sqlalchemy import delete
+                await session.execute(
+                    delete(GameResultDB).where(
+                        (GameResultDB.winner_id == player_id) | (GameResultDB.loser_id == player_id)
+                    )
+                )
+
+                # Delete the player
+                await session.delete(player_db)
+                await session.commit()
+
+                logger.info(f"Deleted player: {player_id}")
+                return True
+
+        except (PlayerNotFoundError, DatabaseError):
+            raise
+        except Exception as e:
+            logger.error(f"Error deleting player {player_id}: {e}")
+            raise DatabaseError(f"Failed to delete player: {str(e)}")
+
     async def health_check(self) -> bool:
         """Perform database health check."""
         try:

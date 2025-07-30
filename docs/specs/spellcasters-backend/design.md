@@ -154,6 +154,13 @@ class PlayerRegistry:
         if include_builtin:
             return list(self.players.values())
         return [p for p in self.players.values() if not p.is_builtin]
+    
+    async def delete_player(self, player_id: str) -> bool:
+        """Delete a player with validation and constraint checking"""
+        # Validate player exists and is not built-in
+        # Check for active sessions
+        # Cascade delete related game results
+        # Remove player from registry
 ```
 
 ### Bot Models
@@ -439,6 +446,9 @@ class DatabaseService:
         
     async def complete_session(self, session_id: str, result: GameResult) -> None:
         """Mark session as completed and store result"""
+        
+    async def delete_player(self, player_id: str) -> bool:
+        """Delete a player with constraint validation and cascade delete"""
 ```
 
 ### State Management
@@ -541,6 +551,10 @@ async def cleanup_session(session_id: str) -> Dict[str, str]:
 @app.post("/players/register", response_model=Player)
 async def register_player(registration: PlayerRegistration) -> Player:
     """Register a new player and return player data with generated player_id"""
+
+@app.delete("/players/{player_id}", status_code=204)
+async def delete_player(player_id: str) -> None:
+    """Delete a registered player and cascade delete related game results"""
 ```
 
 #### Storage Design

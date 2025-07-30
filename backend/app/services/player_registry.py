@@ -238,6 +238,37 @@ class PlayerRegistry:
             logger.error(f"Error getting player statistics: {e}")
             return {"total_players": 0, "user_players": 0, "builtin_players": 0}
 
+    async def delete_player(self, player_id: str) -> bool:
+        """Delete a player with validation and constraint checking."""
+        try:
+            # Validate player exists and get details
+            player = await self.get_player(player_id)
+            if not player:
+                raise PlayerNotFoundError(player_id)
+
+            # Prevent deletion of built-in players
+            if player.is_builtin:
+                raise PlayerRegistrationError("Cannot delete built-in players")
+
+            # Delegate to database service for actual deletion
+            success = await self.db.delete_player(player_id)
+            
+            if success:
+                # Remove from built-in cache if it was there (shouldn't happen, but safety)
+                if player_id in self._builtin_players_cache:
+                    del self._builtin_players_cache[player_id]
+                
+                logger.info(f"Successfully deleted player: {player_id} ({player.player_name})")
+                return True
+            
+            return False
+
+        except (PlayerNotFoundError, PlayerRegistrationError):
+            raise
+        except Exception as e:
+            logger.error(f"Failed to delete player {player_id}: {e}")
+            raise PlayerRegistrationError(f"Player deletion failed: {str(e)}")
+
     async def cleanup(self) -> None:
         """Cleanup resources (if needed)."""
         logger.info("PlayerRegistry cleanup completed") 

@@ -40,29 +40,33 @@ This implementation plan converts the feature design into a series of incrementa
 - [x] 2.1 Implement `DatabaseService` class in `/backend/app/services/database.py`
   - Create SQLite database connection and session management
   - Implement CRUD operations for players, sessions, and game results
+  - Add player deletion with constraint validation and cascade delete
   - Add database migration support and table creation
   - Handle database connection pooling and error recovery
-  - **Requirements**: Database persistence for all player and session data
+  - **Requirements**: Database persistence for all player and session data, player deletion
 
 - [x] 2.2 Implement `PlayerRegistry` class in `/backend/app/services/player_registry.py`
   - Create player registration, retrieval, and statistics tracking
+  - Add player deletion with validation and constraint checking
   - Integrate `DatabaseService` with `PlayerRegistry` for player storage
   - Implement built-in player pre-registration functionality
   - Replace in-memory storage with database operations
   - Handle UUID generation and player data management
-  - **Requirements**: 1.1, 1.3, 1.4, 1.5 (Persistent player registration and metadata)
+  - **Requirements**: 1.1, 1.3, 1.4, 1.5, 1.8-1.12 (Persistent player registration, metadata, and deletion)
 
 - [x] 2.3 Create player registration API endpoints in `/backend/app/api/players.py`
   - Implement `POST /players/register` endpoint
+  - Implement `DELETE /players/{player_id}` endpoint
   - Add input validation and error handling
-  - Wire endpoint to `PlayerRegistry` service
-  - **Requirements**: 1.1, 1.6, 1.7 (Player registration endpoint with validation)
+  - Wire endpoints to `PlayerRegistry` service
+  - **Requirements**: 1.1, 1.6, 1.7, 1.8-1.12 (Player registration and deletion endpoints with validation)
 
 - [x] 2.4 Write comprehensive tests for player management
-  - Unit tests for `PlayerRegistry` functionality
-  - Integration tests for player registration endpoints
-  - Test error scenarios and edge cases
-  - **Requirements**: Testing strategy and error handling validation
+  - Unit tests for `PlayerRegistry` functionality including deletion
+  - Integration tests for player registration and deletion endpoints
+  - Test error scenarios and edge cases for both registration and deletion
+  - Test constraint validation for player deletion
+  - **Requirements**: Testing strategy and error handling validation for registration and deletion
 
 ### 3. Bot System Implementation
 

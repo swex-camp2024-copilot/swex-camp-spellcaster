@@ -18,6 +18,11 @@ The Spellcasters Playground Backend is a FastAPI-based system that powers the "P
 5. The system SHALL initialize match statistics (total_matches, wins, losses, draws) to zero for new players
 6. The system SHALL validate that player_name is not empty and is a valid string
 7. The system SHALL return appropriate error responses for invalid registration data
+8. The system SHALL provide a DELETE /players/{player_id} endpoint to remove registered players
+9. The system SHALL prevent deletion of built-in players
+10. The system SHALL prevent deletion of players with active sessions
+11. The system SHALL cascade delete related game results when deleting a player
+12. The system SHALL return appropriate error responses for invalid deletion operations
 
 ### 2. Match Session Management
 

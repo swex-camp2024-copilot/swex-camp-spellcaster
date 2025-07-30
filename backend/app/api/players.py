@@ -247,5 +247,88 @@ async def get_player_statistics(
         )
 
 
+@router.delete("/{player_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_player(
+    player_id: str,
+    player_registry: PlayerRegistry = Depends(get_player_registry)
+) -> None:
+    """
+    Delete a player from the system.
+    
+    Removes a registered player and all associated game results.
+    Built-in players cannot be deleted. Players with active sessions
+    cannot be deleted.
+    
+    Args:
+        player_id: Unique player identifier
+        player_registry: Player registry service (injected)
+    
+    Returns:
+        None: 204 No Content on successful deletion
+        
+    Raises:
+        HTTPException: 400 for built-in players or players with active sessions
+        HTTPException: 404 if player not found
+        HTTPException: 500 for internal server errors
+    """
+    try:
+        logger.info(f"Deleting player: {player_id}")
+        
+        success = await player_registry.delete_player(player_id)
+        
+        if success:
+            logger.info(f"Successfully deleted player: {player_id}")
+            return  # 204 No Content
+        else:
+            logger.error(f"Failed to delete player {player_id}: Unknown error")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "error": "DELETION_FAILED",
+                    "message": "Player deletion failed for unknown reason"
+                }
+            )
+        
+    except PlayerNotFoundError:
+        logger.warning(f"Attempted to delete non-existent player: {player_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "PLAYER_NOT_FOUND",
+                "message": f"Player with ID {player_id} not found",
+                "player_id": player_id
+            }
+        )
+    except PlayerRegistrationError as e:
+        logger.warning(f"Player deletion rejected: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "DELETION_NOT_ALLOWED",
+                "message": str(e),
+                "player_id": player_id
+            }
+        )
+    except DatabaseError as e:
+        logger.error(f"Database error during player deletion: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "DATABASE_CONSTRAINT_ERROR",
+                "message": str(e),
+                "player_id": player_id
+            }
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during player deletion: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "INTERNAL_SERVER_ERROR",
+                "message": "An unexpected error occurred during deletion"
+            }
+        )
+
+
 # Note: Exception handlers are defined in main.py on the FastAPI app instance
 # APIRouter does not support exception handlers directly 

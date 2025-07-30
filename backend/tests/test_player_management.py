@@ -431,6 +431,73 @@ class TestPlayerRegistry:
 
         assert exists is False
 
+    @pytest.mark.asyncio
+    async def test_delete_player_success(self, player_registry, mock_db_service):
+        """Test successful player deletion."""
+        player_id = "test-player-id"
+        test_player = Player(
+            player_id=player_id,
+            player_name="TestPlayer",
+            submitted_from="pasted",
+            created_at=datetime.now(),
+            is_builtin=False
+        )
+        
+        mock_db_service.get_player.return_value = test_player
+        mock_db_service.delete_player.return_value = True
+
+        success = await player_registry.delete_player(player_id)
+
+        assert success is True
+        mock_db_service.delete_player.assert_called_once_with(player_id)
+
+    @pytest.mark.asyncio
+    async def test_delete_player_not_found(self, player_registry, mock_db_service):
+        """Test deletion of non-existent player."""
+        player_id = "nonexistent-player"
+        mock_db_service.get_player.return_value = None
+
+        with pytest.raises(PlayerNotFoundError):
+            await player_registry.delete_player(player_id)
+
+    @pytest.mark.asyncio
+    async def test_delete_builtin_player_rejected(self, player_registry, mock_db_service):
+        """Test that built-in players cannot be deleted."""
+        player_id = "builtin_sample_1"
+        builtin_player = Player(
+            player_id=player_id,
+            player_name="Sample Bot 1",
+            submitted_from="builtin",
+            created_at=datetime.now(),
+            is_builtin=True
+        )
+        
+        mock_db_service.get_player.return_value = builtin_player
+
+        with pytest.raises(PlayerRegistrationError) as exc_info:
+            await player_registry.delete_player(player_id)
+
+        assert "Cannot delete built-in players" in str(exc_info.value)
+        mock_db_service.delete_player.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_delete_player_database_error(self, player_registry, mock_db_service):
+        """Test player deletion with database error."""
+        player_id = "test-player-id"
+        test_player = Player(
+            player_id=player_id,
+            player_name="TestPlayer",
+            submitted_from="pasted",
+            created_at=datetime.now(),
+            is_builtin=False
+        )
+        
+        mock_db_service.get_player.return_value = test_player
+        mock_db_service.delete_player.side_effect = DatabaseError("Database constraint violation")
+
+        with pytest.raises(PlayerRegistrationError):
+            await player_registry.delete_player(player_id)
+
 
 class TestPlayerAPI:
     """Test player API endpoints."""
@@ -558,6 +625,53 @@ class TestPlayerAPI:
         assert "builtin_players" in data
         assert isinstance(data["total_players"], int)
 
+    @pytest.mark.asyncio
+    async def test_delete_player_endpoint_success(self, async_client, sample_registration):
+        """Test successful player deletion endpoint."""
+        # First register a player
+        register_response = await async_client.post("/players/register", json=sample_registration)
+        assert register_response.status_code == 201
+        player_data = register_response.json()
+        player_id = player_data["player_id"]
+
+        # Then delete the player
+        response = await async_client.delete(f"/players/{player_id}")
+
+        assert response.status_code == 204
+        assert response.content == b""  # No content for 204
+
+        # Verify player is gone
+        get_response = await async_client.get(f"/players/{player_id}")
+        assert get_response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_delete_player_endpoint_not_found(self, async_client):
+        """Test player deletion with non-existent player ID."""
+        nonexistent_id = "nonexistent-player-id"
+
+        response = await async_client.delete(f"/players/{nonexistent_id}")
+
+        assert response.status_code == 404
+        data = response.json()
+        assert data["detail"]["error"] == "PLAYER_NOT_FOUND"
+
+    @pytest.mark.asyncio
+    async def test_delete_builtin_player_endpoint_rejected(self, async_client):
+        """Test that built-in players cannot be deleted via API."""
+        # Get a built-in player first
+        builtin_response = await async_client.get("/players/builtin/list")
+        assert builtin_response.status_code == 200
+        builtin_players = builtin_response.json()
+        
+        if builtin_players:
+            builtin_player_id = builtin_players[0]["player_id"]
+            
+            response = await async_client.delete(f"/players/{builtin_player_id}")
+            
+            assert response.status_code == 400
+            data = response.json()
+            assert data["detail"]["error"] == "DELETION_NOT_ALLOWED"
+
 
 class TestPlayerManagementIntegration:
     """Integration tests for complete player management workflow."""
@@ -648,4 +762,53 @@ class TestPlayerManagementIntegration:
         assert response.status_code == 404
         
         data = response.json()
-        assert data["detail"]["error"] == "PLAYER_NOT_FOUND" 
+        assert data["detail"]["error"] == "PLAYER_NOT_FOUND"
+        
+        # Test deleting non-existent player
+        response = await async_client.delete("/players/invalid-player-id")
+        assert response.status_code == 404
+        
+        data = response.json()
+        assert data["detail"]["error"] == "PLAYER_NOT_FOUND"
+
+    @pytest.mark.asyncio
+    async def test_complete_player_deletion_lifecycle(self, async_client):
+        """Test complete player deletion lifecycle: register -> verify -> delete -> verify deletion."""
+        # 1. Register a new player
+        registration_data = {
+            "player_name": "DeletionTestPlayer",
+            "submitted_from": "pasted",
+            "sprite_path": "assets/wizards/deletion_test.png"
+        }
+
+        register_response = await async_client.post("/players/register", json=registration_data)
+        assert register_response.status_code == 201
+        
+        player_data = register_response.json()
+        player_id = player_data["player_id"]
+
+        # 2. Verify player exists in system
+        get_response = await async_client.get(f"/players/{player_id}")
+        assert get_response.status_code == 200
+        
+        list_response = await async_client.get("/players?include_builtin=false")
+        user_players = list_response.json()
+        player_ids = [p["player_id"] for p in user_players]
+        assert player_id in player_ids
+
+        # 3. Delete the player
+        delete_response = await async_client.delete(f"/players/{player_id}")
+        assert delete_response.status_code == 204
+
+        # 4. Verify player is completely removed
+        get_after_delete = await async_client.get(f"/players/{player_id}")
+        assert get_after_delete.status_code == 404
+
+        list_after_delete = await async_client.get("/players?include_builtin=false")
+        user_players_after = list_after_delete.json()
+        player_ids_after = [p["player_id"] for p in user_players_after]
+        assert player_id not in player_ids_after
+
+        # 5. Verify statistics are updated
+        stats_response = await async_client.get("/players/stats/summary")
+        assert stats_response.status_code == 200 
