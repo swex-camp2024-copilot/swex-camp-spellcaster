@@ -70,30 +70,30 @@ This implementation plan converts the feature design into a series of incrementa
 
 ### 3. Bot System Implementation
 
-- [ ] 3.1 Create abstract `BotInterface` in `/backend/app/models/bots.py`
+- [x] 3.1 Create abstract `BotInterface` in `/backend/app/models/bots.py`
   - Implement base class with player reference and required methods
   - Define interface for game decision making
   - **Requirements**: 9.1, 9.2, 9.3 (Built-in bot interface and player references)
 
-- [ ] 3.2 Implement `BuiltinBotRegistry` in `/backend/app/services/builtin_bots.py`
+- [x] 3.2 Implement `BuiltinBotRegistry` in `/backend/app/services/builtin_bots.py`
   - Create hard-coded built-in player definitions
   - Implement bot factory methods and bot listing functionality
   - Register sample bots with proper player associations
   - **Requirements**: 9.1, 9.2, 9.7, 9.8 (Built-in bot system with pre-defined players)
 
-- [ ] 3.3 Create `PlayerBot` implementation and factory
+- [x] 3.3 Create `PlayerBot` implementation and factory
   - Implement player bot class that inherits from `BotInterface`
   - Create `PlayerBotFactory` for bot creation with player references
   - Handle both existing player reuse and new player registration scenarios
   - **Requirements**: 9.4, 9.9 (Player bot interface compliance and creation)
 
-- [ ] 3.4 Integrate existing game engine with bot interface
+- [x] 3.4 Integrate existing game engine with bot interface
   - Create adapter in `/backend/app/services/game_adapter.py` to bridge existing `/game` code
   - Modify game engine to work with new `BotInterface`
   - Ensure proper game state extraction and turn processing
   - **Requirements**: 6.1, 6.2, 6.4, 6.6 (Game engine integration and rule validation)
 
-- [ ] 3.5 Write tests for bot system
+- [x] 3.5 Write tests for bot system
   - Unit tests for bot interface implementations
   - Test built-in bot registry and factory methods
   - Integration tests for game engine adapter

@@ -40,72 +40,9 @@ class PlayerRegistry:
                 # Continue with other players even if one fails
 
     def _get_builtin_player_definitions(self) -> List[Player]:
-        """Get hard-coded built-in player definitions."""
-        return [
-            Player(
-                player_id="builtin_sample_1",
-                player_name="Sample Bot 1",
-                submitted_from="builtin",
-                sprite_path="assets/wizards/sample_bot1.png",
-                minion_sprite_path="assets/minions/minion_1.png",
-                is_builtin=True,
-                created_at=datetime.now(),
-            ),
-            Player(
-                player_id="builtin_sample_2",
-                player_name="Sample Bot 2",
-                submitted_from="builtin",
-                sprite_path="assets/wizards/sample_bot2.png",
-                minion_sprite_path="assets/minions/minion_2.png",
-                is_builtin=True,
-                created_at=datetime.now(),
-            ),
-            Player(
-                player_id="builtin_sample_3",
-                player_name="Sample Bot 3",
-                submitted_from="builtin",
-                sprite_path="assets/wizards/sample_bot3.png",
-                minion_sprite_path="assets/minions/minion_3.png",
-                is_builtin=True,
-                created_at=datetime.now(),
-            ),
-            Player(
-                player_id="builtin_tactical",
-                player_name="Tactical Bot",
-                submitted_from="builtin",
-                sprite_path="assets/wizards/tactical_bot.png",
-                minion_sprite_path="assets/minions/tactical_minion.png",
-                is_builtin=True,
-                created_at=datetime.now(),
-            ),
-            Player(
-                player_id="builtin_rincewind",
-                player_name="Rincewind",
-                submitted_from="builtin",
-                sprite_path="assets/wizards/rincewind.png",
-                minion_sprite_path="assets/minions/minion_1.png",
-                is_builtin=True,
-                created_at=datetime.now(),
-            ),
-            Player(
-                player_id="builtin_gandalf",
-                player_name="Gandalf",
-                submitted_from="builtin",
-                sprite_path="assets/wizards/gandalf.png",
-                minion_sprite_path="assets/minions/minion_2.png",
-                is_builtin=True,
-                created_at=datetime.now(),
-            ),
-            Player(
-                player_id="builtin_ai_bot",
-                player_name="AI Bot",
-                submitted_from="builtin",
-                sprite_path="assets/wizards/ai_bot.png",
-                minion_sprite_path="assets/minions/ai_minion.png",
-                is_builtin=True,
-                created_at=datetime.now(),
-            ),
-        ]
+        """Get hard-coded built-in player definitions from the BuiltinBotRegistry."""
+        from .builtin_bots import BuiltinBotRegistry
+        return BuiltinBotRegistry.get_all_builtin_players()
 
     # Player Management Operations
 
