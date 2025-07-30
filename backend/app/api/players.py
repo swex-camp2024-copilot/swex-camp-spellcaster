@@ -247,41 +247,5 @@ async def get_player_statistics(
         )
 
 
-# Error handlers for this router
-@router.exception_handler(PlayerRegistrationError)
-async def player_registration_error_handler(request, exc: PlayerRegistrationError):
-    """Handle player registration errors."""
-    logger.warning(f"Player registration error: {exc}")
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content=ErrorResponse(
-            error="PLAYER_REGISTRATION_ERROR",
-            message=str(exc)
-        ).dict()
-    )
-
-
-@router.exception_handler(PlayerNotFoundError)
-async def player_not_found_error_handler(request, exc: PlayerNotFoundError):
-    """Handle player not found errors."""
-    logger.warning(f"Player not found: {exc}")
-    return JSONResponse(
-        status_code=status.HTTP_404_NOT_FOUND,
-        content=ErrorResponse(
-            error="PLAYER_NOT_FOUND",
-            message=str(exc)
-        ).dict()
-    )
-
-
-@router.exception_handler(DatabaseError)
-async def database_error_handler(request, exc: DatabaseError):
-    """Handle database errors."""
-    logger.error(f"Database error in players API: {exc}")
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=ErrorResponse(
-            error="DATABASE_ERROR",
-            message="A database error occurred"
-        ).dict()
-    ) 
+# Note: Exception handlers are defined in main.py on the FastAPI app instance
+# APIRouter does not support exception handlers directly 

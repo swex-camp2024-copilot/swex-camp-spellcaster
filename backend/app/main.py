@@ -76,6 +76,50 @@ async def general_exception_handler(request, exc: Exception) -> JSONResponse:
     )
 
 
+# Import specific exceptions for handlers
+from .core.exceptions import DatabaseError, PlayerNotFoundError, PlayerRegistrationError
+
+
+# Specific exception handlers for player-related errors
+@app.exception_handler(PlayerRegistrationError)
+async def player_registration_error_handler(request, exc: PlayerRegistrationError) -> JSONResponse:
+    """Handle player registration errors."""
+    logger.warning(f"Player registration error: {exc}")
+    return JSONResponse(
+        status_code=400,
+        content=ErrorResponse(
+            error="PLAYER_REGISTRATION_ERROR",
+            message=str(exc)
+        ).model_dump()
+    )
+
+
+@app.exception_handler(PlayerNotFoundError)
+async def player_not_found_error_handler(request, exc: PlayerNotFoundError) -> JSONResponse:
+    """Handle player not found errors."""
+    logger.warning(f"Player not found: {exc}")
+    return JSONResponse(
+        status_code=404,
+        content=ErrorResponse(
+            error="PLAYER_NOT_FOUND",
+            message=str(exc)
+        ).model_dump()
+    )
+
+
+@app.exception_handler(DatabaseError)
+async def database_error_handler(request, exc: DatabaseError) -> JSONResponse:
+    """Handle database errors."""
+    logger.error(f"Database error: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content=ErrorResponse(
+            error="DATABASE_ERROR",
+            message="A database error occurred"
+        ).model_dump()
+    )
+
+
 # Health check endpoint
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:
