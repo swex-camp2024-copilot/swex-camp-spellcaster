@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 
-class SSETurnEvent(BaseModel):
+class TurnEvent(BaseModel):
     """SSE event for turn updates."""
 
     event: Literal["turn_update"] = Field(default="turn_update", description="Event type")
@@ -18,7 +18,7 @@ class SSETurnEvent(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="Event timestamp")
 
 
-class SSEGameOverEvent(BaseModel):
+class GameOverEvent(BaseModel):
     """SSE event for game completion."""
 
     event: Literal["game_over"] = Field(default="game_over", description="Event type")
@@ -29,14 +29,14 @@ class SSEGameOverEvent(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="Event timestamp")
 
 
-class SSEHeartbeatEvent(BaseModel):
+class HeartbeatEvent(BaseModel):
     """SSE heartbeat event to keep connection alive."""
 
     event: Literal["heartbeat"] = Field(default="heartbeat", description="Event type")
     timestamp: datetime = Field(default_factory=datetime.now, description="Event timestamp")
 
 
-class SSEErrorEvent(BaseModel):
+class ErrorEvent(BaseModel):
     """SSE event for error notifications."""
 
     event: Literal["error"] = Field(default="error", description="Event type")
@@ -46,7 +46,7 @@ class SSEErrorEvent(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="Event timestamp")
 
 
-class SSESessionStartEvent(BaseModel):
+class SessionStartEvent(BaseModel):
     """SSE event for session start notification."""
 
     event: Literal["session_start"] = Field(default="session_start", description="Event type")
@@ -57,8 +57,8 @@ class SSESessionStartEvent(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="Event timestamp")
 
 
-# Union type for all possible SSE events
-SSEEvent = Union[SSETurnEvent, SSEGameOverEvent, SSEHeartbeatEvent, SSEErrorEvent, SSESessionStartEvent]
+# Union type for all possible events
+Event = Union[TurnEvent, GameOverEvent, HeartbeatEvent, ErrorEvent, SessionStartEvent]
 
 
 class SSEConnection(BaseModel):

@@ -11,6 +11,10 @@ from ..models.events import TurnEvent, GameOverEvent
 
 logger = logging.getLogger(__name__)
 
+# Expose a module-level GameEngine reference for tests to patch.
+# It will be lazily imported on first use if not patched.
+GameEngine = None  # type: ignore[assignment]
+
 
 class GameEngineAdapter:
     """
@@ -35,9 +39,12 @@ class GameEngineAdapter:
             bot2: Second bot instance
         """
         try:
-            # Import the game engine here to avoid circular imports
-            from game.engine import GameEngine
-            
+            # Ensure GameEngine is available (allowing tests to patch this symbol)
+            global GameEngine
+            if GameEngine is None:
+                from game.engine import GameEngine as _GameEngine
+                GameEngine = _GameEngine
+
             self.bot1 = bot1
             self.bot2 = bot2
             

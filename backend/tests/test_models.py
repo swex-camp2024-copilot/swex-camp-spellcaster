@@ -24,9 +24,9 @@ from backend.app.models.errors import (
 )
 from backend.app.models.events import (
     SSEConnection,
-    SSEGameOverEvent,
-    SSEHeartbeatEvent,
-    SSETurnEvent,
+    GameOverEvent,
+    HeartbeatEvent,
+    TurnEvent,
 )
 from backend.app.models.players import Player, PlayerConfig, PlayerRegistration
 from backend.app.models.results import GameResult, GameResultType, PlayerGameStats
@@ -177,7 +177,7 @@ class TestEventModels:
 
     def test_turn_event(self):
         """Test SSE turn event."""
-        event = SSETurnEvent(
+        event = TurnEvent(
             turn=5,
             game_state={"player1_hp": 80, "player2_hp": 90},
             actions=[{"player": "1", "action": "move"}],
@@ -193,7 +193,7 @@ class TestEventModels:
 
     def test_game_over_event(self):
         """Test SSE game over event."""
-        event = SSEGameOverEvent(
+        event = GameOverEvent(
             winner="player1",
             winner_name="TestPlayer1",
             final_state={"player1_hp": 50, "player2_hp": 0},
@@ -206,7 +206,7 @@ class TestEventModels:
 
     def test_heartbeat_event(self):
         """Test SSE heartbeat event."""
-        event = SSEHeartbeatEvent()
+        event = HeartbeatEvent()
         assert event.event == "heartbeat"
         assert isinstance(event.timestamp, datetime)
 
