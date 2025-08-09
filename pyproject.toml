@@ -109,8 +109,6 @@ minversion = "7.0"
 addopts = [
     "--strict-markers",
     "--strict-config",
-    "--cov=.",
-    "--cov-report=term-missing",
 ]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
