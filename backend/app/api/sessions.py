@@ -7,13 +7,12 @@ from fastapi import APIRouter, HTTPException
 
 from ..models.players import PlayerConfig
 from ..models.sessions import SessionCreationRequest
-from ..services.session_manager import SessionManager
+from ..services.runtime import session_manager
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Module-level session manager to maintain in-memory sessions across requests
-session_manager = SessionManager()
+# Using shared runtime session manager to maintain in-memory sessions across requests
 
 
 @router.post("/playground/start")

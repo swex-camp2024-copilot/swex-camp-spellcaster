@@ -191,8 +191,9 @@ class GameEngineAdapter:
         """
         return GameOverEvent(
             winner=game_result.winner,
+            winner_name=None,  # Could be extracted from player registry if needed
             final_state=self.get_game_state(),
-            game_result=game_result
+            game_result=game_result.model_dump()
         )
 
     def _create_game_result(self, end_condition: str, winner_id: Optional[str]) -> GameResult:

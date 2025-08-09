@@ -124,20 +124,20 @@ This implementation plan converts the feature design into a series of incrementa
 
 ### 5. Real-time Streaming (SSE)
 
-- [ ] 5.1 Implement SSE connection management in `app/services/sse_manager.py`
+- [x] 5.1 Implement SSE connection management in `app/services/sse_manager.py`
   - Create connection tracking and cleanup functionality
   - Handle client disconnections gracefully
   - Implement event broadcasting to connected clients
   - **Requirements**: 3.1, 3.6, 3.7 (SSE connection management and validation)
 
-- [ ] 5.2 Create SSE streaming endpoints in `app/api/streaming.py`
+- [x] 5.2 Create SSE streaming endpoints in `app/api/streaming.py`
   - Implement `GET /playground/{session_id}/events` endpoint
   - Add proper SSE headers and event formatting
   - Handle connection lifecycle and error scenarios
   - Unit tests for SSE connection management
   - **Requirements**: 3.1, 3.2, 3.5 (SSE endpoint and event streaming)
 
-- [ ] 5.3 Integrate SSE with session management
+- [x] 5.3 Integrate SSE with session management
   - Connect session events to SSE broadcasting
   - Implement turn updates and game over events
   - Add heartbeat and connection health monitoring

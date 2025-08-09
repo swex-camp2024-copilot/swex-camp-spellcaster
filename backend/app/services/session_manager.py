@@ -14,6 +14,7 @@ from ..models.events import GameOverEvent, TurnEvent
 from ..models.players import PlayerConfig
 from ..models.sessions import GameState, PlayerSlot, TurnStatus
 from .builtin_bots import BuiltinBotRegistry
+from .sse_manager import SSEManager
 from .database import DatabaseService
 from .game_adapter import GameEngineAdapter
 
@@ -32,8 +33,9 @@ class SessionContext:
 class SessionManager:
     """Creates and manages game sessions and the match loop."""
 
-    def __init__(self, db_service: Optional[DatabaseService] = None):
+    def __init__(self, db_service: Optional[DatabaseService] = None, sse_manager: Optional[SSEManager] = None):
         self._db = db_service or DatabaseService()
+        self._sse = sse_manager
         self._sessions: Dict[str, SessionContext] = {}
         # Pending actions per session_id -> turn_index -> {player_id: Move}
         self._pending_actions: Dict[str, Dict[int, Dict[str, Move]]] = {}
@@ -130,6 +132,10 @@ class SessionManager:
                 ]
                 ctx.game_state.add_log_entry(turn_event.log_line)
 
+                # Broadcast turn update over SSE if configured
+                if self._sse:
+                    await self._sse.broadcast(ctx.session_id, turn_event)
+
                 # Check game over
                 result = ctx.adapter.check_game_over()
                 if result is not None:
@@ -143,6 +149,10 @@ class SessionManager:
                     # Mark status and store winner
                     ctx.game_state.status = TurnStatus.COMPLETED
                     ctx.game_state.winner_id = result.winner
+
+                    # Broadcast game over event
+                    if self._sse:
+                        await self._sse.broadcast(ctx.session_id, ctx.adapter.create_game_over_event(result))
 
                     logger.info(
                         f"Session {ctx.session_id} completed in {result.total_rounds} rounds. Winner: {result.winner}"
