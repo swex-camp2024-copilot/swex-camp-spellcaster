@@ -107,7 +107,7 @@ This implementation plan converts the feature design into a series of incrementa
   - Handle both built-in and player bot integration
   - **Requirements**: 2.1, 2.2, 2.3, 2.7 (Session creation and state management)
 
-- [ ] 4.2 Create session API endpoints in `/backend/app/api/sessions.py`
+- [x] 4.2 Create session API endpoints in `/backend/app/api/sessions.py`
   - Implement `POST /playground/start` endpoint
   - Add session validation and error handling
   - Wire endpoints to `SessionManager` service
