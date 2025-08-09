@@ -110,6 +110,8 @@ class SessionManager:
         """Run the automated match loop until completion."""
         try:
             start_time = datetime.now()
+            # Small delay to allow SSE clients to connect before game starts
+            await asyncio.sleep(0.1)
             while True:
                 expected_players = [ctx.game_state.player_1.player_id, ctx.game_state.player_2.player_id]
                 next_turn = ctx.game_state.turn_index + 1
@@ -139,6 +141,9 @@ class SessionManager:
                 if self._sse:
                     await self._sse.broadcast(ctx.session_id, turn_event)
 
+                # Small delay between turns to allow SSE event delivery
+                await asyncio.sleep(0.01)
+
                 # Check game over
                 result = ctx.adapter.check_game_over()
                 if result is not None:
@@ -156,6 +161,8 @@ class SessionManager:
                     # Broadcast game over event
                     if self._sse:
                         await self._sse.broadcast(ctx.session_id, ctx.adapter.create_game_over_event(result))
+                        # Close all SSE streams for this session
+                        await self._sse.close_session_streams(ctx.session_id)
 
                     logger.info(
                         f"Session {ctx.session_id} completed in {result.total_rounds} rounds. Winner: {result.winner}"
@@ -168,10 +175,16 @@ class SessionManager:
         except asyncio.CancelledError:
             logger.info(f"Session {ctx.session_id} cancelled")
             ctx.game_state.status = TurnStatus.CANCELLED
+            # Close SSE streams on cancellation
+            if self._sse:
+                await self._sse.close_session_streams(ctx.session_id)
             raise
         except Exception as e:
             logger.error(f"Error in session {ctx.session_id} loop: {e}", exc_info=True)
             ctx.game_state.status = TurnStatus.CANCELLED
+            # Close SSE streams on error
+            if self._sse:
+                await self._sse.close_session_streams(ctx.session_id)
 
     async def get_session(self, session_id: str) -> SessionContext:
         async with self._lock:

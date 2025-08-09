@@ -83,10 +83,13 @@ class GameEngineAdapter:
             events = self._extract_turn_events()
             
             # Create turn event
+            move_results = self._extract_move_results()
+            # Convert MoveResult objects to dictionaries for TurnEvent validation
+            actions_dicts = [result.model_dump() for result in move_results]
             turn_event = TurnEvent(
                 turn=current_turn + 1,  # Turn number after execution
                 game_state=game_state,
-                actions=self._extract_move_results(),
+                actions=actions_dicts,
                 events=events,
                 log_line=self._format_log_line(current_turn + 1, events)
             )
@@ -216,6 +219,7 @@ class GameEngineAdapter:
             # Calculate player stats
             player1_stats = PlayerGameStats(
                 player_id=self.bot1.player_id,
+                player_name=self.bot1.name,
                 final_hp=self.engine.wizard1.hp,
                 final_mana=self.engine.wizard1.mana,
                 final_position=self.engine.wizard1.position,
@@ -227,6 +231,7 @@ class GameEngineAdapter:
 
             player2_stats = PlayerGameStats(
                 player_id=self.bot2.player_id,
+                player_name=self.bot2.name,
                 final_hp=self.engine.wizard2.hp,
                 final_mana=self.engine.wizard2.mana,
                 final_position=self.engine.wizard2.position,
@@ -303,7 +308,9 @@ class GameEngineAdapter:
                     damage_dealt=0,  # Would be calculated from game events
                     damage_received=0,  # Would be calculated from game events
                     position_after=self.engine.wizard1.position,
-                    events=["Move executed"]  # Would be extracted from game logger
+                    events=["Move executed"],  # Would be extracted from game logger
+                    hp_after=self.engine.wizard1.hp,
+                    mana_after=self.engine.wizard1.mana
                 ))
                 
                 results.append(MoveResult(
@@ -311,7 +318,9 @@ class GameEngineAdapter:
                     damage_dealt=0,
                     damage_received=0,
                     position_after=self.engine.wizard2.position,
-                    events=["Move executed"]
+                    events=["Move executed"],
+                    hp_after=self.engine.wizard2.hp,
+                    mana_after=self.engine.wizard2.mana
                 ))
             
             return results

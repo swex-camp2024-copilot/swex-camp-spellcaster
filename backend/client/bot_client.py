@@ -126,7 +126,8 @@ class BotClient:
     ) -> AsyncIterator[Dict[str, Any]]:
         """Yield events from the session SSE stream using the SSE client library."""
         cfg = SSEClientConfig()
-        async with SSEClient(self.base_url, session_id, config=cfg).connect() as sse:
+        # Use the same HTTP client to ensure we use the same transport (ASGI vs HTTP)
+        async with SSEClient(self.base_url, session_id, config=cfg, client=self._client).connect() as sse:
             count = 0
             async for event in sse.events():
                 yield event

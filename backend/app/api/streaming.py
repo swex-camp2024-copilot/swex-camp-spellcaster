@@ -29,7 +29,9 @@ async def stream_session_events(session_id: str, request: Request) -> StreamingR
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
             # Immediately yield a first heartbeat so clients see data promptly
-            yield f"data: {HeartbeatEvent().model_dump_json()}\n\n"
+            heartbeat_json = HeartbeatEvent().model_dump_json()
+            heartbeat_data = f"event: heartbeat\ndata: {heartbeat_json}\n\n"
+            yield heartbeat_data
 
             # Then yield from the stream while connection is open
             async for chunk in stream.stream():

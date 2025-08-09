@@ -160,8 +160,8 @@ This implementation plan converts the feature design into a series of incrementa
   - Add action submission, turn coordination, and game state processing (submission stubbed until 7.1)
   - Include configurable bot strategies and decision-making logic
   - **Requirements**: Realistic simulation of player bot interaction with backend
-
-- [ ] 6.3 Create integration tests using real clients in `/backend/tests/e2e/test_real_clients.py`
+ 
+- [x] 6.3 Create integration tests using real clients in `/backend/tests/e2e/test_real_clients.py`
   - Test complete workflow using actual SSE and bot clients from `/backend/client/`
   - Verify end-to-end functionality with realistic client behavior
   - Test multiple concurrent real clients and session isolation

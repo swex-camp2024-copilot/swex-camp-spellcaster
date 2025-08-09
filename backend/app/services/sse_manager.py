@@ -30,7 +30,15 @@ class SSEStream:
                 item = await self._queue.get()
                 if item == "__CLOSE__":
                     break
-                yield f"data: {item}\n\n"
+                # Parse the JSON to extract the event type for proper SSE formatting
+                try:
+                    import json
+                    parsed = json.loads(item)
+                    event_type = parsed.get("event", "message")
+                    yield f"event: {event_type}\ndata: {item}\n\n"
+                except (json.JSONDecodeError, KeyError):
+                    # Fallback for malformed JSON
+                    yield f"event: message\ndata: {item}\n\n"
         finally:
             self._closed = True
 
@@ -66,6 +74,15 @@ class SSEManager:
                 await stream.push(payload)
         except Exception as exc:
             logger.error(f"SSE broadcast failed: {exc}")
+
+    async def close_session_streams(self, session_id: str) -> None:
+        """Close all SSE streams for a session."""
+        async with self._lock:
+            streams = self._streams_by_session.get(session_id, [])
+            for stream in streams:
+                await stream.close()
+            # Remove session from tracking
+            self._streams_by_session.pop(session_id, None)
 
     async def heartbeat(self, session_id: str) -> None:
         await self.broadcast(session_id, HeartbeatEvent())
