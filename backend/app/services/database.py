@@ -201,6 +201,8 @@ class DatabaseService:
     async def create_session_record(self, session_id: str, player_1_id: str, player_2_id: str) -> SessionDB:
         """Create session record in database."""
         try:
+            # Ensure tables exist before operating
+            await self.ensure_tables_exist()
             async with self._session_factory() as session:
                 session_db = SessionDB(
                     session_id=session_id,

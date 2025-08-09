@@ -101,7 +101,7 @@ This implementation plan converts the feature design into a series of incrementa
 
 ### 4. Session Management and Game Flow
 
-- [ ] 4.1 Implement `SessionManager` in `/backend/app/services/session_manager.py`
+- [x] 4.1 Implement `SessionManager` in `/backend/app/services/session_manager.py`
   - Create session creation, state management, and cleanup functionality
   - Implement match loop coordination and turn processing
   - Handle both built-in and player bot integration
