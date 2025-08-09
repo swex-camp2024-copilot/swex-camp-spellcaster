@@ -11,12 +11,12 @@ from backend.app.core.database import create_tables
 
 # Support running as package or script
 try:
-    from backend.client.sse_client import SSEClient, SSEClientConfig  # type: ignore
+    from client.sse_client import SSEClient, SSEClientConfig  # type: ignore
 except Exception:  # pragma: no cover
     from ...client.sse_client import SSEClient, SSEClientConfig  # type: ignore
 
 try:
-    from backend.client.bot_client import (
+    from client.bot_client import (
         BotClient,
         PlayerRegistrationRequest,
     )  # type: ignore

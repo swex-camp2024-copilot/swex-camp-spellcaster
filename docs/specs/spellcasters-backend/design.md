@@ -942,6 +942,13 @@ backend/
 ├── tests/
 ├── logs/
 └── requirements.txt
+
+client/
+├── __init__.py
+├── sse_client.py           # SSE client library
+├── sse_client_main.py      # CLI: stream events from a session
+├── bot_client.py           # Bot client simulator library
+└── bot_client_main.py      # CLI: register player, start match vs built-in, stream events
 ```
 
 ### Code Quality Standards

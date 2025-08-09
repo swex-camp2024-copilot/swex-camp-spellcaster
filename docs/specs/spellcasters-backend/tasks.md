@@ -147,22 +147,22 @@ This implementation plan converts the feature design into a series of incrementa
 
 ### 6. SSE Client for Real-World Simulation
 
-- [x] 6.1 Create SSE client library in `/backend/client/sse_client.py`
+- [x] 6.1 Create SSE client library in `/client/sse_client.py`
   - Implement Python SSE client that connects to backend streaming endpoints
   - Add robust connection management and event parsing functionality
   - Handle connection lifecycle, reconnection scenarios, and error recovery
   - Provide clean API for consuming SSE events from the playground backend
   - **Requirements**: Real-world client simulation for SSE communication
  
-- [x] 6.2 Implement bot client simulator in `/backend/client/bot_client.py`
+- [x] 6.2 Implement bot client simulator in `/client/bot_client.py`
   - Create realistic bot client that simulates actual player bot behavior
   - Implement complete player registration and session joining workflow
   - Add action submission, turn coordination, and game state processing (submission stubbed until 7.1)
   - Include configurable bot strategies and decision-making logic
   - **Requirements**: Realistic simulation of player bot interaction with backend
  
-- [x] 6.3 Create integration tests using real clients in `/backend/tests/e2e/test_real_clients.py`
-  - Test complete workflow using actual SSE and bot clients from `/backend/client/`
+- [x] 6.3 Create integration tests using real clients in `/client/tests/e2e/test_real_clients.py`
+  - Test complete workflow using actual SSE and bot clients from `/client/`
   - Verify end-to-end functionality with realistic client behavior
   - Test multiple concurrent real clients and session isolation
   - Validate system behavior under realistic usage patterns

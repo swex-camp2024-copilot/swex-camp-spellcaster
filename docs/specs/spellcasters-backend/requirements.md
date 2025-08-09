@@ -157,7 +157,7 @@ The Spellcasters Playground Backend is a FastAPI-based system that powers the "P
 5. The system SHALL persist session state and player data to SQLite database
 6. The system SHALL manage database connections efficiently for concurrent access
 7. The system SHALL provide database migration support for schema changes
-8. The system SHALL handle SSE connections efficiently for multiple clients
+8. The system SHALL handle SSE connections efficiently for multiple clients, including external clients built using `/client/` libraries
 9. The system SHALL provide performance monitoring capabilities for system health
 
 ### 12. Admin Management System
