@@ -88,7 +88,7 @@ async def test_create_session_and_run_loop(monkeypatch):
     # Wait a small amount for loop to complete
     # In real tests we'd add synchronization; for now sleep briefly
     import asyncio
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0.2)
 
     ctx = await manager.get_session(session_id)
     assert ctx.game_state.turn_index >= 1
