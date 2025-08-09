@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from ..core.exceptions import SessionNotFoundError
+from ..models.actions import ActionData, Move, SpellAction
 from ..models.bots import BotInterface, BotCreationRequest, PlayerBotFactory
 from ..models.events import GameOverEvent, TurnEvent
 from ..models.players import PlayerConfig
@@ -34,6 +35,8 @@ class SessionManager:
     def __init__(self, db_service: Optional[DatabaseService] = None):
         self._db = db_service or DatabaseService()
         self._sessions: Dict[str, SessionContext] = {}
+        # Pending actions per session_id -> turn_index -> {player_id: Move}
+        self._pending_actions: Dict[str, Dict[int, Dict[str, Move]]] = {}
         self._lock = asyncio.Lock()
 
     async def create_session(self, player_1: PlayerConfig, player_2: PlayerConfig) -> str:
@@ -103,12 +106,28 @@ class SessionManager:
         try:
             start_time = datetime.now()
             while True:
-                # Execute a single turn
+                expected_players = [ctx.game_state.player_1.player_id, ctx.game_state.player_2.player_id]
+                next_turn = ctx.game_state.turn_index + 1
+
+                # Collect actions with timeout semantics. Built-in bots are auto-collected.
+                collected_actions = await self._collect_actions(ctx, next_turn, expected_players)
+
+                # Execute a single turn on the engine
                 turn_event: TurnEvent = await ctx.adapter.execute_turn()  # type: ignore[assignment]
 
                 # Update in-memory state
                 ctx.game_state.turn_index = turn_event.turn
                 ctx.game_state.current_game_state = turn_event.game_state
+                # Override/attach collected action summaries for observability
+                turn_event.actions = [
+                    {
+                        "player_id": move.player_id,
+                        "turn": move.turn,
+                        "move": move.move,
+                        "spell": (move.spell.model_dump() if move.spell else None),
+                    }
+                    for move in collected_actions.values()
+                ]
                 ctx.game_state.add_log_entry(turn_event.log_line)
 
                 # Check game over
@@ -166,6 +185,56 @@ class SessionManager:
         async with self._lock:
             self._sessions.pop(session_id, None)
         return True
+
+    async def submit_action(self, session_id: str, player_id: str, turn: int, action: ActionData) -> None:
+        """Submit an action for a player for a given turn (for future API integration)."""
+        async with self._lock:
+            by_turn = self._pending_actions.setdefault(session_id, {})
+            turn_map = by_turn.setdefault(turn, {})
+            # Store as Move for uniform handling
+            turn_map[player_id] = Move(player_id=player_id, turn=turn, move=action.move, spell=(SpellAction(**action.spell) if action.spell else None))
+
+    async def _collect_actions(
+        self, ctx: SessionContext, turn: int, expected_players: List[str]
+    ) -> Dict[str, Move]:
+        """Collect actions from players with timeout semantics. Built-in bots are auto-decided."""
+        timeout_seconds = 5.0
+
+        # Initialize collection from any pending submissions
+        async with self._lock:
+            by_turn = self._pending_actions.setdefault(ctx.session_id, {})
+            turn_map = by_turn.setdefault(turn, {})
+
+        # Auto-fill for built-in bots to avoid waiting
+        builtin_ids = {
+            ctx.game_state.player_1.player_id: ctx.game_state.player_1.is_builtin_bot,
+            ctx.game_state.player_2.player_id: ctx.game_state.player_2.is_builtin_bot,
+        }
+        for pid in expected_players:
+            if builtin_ids.get(pid) and pid not in turn_map:
+                # Auto-collect placeholder; engine will compute actual action
+                turn_map[pid] = Move(player_id=pid, turn=turn, move=None, spell=None)
+
+        # Wait until all expected players present or timeout
+        start = datetime.now()
+        while True:
+            if all(pid in turn_map for pid in expected_players):
+                break
+            elapsed = (datetime.now() - start).total_seconds()
+            if elapsed >= timeout_seconds:
+                # Fill missing with safe default action
+                for pid in expected_players:
+                    if pid not in turn_map:
+                        turn_map[pid] = Move(player_id=pid, turn=turn, move=[0, 0], spell=None)
+                break
+            await asyncio.sleep(0.01)
+
+        # Copy out and clear stored actions for this turn to avoid growth
+        async with self._lock:
+            collected = dict(turn_map)
+            # Optionally keep history; for now, release memory for the turn
+            by_turn.pop(turn, None)
+        return collected
 
 
 class MockRegistry:

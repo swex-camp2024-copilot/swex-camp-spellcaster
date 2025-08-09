@@ -114,7 +114,7 @@ This implementation plan converts the feature design into a series of incrementa
   - Unit tests for session creation and management
   - **Requirements**: 2.1, 2.6 (Session creation endpoint)
 
-- [ ] 4.3 Implement turn processing and action coordination
+- [x] 4.3 Implement turn processing and action coordination
   - Create turn collection and synchronization logic in `SessionManager`
   - Implement timeout handling for player actions
   - Add game state updates and logging
