@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from ..core.exceptions import SessionNotFoundError
 from ..models.actions import ActionData, Move, SpellAction
-from ..models.bots import BotInterface, BotCreationRequest, PlayerBotFactory
+from ..models.bots import BotInterface, BotCreationRequest, PlayerBotFactory, PlayerBot
 from ..models.events import GameOverEvent, TurnEvent
 from ..models.players import PlayerConfig
 from ..models.sessions import GameState, PlayerSlot, TurnStatus
@@ -97,11 +97,14 @@ class SessionManager:
                 raise ValueError("bot_id required for builtin bot")
             return BuiltinBotRegistry.create_bot(cfg.bot_id)
 
-        # Player-submitted bot: for now create a do-nothing stub that holds player identity
-        # In a later task, this will tie into real client-submitted code or SSE
+        # Player-submitted bot: create a stub PlayerBot bound to existing player
+        if not cfg.player_id:
+            raise ValueError("player_id required for player bot")
+        player = await self._db.get_player(cfg.player_id)
+        if not player:
+            raise ValueError(f"Player {cfg.player_id} not found")
         dummy_code = "def decide(state):\n    return {\"move\": [0, 0], \"spell\": None}"
-        request = BotCreationRequest(bot_code=dummy_code, player_id=cfg.player_id)
-        return PlayerBotFactory.create_bot(request, player_registry=MockRegistry(self._db))
+        return PlayerBot(player, dummy_code)
 
     async def _run_match_loop(self, ctx: SessionContext) -> None:
         """Run the automated match loop until completion."""

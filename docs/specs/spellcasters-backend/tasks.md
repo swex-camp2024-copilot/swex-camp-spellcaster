@@ -153,11 +153,11 @@ This implementation plan converts the feature design into a series of incrementa
   - Handle connection lifecycle, reconnection scenarios, and error recovery
   - Provide clean API for consuming SSE events from the playground backend
   - **Requirements**: Real-world client simulation for SSE communication
-
-- [ ] 6.2 Implement bot client simulator in `/backend/client/bot_client.py`
+ 
+- [x] 6.2 Implement bot client simulator in `/backend/client/bot_client.py`
   - Create realistic bot client that simulates actual player bot behavior
   - Implement complete player registration and session joining workflow
-  - Add action submission, turn coordination, and game state processing
+  - Add action submission, turn coordination, and game state processing (submission stubbed until 7.1)
   - Include configurable bot strategies and decision-making logic
   - **Requirements**: Realistic simulation of player bot interaction with backend
 
