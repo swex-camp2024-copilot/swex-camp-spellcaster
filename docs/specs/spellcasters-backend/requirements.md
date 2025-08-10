@@ -16,13 +16,14 @@ The Spellcasters Playground Backend is a FastAPI-based system that powers the "P
 3. The system SHALL generate and return a unique player_id (UUID) upon successful registration
 4. The system SHALL store player metadata including name, ID, submission source, and match statistics
 5. The system SHALL initialize match statistics (total_matches, wins, losses, draws) to zero for new players
-6. The system SHALL validate that player_name is not empty and is a valid string
-7. The system SHALL return appropriate error responses for invalid registration data
-8. The system SHALL provide a DELETE /players/{player_id} endpoint to remove registered players
-9. The system SHALL prevent deletion of built-in players
-10. The system SHALL prevent deletion of players with active sessions
-11. The system SHALL cascade delete related game results when deleting a player
-12. The system SHALL return appropriate error responses for invalid deletion operations
+6. The system SHALL validate that player_name is a non-empty valid string and enforce case-insensitive uniqueness
+7. The system SHALL return 409 Conflict when registering a duplicate player_name (case-insensitive)
+8. The system SHALL return appropriate error responses for invalid registration data
+9. The system SHALL provide a DELETE /players/{player_id} endpoint to remove registered players
+10. The system SHALL prevent deletion of built-in players
+11. The system SHALL prevent deletion of players with active sessions
+12. The system SHALL cascade delete related game results when deleting a player
+13. The system SHALL return appropriate error responses for invalid deletion operations
 
 ### 2. Match Session Management
 
@@ -171,5 +172,4 @@ The Spellcasters Playground Backend is a FastAPI-based system that powers the "P
 4. The system SHALL include session status, participants, and duration in active session listings
 5. The system SHALL provide a DELETE /playground/{session_id} endpoint for administrative session cleanup
 6. The system SHALL gracefully terminate sessions and notify connected clients during admin cleanup
-7. The system SHALL log all administrative actions for audit purposes
-8. The system SHALL return appropriate error responses for invalid session IDs in admin operations 
+7. The system SHALL return appropriate error responses for invalid session IDs in admin operations 

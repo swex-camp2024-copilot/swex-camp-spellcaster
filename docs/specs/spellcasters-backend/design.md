@@ -4,6 +4,12 @@
 
 The Spellcasters Playground Backend is a FastAPI-based real-time multiplayer bot battle system designed for hackathon environments. The system enables participants to register, submit Python bots, and engage in turn-based matches with live streaming via Server-Sent Events (SSE). The backend integrates with the existing game engine while providing comprehensive match logging, replay functionality, and secure bot code execution.
 
+### Assumptions & Decisions
+
+- Rate limiting: none for Playground (hackathon decision)
+- Admin audit logging: not implemented; only match logs are persisted
+- Player name uniqueness: enforce case-insensitive uniqueness; duplicate registrations return HTTP 409 Conflict
+
 ## Architecture
 
 ### High-Level Architecture
@@ -558,6 +564,11 @@ async def register_player(registration: PlayerRegistration) -> Player:
 async def delete_player(player_id: str) -> None:
     """Delete a registered player and cascade delete related game results"""
 ```
+
+#### Behavior
+
+- Enforce case-insensitive uniqueness for `player_name` at registration time.
+- On duplicate `player_name` (case-insensitive), return `409 Conflict`.
 
 #### Storage Design
 

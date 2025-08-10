@@ -1,236 +1,387 @@
-# SWEX‑Camp 2025 Hackathon — Backend Specification
+# Spellcasters Backend Functional Specification (SWEX 2025 Hackathon)
 
-*Version 1.0 (27 Jul 2025)*
-
----
-
-## 1  Scope & Overview
-
-|               | **Playground** (ad‑hoc PvP / PvE)  | **Tournament** (single round‑robin) |
-| ------------- | ---------------------------------- | ----------------------------------- |
-| Primary users | Players, Administrator             | Players, Administrator              |
-| Transport     | REST + JSON · Server‑Sent Events   | Same as Playground                  |
-| Runtime       | **Python 3.10+** · FastAPI · async | Same instance / codebase            |
-| Sandbox       | RestrictedPython · 100 ms CPU/bot  | Same                                |
-| Persistence   | **SQLite** (file) via SQLModel     | Shared                              |
+> **Status:** Review draft — consolidated from v1/v2/v3. All prior open questions resolved on **Aug 10, 2025** (Asia/Singapore). **Scope is Playground only**; Tournament features are deferred to a separate spec. Some DB tables are reserved for future Tournament support (see §3.4).
 
 ---
 
-## 2  API Surface
+## 0. Purpose & Scope
 
-### 2.1 Players
+This document specifies the backend for the **Spellcasters** hackathon project (Playground only). It covers:
 
-| Verb     | Path                   | Purpose                                                 |
-| -------- | ---------------------- | ------------------------------------------------------- |
-| **POST** | `/players/register`    | Register `player_name` → returns `{ player_id }` (UUID) |
-| **GET**  | `/players/{player_id}` | Retrieve player metadata (stats & profile)              |
-| **GET**  | `/admin/players`       | List all registered players *(open endpoint; no auth)*  |
+* Player registration and identity
+* Built‑in bots (no upload API in this version)
+* **Playground** (adhoc 1v1 arena) matches
+* Persistence, APIs, data models, and event flows (SSE)
+* Operational, logging, and testing requirements
 
-### 2.2 Bot Management
-
-| Verb     | Path                | Purpose                                        |
-| -------- | ------------------- | ---------------------------------------------- |
-| **POST** | `/bots/submit`      | Upload / overwrite a player’s bot source code  |
-| **GET**  | `/bots/{player_id}` | Download the latest bot source for that player |
-| **GET**  | `/bots/builtin`     | List hard‑coded sample bots                    |
-
-> **Built‑in bots** (IDs are fixed constants):
->
-> 1. **Sample Bot 1** (id `1`)
-> 2. **Sample Bot 2** (id `2`)
-> 3. **Sample Bot 3** (id `3`)
-
-### 2.3 Playground Sessions
-
-| Verb       | Path                              | Notes                                                                         |
-| ---------- | --------------------------------- | ----------------------------------------------------------------------------- |
-| **POST**   | `/playground/start`               | Body `{ player_1_id, player_2_id \| builtin_id }` → `{ session_id, sse_url }` |
-| **GET**    | `/playground/{session_id}/events` | SSE stream: `turn`, `game_over`                                               |
-| **POST**   | `/playground/{session_id}/action` | Submit player action for current turn                                         |
-| **GET**    | `/playground/{session_id}/replay` | Fetch JSON replay (while retained in memory)                                  |
-| **DELETE** | `/playground/{session_id}`        | Admin cleanup (no auth)                                                       |
-| **GET**    | `/playground/active`              | List live sessions                                                            |
-
-### 2.4 Tournament End‑points
-
-| Verb     | Path                        | Purpose                                                                                 |
-| -------- | --------------------------- | --------------------------------------------------------------------------------------- |
-| **POST** | `/tournaments/create`       | `{ name, player_ids[], rules:{ max_turns } }` → `tournament_id`                         |
-| **POST** | `/tournaments/{tid}/start`  | Generate full **single** round‑robin schedule and begin sequential execution            |
-| **GET**  | `/tournaments/{tid}/status` | Live standings & upcoming match info                                                    |
-| **GET**  | `/tournaments/{tid}/events` | SSE feed: `match_started`, `match_finished`, `standings_update`, `tournament_completed` |
-| **POST** | `/tournaments/{tid}/abort`  | Hard‑stop tournament & persist current results                                          |
+**Out of scope for this doc**: Tournament orchestration and endpoints (a separate spec will define those). Authentication/authorization remains out of scope for the hackathon.
 
 ---
 
-## 3  Data Models (SQLModel / Pydantic)
+## 1. Final Assumptions & Decisions
 
-```python
-class Player(SQLModel, table=True):
-    player_id: UUID = Field(default_factory=uuid4, primary_key=True)
-    player_name: str
-    submitted_from: str | None = None  # ip / user‑agent
-    wins: int = 0
-    draws: int = 0
-    losses: int = 0
-    total_matches: int = 0
+* **Admin auth:** **None** for hackathon (no bearer token).
+* **Rate limiting:** **None** for now (including `/action`).
+* **Bot execution time:** **100 ms** per `decide()` (soft budget); turn/action hard timeout **`TURN_TIMEOUT_SECONDS = 5`** seconds.
+* **Replay retention:** **In‑memory only** until session cleanup (no DB replay table).
+* **Built‑in bots (IDs per design):**
+
+  * Player IDs: `builtin_sample_1`, `builtin_tactical`
+  * Bot classes: `sample_bot_1`, `tactical_bot`
+* **Persistence:** **SQLite** via **SQLModel**. Database file is **`data/playground.db`** resolved to an **absolute path** from repo root.
+
+---
+
+## 2. Architecture Overview
+
+**Language/Framework:** Python 3.10+, **FastAPI**. Async I/O for HTTP/SSE. Game engine is deterministic per turn, fed by two `BotAction`s.
+
+**Key components**
+
+* **PlayerService** — register players, maintain stats.
+* **BotService** — manage **built‑in** bot instances/factories (no upload endpoints).
+* **SessionManager** — create/run/cleanup Playground match sessions, hold in‑memory state, emit SSE.
+* **StateManager** — expose process/state metrics for admin views.
+* **GameEngine** — pure functions applying simultaneous actions to `GameState`.
+* **Storage** — SQLite via **SQLModel**; filesystem for match log files.
+
+**Concurrency model**: each active match runs in its own `asyncio.Task`; within a match, logic is single‑threaded. Calls to untrusted bot `decide()` are executed in a dedicated `ThreadPoolExecutor` (one worker per session) to avoid blocking the event loop.
+
+---
+
+## 3. Data Model (SQLite, SQLModel)
+
+> Use **SQLModel** models (Pydantic v2) to initialize schema. All timestamps in UTC. DB file path: `data/playground.db` (absolute).
+
+### 3.1 Players
+
+```
+players(
+  player_id           TEXT PRIMARY KEY,  -- UUIDv4
+  player_name         TEXT UNIQUE NOT NULL,
+  is_builtin          INTEGER NOT NULL DEFAULT 0,    -- 0/1 boolean
+  sprite_path         TEXT,                           -- optional asset hint
+  minion_sprite_path  TEXT,                           -- optional asset hint
+  submitted_from      TEXT,                           -- e.g. "online", "seed"
+  total_matches       INTEGER NOT NULL DEFAULT 0,
+  wins                INTEGER NOT NULL DEFAULT 0,
+  losses              INTEGER NOT NULL DEFAULT 0,
+  draws               INTEGER NOT NULL DEFAULT 0,
+  created_at          TEXT NOT NULL,
+  updated_at          TEXT NOT NULL
+)
 ```
 
+### 3.2 Sessions (Playground)
+
+```
+sessions(
+  session_id   TEXT PRIMARY KEY, -- UUIDv4
+  p1_id        TEXT NOT NULL REFERENCES players(player_id) ON DELETE CASCADE,
+  p2_id        TEXT NOT NULL REFERENCES players(player_id) ON DELETE CASCADE,
+  status       TEXT NOT NULL CHECK (status IN ('running','completed','aborted')),
+  started_at   TEXT,
+  ended_at     TEXT
+)
+```
+
+### 3.3 Game Results
+
+```
+game_results(
+  result_id    TEXT PRIMARY KEY, -- UUIDv4
+  session_id   TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+  winner_id    TEXT,             -- NULL for draw
+  turns_played INTEGER,
+  damage_p1    INTEGER,
+  damage_p2    INTEGER,
+  summary      TEXT,
+  created_at   TEXT NOT NULL
+)
+```
+
+### 3.4 Tournaments (Reserved for future spec)
+
+```
+tournaments(
+  tournament_id TEXT PRIMARY KEY, -- UUIDv4
+  name          TEXT NOT NULL,
+  status        TEXT NOT NULL CHECK (status IN ('draft','ready','running','completed')),
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL
+)
+
+tournament_players(
+  tournament_id TEXT NOT NULL REFERENCES tournaments(tournament_id) ON DELETE CASCADE,
+  player_id     TEXT NOT NULL REFERENCES players(player_id) ON DELETE CASCADE,
+  PRIMARY KEY (tournament_id, player_id)
+)
+
+matches(
+  match_id      TEXT PRIMARY KEY, -- UUIDv4
+  tournament_id TEXT REFERENCES tournaments(tournament_id),
+  p1_id         TEXT NOT NULL,
+  p2_id         TEXT NOT NULL,
+  scheduled_ord INTEGER,
+  status        TEXT NOT NULL CHECK (status IN ('pending','running','completed','aborted')),
+  winner_id     TEXT,
+  turns_played  INTEGER,
+  started_at    TEXT,
+  ended_at      TEXT
+)
+```
+
+> Tables present for forward‑compatibility; Tournament endpoints and flows are **not** part of this spec.
+
+---
+
+## 4. Configuration (Env Vars)
+
+| Name                      | Default              | Description                                      |
+| ------------------------- | -------------------- | ------------------------------------------------ |
+| `TURN_DELAY_SECONDS`      | `1`                  | Delay between processed turns                    |
+| `TURN_TIMEOUT_SECONDS`    | `5`                  | Wait for player action before skip               |
+| `MAX_TURNS`               | `100`                | Draw threshold                                   |
+| `BOT_DECIDE_TIMEOUT_MS`   | `100`                | Max time for `decide()` (per turn).              |
+| `PLAYGROUND_IDLE_TTL_MIN` | `30`                 | Keep finished session in memory                  |
+| `PLAYGROUND_MAX_SESSIONS` | `50`                 | Safety cap                                       |
+| `DB_PATH`                 | `data/playground.db` | Absolute path to SQLite DB (resolved at startup) |
+
+---
+
+## 5. API Specification
+
+All responses are JSON. Errors use `{ "error": { "code": "…", "message": "…" } }` with appropriate HTTP status.
+
+### 5.1 Health & Version
+
+**GET** `/health` → `{ "status": "ok" }`
+
+**GET** `/version` → `{ "version": "0.1.0" }`
+
+### 5.2 Players
+
+**POST** `/players/register`
+
+* Request:
+
+```json
+{ "player_name": "FireMage", "submitted_from": "online" }
+```
+
+* Rules: `player_name` unique (case‑insensitive). Failure ⇒ 409.
+* Response `201 Created`:
+
+```json
+{ "player_id": "uuid-v4", "player_name": "FireMage" }
+```
+
+**GET** `/players/{player_id}` — returns player metadata and basic stats.
+
+**DELETE** `/players/{player_id}` — delete a player if not builtin and not part of running sessions; cascades `game_results`. Returns `204 No Content`.
+
+### 5.3 Playground (Arena)
+
+**POST** `/playground/start`
+
+* Request:
+
+```json
+{ "player_1_id": "uuid-p1", "player_2_id": "builtin_sample_1", "tick_delay_ms": 1000 }
+```
+
+* Validates both IDs exist (built‑ins recognized by exact builtin IDs). Creates `session_id`, persists a `sessions` row (and `game_results` after completion), and spawns a match task.
+* Response:
+
+```json
+{ "session_id": "uuid-session", "sse_url": "/playground/uuid-session/events" }
+```
+
+**POST** `/playground/{session_id}/action`
+
+* Request:
+
+```json
+{ "player_id": "uuid-p1", "turn": 6, "action": { "move": [1,0], "spell": null } }
+```
+
+* Validates: session exists; player belongs to session; `turn == turn_index + 1`. On success, stores pending action.
+
+**GET** `/playground/{session_id}/events` (SSE)
+
+* Emits `event: turn_update` with `data: <json-string>` each turn and finally `event: game_over`.
+* `data` example:
+
+```json
+{
+  "turn": 5,
+  "state": { "...": "..." },
+  "actions": [ {"player_id": "p1", "resolved": {"move": [1,0]}}, {"player_id": "p2", "resolved": null} ],
+  "events": ["p2 timeout"],
+  "log_line": "p2 timed out"
+}
+```
+
+**GET** `/playground/{session_id}/replay`
+
+* Streams recorded turn events with `event: replay_turn` (no delay) if the session is still retained; otherwise 404.
+
+**Admin (hackathon; no auth)**
+
+* `GET /playground/active` — list active sessions.
+* `DELETE /playground/{session_id}` — cleanup immediately.
+* `GET /admin/players` — list players with stats (and builtin flag).
+
+> **No Bot upload endpoints** in this version; bots are built‑in only.
+
+---
+
+## 6. Session Lifecycle & Engine
+
+### 6.1 In‑Memory Session (per match)
+
 ```python
-class SessionState(BaseModel):
+class PlayerSide(TypedDict):
+    player_id: str | None  # None for builtin
+    bot_instance: BotInterface
+    action_source: Literal["builtin", "http"]
+
+class Session(TypedDict):
     session_id: str
-    player_1_id: str
-    player_2_id: str
-    current_game_state: dict
+    tick_delay_ms: int
+    player_1: PlayerSide
+    player_2: PlayerSide
+    current_state: GameState
+    pending_actions: dict[str, BotAction]  # by player_id
+    turn_index: int
+    event_sinks: list[SSEEmitter]
     match_log: list[str]
-    turn_index: int = 0
-    awaiting_actions: dict[str, BotAction] = {}
-```
-
-```python
-class Tournament(SQLModel, table=True):
-    tournament_id: UUID = Field(default_factory=uuid4, primary_key=True)
-    name: str
     created_at: datetime
-    max_turns: int
-    current_match_index: int = 0  # sequential execution
-    standings: dict[str, int] = {}  # player_id -> points
 ```
 
-*Points system*: **win = 3**, **draw = 1**, **loss = 0**. Tie‑breakers: ① head‑to‑head result → ② higher win count → ③ coin‑flip.
+### 6.2 Loop (per turn)
 
----
-
-## 4  Execution & Concurrency
-
-- One `asyncio.Task` per **Playground** session and one background task running the sequential **TournamentManager**.
-- Bot `decide()` executed in `asyncio.to_thread` with **100 ms** wall‑time cap; if exceeded, bot forfeits the turn.
-- Environment variables:
-  - `TURN_DELAY_SECONDS` (default `0.3`)
-  - `TURN_TIMEOUT_SECONDS` (default `1.0`)
-  - `MAX_TURNS` (session level; overridable via tournament `rules.max_turns`).
-
----
-
-## 5  Game Loop (Pseudo‑code)
-
-```python
+```
 while not game_over and turn_index < MAX_TURNS:
-    await collect_actions_or_timeout()
-    state, events = engine.apply_turn(state, awaiting_actions)
-    broadcast_sse("turn", state, events)
-    awaiting_actions.clear()
-    turn_index += 1
-    await asyncio.sleep(TURN_DELAY_SECONDS)
-
-if game_over or turn_index == MAX_TURNS:
-    broadcast_sse("game_over", summary)
-    update_stats()
-    persist_log()
+  await collect_actions_or_timeout()
+  new_state, events = engine.apply_turn(current_state, pending_actions)
+  broadcast_sse_turn(new_state, events)
+  pending_actions = {}
+  turn_index += 1
+  await asyncio.sleep(TURN_DELAY_SECONDS)
 ```
 
----
+### 6.3 Bot Execution Isolation
 
-## 6  Security & Resource Limits
+* `decide(state)` executed via `asyncio.to_thread(...)` into a per‑session `ThreadPoolExecutor(max_workers=1)` with wall‑clock limit **BOT\_DECIDE\_TIMEOUT\_MS**. Timeout ⇒ treat as **no action** and log.
+* Restricted built‑ins; deny `open`, `import os`, `subprocess`, etc. Whitelist safe modules (`math`, `random`).
 
-- **Sandbox** : RestrictedPython with safe‑builtins; file‑system & network imports blocked.
-- **No authentication** for hackathon scope (including admin‑prefixed routes).
-- **No rate limits** for `/action` in this release; revisit if abuse observed.
+### 6.4 End & Stats Update
 
----
-
-## 7  Testing Matrix
-
-| Layer           | Scenarios                                                             |
-| --------------- | --------------------------------------------------------------------- |
-| **Unit**        | Bot safety, timeout, stat updates, tie‑break functions                |
-| **Integration** | PvE, PvP, SSE reconnect, replay availability/expiry                   |
-| **Load**        | ≥ 20 concurrent Playground sessions without event‑loop starvation     |
-| **Tournament**  | Full single round‑robin with 4–16 players; verify points and ordering |
+* `game_over` when any HP ≤ 0 or `MAX_TURNS` reached (draw).
+* Update `players` stats: increment `total_matches`; apply win/loss/draw for both.
+* Insert `game_results` row; append summary line to `match_log`; write file `logs/playground/{session_id}.log`.
+* Keep session in memory for **PLAYGROUND\_IDLE\_TTL\_MIN**.
 
 ---
 
-## 8  Interaction Diagrams
+## 7. SSE Event Contract
 
-### 8.1 Player Registration
+* Content‑Type: `text/event-stream`; `Cache-Control: no-cache`.
+* Each message uses `event: <type>` + `data: <json-string>` (stringified via `json.dumps`).
+* Events:
+
+  * `turn_update` —
+
+    ```json
+    { "turn": n, "state": {…}, "actions": [{"player_id": "…", "resolved": {…}}, …], "events": ["…"], "log_line": "…" }
+    ```
+  * `game_over` — `{ "winner": "player_id|null", "reason": "hp_zero|max_turns" }`
+  * `replay_turn` — same as `turn_update`, emitted by replay endpoint.
+
+---
+
+## 8. Interaction Diagrams (Key Journeys)
+
+### 8.1 Player Registration — obtain unique Player ID
 
 ```mermaid
 sequenceDiagram
-participant C as Player Client
-participant API as FastAPI
-participant DB as SQLite
-C->>API: POST /players/register {name}
-API->>DB: INSERT player
-DB-->>API: OK (UUID)
-API-->>C: 201 {player_id}
+  actor User
+  participant API as FastAPI
+  participant PlayerSvc as PlayerService
+  participant DB as SQLite
+
+  User->>API: POST /players/register {player_name}
+  API->>PlayerSvc: validate name uniqueness
+  PlayerSvc->>DB: INSERT players(...)
+  DB-->>PlayerSvc: ok
+  PlayerSvc-->>API: player_id
+  API-->>User: 201 {player_id, player_name}
 ```
 
-### 8.2 Playground Match (ad‑hoc)
+### 8.2 Playground Game — adhoc 1v1 arena
 
 ```mermaid
 sequenceDiagram
-participant P1
-participant P2/Bot
-participant API
-participant Loop as SessionLoop
-P1->>API: POST /playground/start
-API->>Loop: init session
-Loop-->>P1: session_id
-P1->>API: GET /.../events (SSE)
-loop each turn
-    P1->>API: POST /action
-    Loop->>P2/Bot: decide()
-    Loop->>Loop: apply_turn()
-    Loop->>P1&P2: SSE turn
-end
-Loop->>P1&P2: SSE game_over
-```
+  actor P1 as Player 1
+  actor P2 as Player 2 / Built-in
+  participant API as FastAPI
+  participant BotSvc as BotService
+  participant Sess as SessionManager
+  participant Eng as GameEngine
+  participant SSE as SSE Stream
 
-### 8.3 Tournament (single round‑robin, sequential)
-
-```mermaid
-sequenceDiagram
-participant Admin
-participant API
-participant TM as TournamentMgr
-Admin->>API: POST /tournaments/create
-API->>TM: create()
-TM-->>Admin: tournament_id
-Admin->>API: POST /tournaments/{tid}/start
-API->>TM: start()
-loop for each pairing
-    TM->>API: POST /playground/start (background)
-    API->>TM: result(winner)
-    TM->>Admin: SSE standings_update
-end
-TM-->>Admin: SSE tournament_completed
+  P1->>API: POST /playground/start {player_1_id, player_2_id}
+  API->>BotSvc: load builtin bot for builtin ids
+  BotSvc-->>API: bot instance(s)
+  API->>Sess: create session + task
+  Sess-->>P1: {session_id, sse_url}
+  P1-->>SSE: GET /events (subscribe)
+  loop each turn
+    P1->>API: POST /{session}/action {player_id, turn, action}
+    Sess->>Eng: apply_turn(state, actions)
+    Eng-->>Sess: new_state + events
+    Sess-->>SSE: event: turn_update / data: {...}
+  end
+  Sess-->>SSE: event: game_over
+  Sess->>File: write logs/playground/{session_id}.log
 ```
 
 ---
 
-## 9  Implementation Choices
+## 9. Error Handling & Edge Cases
 
-| Concern           | Recommendation                                 |
-| ----------------- | ---------------------------------------------- |
-| **DB**            | SQLModel + SQLite (`sqlite:///./hackathon.db`) |
-| **Web framework** | FastAPI + Uvicorn                              |
-| **SSE helper**    | `sse-starlette`                                |
-| **Logging**       | `structlog` → rotate to `./logs/`              |
-| **Container**     | Single Dockerfile (python 3.10‑slim)           |
-| **CI**            | GitHub Actions · pytest · mypy                 |
+* Duplicate player name ⇒ `409 Conflict`.
+* Invalid `session_id` / not participant ⇒ `404` / `403`.
+* Bad `turn` index ⇒ `400`.
+* SSE disconnects: do **not** terminate the match; new subscribers can attach and receive subsequent turns.
+* Timeout: missing action after `TURN_TIMEOUT_SECONDS` ⇒ treat as no‑op and log.
+* Built‑in bot failures ⇒ log and treat as no action for that turn.
 
 ---
 
-## 10  Decisions & Assumptions
+## 10. Implementation Notes & Recommendations
 
-1. **Tournament format**: single round‑robin; sequential execution.
-2. **Scoring**: win = 3, draw = 1, loss = 0; tie‑breakers: head‑to‑head → wins → random.
-3. **No authentication** for any endpoints in MVP.
-4. **Built‑in bots**: 3 hard‑coded samples (`1`, `2`, `3`).
-5. **Rate limiting**: none for MVP.
-6. **Storage**: SQLite file is sufficient for November demo; swap to Postgres if scale requires.
+* **Frameworks**: FastAPI; `sse-starlette` for SSE helpers; **SQLModel** for SQLite (`DB_PATH` absolute).
+* **Sessions**: keep an in‑memory dict protected by `asyncio.Lock`; periodic sweeper cleans up finished sessions after `PLAYGROUND_IDLE_TTL_MIN`.
+* **Built‑in bots**: implement local classes (`sample_bot_1`, `tactical_bot`); map to builtin player IDs `builtin_sample_1`, `builtin_tactical`.
+* **Security**: restricted globals for user code; deny filesystem and process access.
+* **Logging**: plain‑text per‑turn log lines in memory; flush to file at match end.
 
 ---
 
-*End of specification*
+## 11. Testing Matrix
 
+* **Unit**: player registration; duplicate name; engine `apply_turn`; timeout path; stats update; player deletion rules.
+* **Integration**: PvE and PvP match; SSE stream consumption; replay; concurrent sessions.
+* **Admin**: `/admin/players` returns expected shape; health/version endpoints.
+* **Load (lightweight)**: 20 concurrent Playground sessions; ensure event‑loop responsive.
+
+---
+
+## 12. Glossary
+
+* **Playground**: on‑demand 1v1 match (player vs player or built‑in).
+* **SSE**: Server‑Sent Events; uni‑directional push over HTTP.
+* **Replay**: fast stream of recorded turn events of a finished session retained in memory.

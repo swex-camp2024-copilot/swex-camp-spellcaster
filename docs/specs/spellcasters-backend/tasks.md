@@ -228,7 +228,6 @@ This implementation plan converts the feature design into a series of incrementa
   - Create admin operations for player and session management
   - Implement player statistics aggregation and formatting
   - Add active session monitoring and cleanup functionality
-  - Handle administrative logging and audit trails
   - **Requirements**: 12.1, 12.2, 12.3, 12.4 (Administrative monitoring and management capabilities)
 
 - [ ] 9.2 Create admin API endpoints in `/backend/app/api/admin.py`
@@ -242,7 +241,6 @@ This implementation plan converts the feature design into a series of incrementa
   - Connect `AdminService` with `SessionManager` for session cleanup
   - Wire admin endpoints to database service for player information
   - Implement graceful session termination with SSE client notification
-  - Add admin action logging for audit purposes
   - **Requirements**: 12.6, 12.7 (Complete admin system integration)
 
 - [ ] 9.4 Write tests for admin management system
@@ -282,7 +280,6 @@ This implementation plan converts the feature design into a series of incrementa
 
 - [ ] 11.1 Implement input validation middleware in `/backend/app/core/validation.py`
   - Add comprehensive request validation for all endpoints
-  - Implement rate limiting and abuse prevention
   - Create security headers and CORS configuration
   - Test input validation and error scenarios
   - Security tests for malformed requests and edge cases
