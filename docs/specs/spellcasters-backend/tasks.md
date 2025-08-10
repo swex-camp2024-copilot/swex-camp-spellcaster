@@ -198,25 +198,25 @@ This implementation plan converts the feature design into a series of incrementa
 
 ### 8. Match Logging and Replay System
 
-- [ ] 8.1 Implement match logging in `/backend/app/services/match_logger.py`
+- [x] 8.1 Implement match logging in `/backend/app/services/match_logger.py`
   - Create structured logging for all match events
   - Implement file-based log storage in `logs/playground/` directory
   - Add move history tracking and game result recording
   - **Requirements**: 7.1, 7.3, 7.6, 7.7 (Match logging and file management)
 
-- [ ] 8.2 Create replay endpoints in `/backend/app/api/replay.py`
+- [x] 8.2 Create replay endpoints in `/backend/app/api/replay.py`
   - Implement `GET /playground/{session_id}/replay` endpoint
   - Add replay streaming without timing delays
   - Handle replay data serving from session state
   - **Requirements**: 8.1, 8.2, 8.4, 8.5 (Replay functionality and data access)
 
-- [ ] 8.3 Integrate logging with session management
+- [x] 8.3 Integrate logging with session management
   - Connect match events to logging system
   - Update player statistics after match completion
   - Implement proper cleanup and data persistence
   - **Requirements**: 7.2, 7.4, 7.5 (Winner determination and statistics tracking)
 
-- [ ] 8.4 Write tests for logging and replay
+- [x] 8.4 Write tests for logging and replay
   - Unit tests for match logging functionality
   - Test replay data generation and streaming
   - Verify log file format and data integrity

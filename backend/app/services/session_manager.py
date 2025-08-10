@@ -15,6 +15,7 @@ from ..models.players import PlayerConfig
 from ..models.sessions import GameState, PlayerSlot, TurnStatus
 from .builtin_bots import BuiltinBotRegistry
 from .sse_manager import SSEManager
+from .match_logger import MatchLogger
 from .turn_processor import TurnProcessor
 from ..models.bots import HumanBot
 from .database import DatabaseService
@@ -35,12 +36,18 @@ class SessionContext:
 class SessionManager:
     """Creates and manages game sessions and the match loop."""
 
-    def __init__(self, db_service: Optional[DatabaseService] = None, sse_manager: Optional[SSEManager] = None):
+    def __init__(
+        self,
+        db_service: Optional[DatabaseService] = None,
+        sse_manager: Optional[SSEManager] = None,
+        match_logger: Optional[MatchLogger] = None,
+    ):
         self._db = db_service or DatabaseService()
         self._sse = sse_manager
         self._sessions: Dict[str, SessionContext] = {}
         self._turn_processor = TurnProcessor()
         self._lock = asyncio.Lock()
+        self._logger = match_logger
 
     async def create_session(self, player_1: PlayerConfig, player_2: PlayerConfig) -> str:
         """Create a new session and start the match loop.
@@ -90,6 +97,12 @@ class SessionManager:
         # Start match loop
         context.task = asyncio.create_task(self._run_match_loop(context))
         logger.info(f"Session {session_id} created: {bot1.name} vs {bot2.name}")
+        # Initialize match logging
+        try:
+            if self._logger:
+                self._logger.start_session(session_id, bot1.name, bot2.name)
+        except Exception as exc:
+            logger.warning(f"Failed to start match log for {session_id}: {exc}")
         return session_id
 
     async def _create_bot_from_config(self, cfg: PlayerConfig) -> BotInterface:
@@ -149,6 +162,12 @@ class SessionManager:
                 # Broadcast turn update over SSE if configured
                 if self._sse:
                     await self._sse.broadcast(ctx.session_id, turn_event)
+                # Log turn to file
+                if self._logger:
+                    try:
+                        self._logger.log_turn(ctx.session_id, turn_event)
+                    except Exception as exc:
+                        logger.warning(f"Failed to log turn for {ctx.session_id}: {exc}")
 
                 # Small delay between turns to allow SSE event delivery
                 await asyncio.sleep(0.01)
@@ -172,6 +191,14 @@ class SessionManager:
                         await self._sse.broadcast(ctx.session_id, ctx.adapter.create_game_over_event(result))
                         # Close all SSE streams for this session
                         await self._sse.close_session_streams(ctx.session_id)
+                    # Log game over
+                    if self._logger:
+                        try:
+                            from ..models.events import GameOverEvent
+                            game_over_event = ctx.adapter.create_game_over_event(result)
+                            self._logger.log_game_over(ctx.session_id, game_over_event)
+                        except Exception as exc:
+                            logger.warning(f"Failed to write game over log for {ctx.session_id}: {exc}")
 
                     logger.info(
                         f"Session {ctx.session_id} completed in {result.total_rounds} rounds. Winner: {result.winner}"

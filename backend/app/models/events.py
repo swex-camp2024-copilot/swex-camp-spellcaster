@@ -29,6 +29,18 @@ class GameOverEvent(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="Event timestamp")
 
 
+class ReplayTurnEvent(BaseModel):
+    """SSE event for replaying a previously emitted turn (no delays)."""
+
+    event: Literal["replay_turn"] = Field(default="replay_turn", description="Event type")
+    turn: int = Field(..., description="Turn number")
+    game_state: Dict[str, Any] = Field(..., description="Game state at the time of the turn")
+    actions: List[Dict[str, Any]] = Field(default_factory=list, description="Player actions for this turn")
+    events: List[str] = Field(default_factory=list, description="Descriptive events for this turn")
+    log_line: str = Field(..., description="Log line for this turn")
+    timestamp: datetime = Field(default_factory=datetime.now, description="Event timestamp")
+
+
 class HeartbeatEvent(BaseModel):
     """SSE heartbeat event to keep connection alive."""
 
@@ -58,7 +70,7 @@ class SessionStartEvent(BaseModel):
 
 
 # Union type for all possible events
-Event = Union[TurnEvent, GameOverEvent, HeartbeatEvent, ErrorEvent, SessionStartEvent]
+Event = Union[TurnEvent, GameOverEvent, HeartbeatEvent, ErrorEvent, SessionStartEvent, ReplayTurnEvent]
 
 
 class SSEConnection(BaseModel):
