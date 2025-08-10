@@ -170,25 +170,25 @@ This implementation plan converts the feature design into a series of incrementa
 
 ### 7. Player Action Processing
 
-- [ ] 7.1 Implement action submission endpoints in `/backend/app/api/actions.py`
+- [x] 7.1 Implement action submission endpoints in `/backend/app/api/actions.py`
   - Create `POST /playground/{session_id}/action` endpoint
   - Add action validation and turn verification
   - Handle action storage and processing coordination
   - **Requirements**: 4.1, 4.2, 4.3, 4.6, 4.7 (Action submission and validation)
 
-- [ ] 7.2 Create `TurnProcessor` in `/backend/app/services/turn_processor.py`
+- [x] 7.2 Create `TurnProcessor` in `/backend/app/services/turn_processor.py`
   - Implement action collection with timeout handling
   - Add turn validation and game rule enforcement
   - Create turn result generation and state updates
   - **Requirements**: 4.4, 5.3, 5.7 (Turn processing and action coordination)
 
-- [ ] 7.3 Integrate action processing with game engine
+- [x] 7.3 Integrate action processing with game engine
   - Connect player actions to game engine execution
   - Implement move and spell validation
   - Handle action results and state updates
   - **Requirements**: 6.3, 6.5 (Action validation and game rule integration)
 
-- [ ] 7.4 Write tests for action processing
+- [x] 7.4 Write tests for action processing
   - Unit tests for action validation and turn processing
   - Test timeout scenarios and invalid actions
   - Integration tests for complete action flow

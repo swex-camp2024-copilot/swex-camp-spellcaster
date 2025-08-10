@@ -15,6 +15,8 @@ from ..models.players import PlayerConfig
 from ..models.sessions import GameState, PlayerSlot, TurnStatus
 from .builtin_bots import BuiltinBotRegistry
 from .sse_manager import SSEManager
+from .turn_processor import TurnProcessor
+from ..models.bots import HumanBot
 from .database import DatabaseService
 from .game_adapter import GameEngineAdapter
 
@@ -37,8 +39,7 @@ class SessionManager:
         self._db = db_service or DatabaseService()
         self._sse = sse_manager
         self._sessions: Dict[str, SessionContext] = {}
-        # Pending actions per session_id -> turn_index -> {player_id: Move}
-        self._pending_actions: Dict[str, Dict[int, Dict[str, Move]]] = {}
+        self._turn_processor = TurnProcessor()
         self._lock = asyncio.Lock()
 
     async def create_session(self, player_1: PlayerConfig, player_2: PlayerConfig) -> str:
@@ -116,8 +117,16 @@ class SessionManager:
                 expected_players = [ctx.game_state.player_1.player_id, ctx.game_state.player_2.player_id]
                 next_turn = ctx.game_state.turn_index + 1
 
-                # Collect actions with timeout semantics. Built-in bots are auto-collected.
-                collected_actions = await self._collect_actions(ctx, next_turn, expected_players)
+                # Collect actions with timeout semantics via TurnProcessor.
+                def _is_builtin(pid: str) -> bool:
+                    return (
+                        (pid == ctx.game_state.player_1.player_id and ctx.game_state.player_1.is_builtin_bot)
+                        or (pid == ctx.game_state.player_2.player_id and ctx.game_state.player_2.is_builtin_bot)
+                    )
+
+                collected_actions = await self._turn_processor.collect_actions(
+                    ctx.session_id, next_turn, expected_players, is_builtin=_is_builtin
+                )
 
                 # Execute a single turn on the engine
                 turn_event: TurnEvent = await ctx.adapter.execute_turn()  # type: ignore[assignment]
@@ -213,54 +222,24 @@ class SessionManager:
         return True
 
     async def submit_action(self, session_id: str, player_id: str, turn: int, action: ActionData) -> None:
-        """Submit an action for a player for a given turn (for future API integration)."""
+        """Submit an action and also set on HumanBot if applicable."""
+        # Store via turn processor
+        await self._turn_processor.submit_action(session_id, player_id, turn, action)
+
+        # Also set on HumanBot if the player's bot is human-controlled
         async with self._lock:
-            by_turn = self._pending_actions.setdefault(session_id, {})
-            turn_map = by_turn.setdefault(turn, {})
-            # Store as Move for uniform handling
-            turn_map[player_id] = Move(player_id=player_id, turn=turn, move=action.move, spell=(SpellAction(**action.spell) if action.spell else None))
-
-    async def _collect_actions(
-        self, ctx: SessionContext, turn: int, expected_players: List[str]
-    ) -> Dict[str, Move]:
-        """Collect actions from players with timeout semantics. Built-in bots are auto-decided."""
-        timeout_seconds = 5.0
-
-        # Initialize collection from any pending submissions
-        async with self._lock:
-            by_turn = self._pending_actions.setdefault(ctx.session_id, {})
-            turn_map = by_turn.setdefault(turn, {})
-
-        # Auto-fill for built-in bots to avoid waiting
-        builtin_ids = {
-            ctx.game_state.player_1.player_id: ctx.game_state.player_1.is_builtin_bot,
-            ctx.game_state.player_2.player_id: ctx.game_state.player_2.is_builtin_bot,
+            ctx = self._sessions.get(session_id)
+        if not ctx:
+            return
+        bot_map: Dict[str, BotInterface] = {
+            ctx.adapter.bot1.player_id if hasattr(ctx.adapter, 'bot1') else ctx.game_state.player_1.player_id: ctx.adapter.bot1 if hasattr(ctx.adapter, 'bot1') else None,
+            ctx.adapter.bot2.player_id if hasattr(ctx.adapter, 'bot2') else ctx.game_state.player_2.player_id: ctx.adapter.bot2 if hasattr(ctx.adapter, 'bot2') else None,
         }
-        for pid in expected_players:
-            if builtin_ids.get(pid) and pid not in turn_map:
-                # Auto-collect placeholder; engine will compute actual action
-                turn_map[pid] = Move(player_id=pid, turn=turn, move=None, spell=None)
+        bot = bot_map.get(player_id)
+        if isinstance(bot, HumanBot):
+            bot.set_action(action)
 
-        # Wait until all expected players present or timeout
-        start = datetime.now()
-        while True:
-            if all(pid in turn_map for pid in expected_players):
-                break
-            elapsed = (datetime.now() - start).total_seconds()
-            if elapsed >= timeout_seconds:
-                # Fill missing with safe default action
-                for pid in expected_players:
-                    if pid not in turn_map:
-                        turn_map[pid] = Move(player_id=pid, turn=turn, move=[0, 0], spell=None)
-                break
-            await asyncio.sleep(0.01)
-
-        # Copy out and clear stored actions for this turn to avoid growth
-        async with self._lock:
-            collected = dict(turn_map)
-            # Optionally keep history; for now, release memory for the turn
-            by_turn.pop(turn, None)
-        return collected
+    # Removed old _collect_actions in favor of TurnProcessor
 
 
 class MockRegistry:

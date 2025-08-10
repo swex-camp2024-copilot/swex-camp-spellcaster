@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 from .players import Player, PlayerRegistration
+from .actions import ActionData
 
 
 class BotInterface(ABC):
@@ -161,6 +162,23 @@ class PlayerBot(BotInterface):
             
             # Return a safe default action (no move, no spell)
             return {"move": [0, 0], "spell": None}
+
+
+class HumanBot(BotInterface):
+    """Human-controlled bot that plays the last submitted action."""
+
+    def __init__(self, player: Player):
+        super().__init__(player)
+        self._last_action: Optional[ActionData] = None
+
+    def set_action(self, action: ActionData) -> None:
+        self._last_action = action
+
+    def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        if self._last_action is None:
+            return {"move": [0, 0], "spell": None}
+        action = self._last_action
+        return {"move": action.move, "spell": action.spell}
 
 
 class PlayerBotFactory:

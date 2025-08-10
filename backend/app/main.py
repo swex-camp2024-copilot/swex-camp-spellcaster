@@ -140,15 +140,14 @@ async def root() -> Dict[str, str]:
 
 
 # Include API routers
-from .api import players, sessions, streaming
+from .api import players, sessions, streaming, actions
 
 app.include_router(players.router, tags=["players"])
 app.include_router(sessions.router, tags=["sessions"])
 app.include_router(streaming.router, tags=["streaming"])
+app.include_router(actions.router, tags=["actions"])
 
 # TODO: Include additional API routers as they are implemented
-# app.include_router(streaming.router, prefix="/playground", tags=["streaming"])
-# app.include_router(actions.router, prefix="/playground", tags=["actions"])
 # app.include_router(replay.router, prefix="/playground", tags=["replay"])
 # app.include_router(admin.router, prefix="/admin", tags=["admin"])
 
