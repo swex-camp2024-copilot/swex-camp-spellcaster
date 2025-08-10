@@ -11,7 +11,8 @@ This implementation plan converts the feature design into a series of incrementa
 - [x] 1.1 Create FastAPI project structure in `/backend` directory
   - Set up directory structure with `app/`, `tsts/`, and configuration files
   - Update `pyproject.toml`/`requirements.txt` with FastAPI, Pydantic, SQLModel, SQLite dependencies
-  - Initialize SQLite database and create database directory structure
+  - Initialize SQLite database at permanent path `data/playground.db` and ensure `data/` directory is created at startup
+  - Resolve database file path to an absolute path based on the repository root so execution is independent of current working directory
   - Initialize `main.py` with basic FastAPI app
   - **Requirements**: Foundation for all backend functionality
 
@@ -43,6 +44,7 @@ This implementation plan converts the feature design into a series of incrementa
   - Add player deletion with constraint validation and cascade delete
   - Add database migration support and table creation
   - Handle database connection pooling and error recovery
+  - Ensure absolute database path resolution and auto-create `data/` directory prior to engine initialization
   - **Requirements**: Database persistence for all player and session data, player deletion
 
 - [x] 2.2 Implement `PlayerRegistry` class in `/backend/app/services/player_registry.py`

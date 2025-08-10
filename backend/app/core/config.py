@@ -1,13 +1,25 @@
 """Configuration settings for the Spellcasters Playground Backend."""
 
+from pathlib import Path
 from pydantic_settings import BaseSettings
+
+
+def _default_database_url() -> str:
+    """Compute an absolute SQLite URL pointing to <repo_root>/data/playground.db.
+
+    Ensures the path is independent of the current working directory.
+    """
+    repo_root = Path(__file__).resolve().parents[3]
+    db_path = (repo_root / "data" / "playground.db").resolve()
+    # Four slashes after scheme for absolute paths, e.g., sqlite+aiosqlite:////abs/path
+    return f"sqlite+aiosqlite:///{db_path.as_posix()}"
 
 
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
 
     # Database
-    database_url: str = "sqlite+aiosqlite:///./playground.db"
+    database_url: str = _default_database_url()
     database_echo: bool = False
 
     # Server

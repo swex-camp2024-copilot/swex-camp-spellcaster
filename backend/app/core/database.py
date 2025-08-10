@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -10,6 +11,40 @@ from sqlmodel import SQLModel
 from .config import settings
 
 logger = logging.getLogger(__name__)
+
+def _ensure_database_directory(database_url: str) -> None:
+    """Ensure the directory for a file-based SQLite database exists.
+
+    Handles URLs like "sqlite+aiosqlite:///./data/playground.db". No-op for
+    in-memory databases or non-SQLite URLs.
+    """
+
+    if "sqlite" not in database_url:
+        return
+
+    # Expect pattern ...:///path/to/file.db
+    if ":///" not in database_url:
+        return
+    path_part = database_url.split(":///", 1)[1]
+
+    # Strip query params if present
+    path_part = path_part.split("?")[0]
+
+    # Ignore in-memory database
+    if path_part.startswith(":memory:"):
+        return
+
+    db_path = Path(path_part)
+    # Resolve relative paths against project root (repo root), not CWD
+    if not db_path.is_absolute():
+        repo_root = Path(__file__).resolve().parents[3]
+        db_path = (repo_root / db_path).resolve()
+
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+
+# Ensure target directory exists before engine initialization
+_ensure_database_directory(settings.database_url)
 
 # Create async engine
 engine = create_async_engine(settings.database_url, echo=settings.database_echo, future=True)

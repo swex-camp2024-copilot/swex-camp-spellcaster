@@ -401,7 +401,8 @@ class GameResultDB(SQLModel, table=True):
 
 ```python
 # Database (SQLite with SQLModel)
-database_service: DatabaseService = DatabaseService("sqlite:///./playground.db")
+# Note: the path is resolved to an absolute path based on the repository root
+database_service: DatabaseService = DatabaseService("sqlite:///<repo_root>/data/playground.db")
 
 # In-Memory Cache for Active Sessions
 sessions: Dict[str, GameState] = {}
@@ -422,7 +423,8 @@ sse_connections: Dict[str, List[SSEConnection]] = {}
 class DatabaseService:
     """Centralized database operations for all models"""
     
-    def __init__(self, database_url: str = "sqlite:///./playground.db"):
+    def __init__(self, database_url: str = "sqlite:///./data/playground.db"):
+        # Implementation resolves relative URLs to an absolute path rooted at the repository
         self.engine = create_engine(database_url)
         SQLModel.metadata.create_all(self.engine)
     

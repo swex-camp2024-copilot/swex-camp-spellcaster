@@ -62,7 +62,7 @@ cd backend
 uv run python -c "import asyncio; from app.core.database import create_tables; asyncio.run(create_tables())"
 
 # Check database file (created automatically)
-ls -la backend/playground.db
+ls -la data/playground.db
 ```
 
 ### Code Quality
@@ -100,7 +100,8 @@ backend/
 ├── client/               # SSE and bot clients (to be implemented)
 ├── logs/                 # Match and system logs
 │   └── playground/       # Match-specific logs
-└── playground.db         # SQLite database (created automatically)
+└── data/
+    └── playground.db     # SQLite database (created automatically)
 ```
 
 ## 🔧 Configuration
@@ -109,7 +110,7 @@ The backend uses environment variables for configuration. Create a `.env` file i
 
 ```env
 # Database
-PLAYGROUND_DATABASE_URL=sqlite+aiosqlite:///./backend/playground.db
+PLAYGROUND_DATABASE_URL=sqlite+aiosqlite:///./data/playground.db
 PLAYGROUND_DATABASE_ECHO=false
 
 # Server

@@ -154,7 +154,7 @@ The Spellcasters Playground Backend is a FastAPI-based system that powers the "P
 2. The system SHALL use asyncio for efficient async request handling
 3. The system SHALL implement single-threaded match loops per session for isolation
 4. The system SHALL maintain acceptable response times under concurrent load
-5. The system SHALL persist session state and player data to SQLite database
+5. The system SHALL persist session state and player data to a SQLite database file located at `data/playground.db`, resolved to an absolute path based on the repository root to ensure consistent behavior regardless of the process working directory
 6. The system SHALL manage database connections efficiently for concurrent access
 7. The system SHALL provide database migration support for schema changes
 8. The system SHALL handle SSE connections efficiently for multiple clients, including external clients built using `/client/` libraries
