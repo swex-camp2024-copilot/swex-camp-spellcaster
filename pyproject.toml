@@ -57,6 +57,7 @@ Issues = "https://github.com/your-org/spellcasters/issues"
 [dependency-groups]
 dev = [
     "bandit>=1.8.6",
+    "pre-commit>=4.3.0",
     "pytest>=8.4.1",
     "pytest-cov>=6.2.1",
     "pytest-mock>=3.14.1",
