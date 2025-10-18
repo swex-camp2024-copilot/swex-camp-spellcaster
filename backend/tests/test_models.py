@@ -175,9 +175,9 @@ class TestSessionModels:
         """Test session creation request with default visualize value."""
         request = SessionCreationRequest(
             player_1_config={"bot_type": "builtin", "bot_id": "sample_bot_1"},
-            player_2_config={"bot_type": "builtin", "bot_id": "sample_bot_2"}
+            player_2_config={"bot_type": "builtin", "bot_id": "sample_bot_2"},
         )
-        
+
         assert request.visualize is False  # Should default to False
         assert request.player_1_config["bot_type"] == "builtin"
         assert request.player_2_config["bot_type"] == "builtin"
@@ -188,25 +188,21 @@ class TestSessionModels:
         request = SessionCreationRequest(
             player_1_config={"bot_type": "builtin", "bot_id": "sample_bot_1"},
             player_2_config={"bot_type": "builtin", "bot_id": "sample_bot_2"},
-            visualize=True
+            visualize=True,
         )
-        
+
         assert request.visualize is True
 
     def test_session_creation_request_validation(self):
         """Test session creation request validation."""
         # Should accept boolean values
         request_true = SessionCreationRequest(
-            player_1_config={"bot_type": "builtin"},
-            player_2_config={"bot_type": "builtin"},
-            visualize=True
+            player_1_config={"bot_type": "builtin"}, player_2_config={"bot_type": "builtin"}, visualize=True
         )
         assert request_true.visualize is True
-        
+
         request_false = SessionCreationRequest(
-            player_1_config={"bot_type": "builtin"},
-            player_2_config={"bot_type": "builtin"},
-            visualize=False
+            player_1_config={"bot_type": "builtin"}, player_2_config={"bot_type": "builtin"}, visualize=False
         )
         assert request_false.visualize is False
 
@@ -582,7 +578,7 @@ class TestConfigurationSettings:
     def test_visualization_config_defaults(self):
         """Test that visualization config options have correct defaults."""
         from backend.app.core.config import settings
-        
+
         # Test visualization config defaults
         assert settings.enable_visualization is True
         assert settings.max_visualized_sessions == 10
@@ -592,7 +588,7 @@ class TestConfigurationSettings:
     def test_visualization_config_types(self):
         """Test that visualization config options have correct types."""
         from backend.app.core.config import settings
-        
+
         assert isinstance(settings.enable_visualization, bool)
         assert isinstance(settings.max_visualized_sessions, int)
         assert isinstance(settings.visualizer_queue_size, int)

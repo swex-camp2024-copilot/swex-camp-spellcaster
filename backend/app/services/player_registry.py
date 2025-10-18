@@ -42,6 +42,7 @@ class PlayerRegistry:
     def _get_builtin_player_definitions(self) -> List[Player]:
         """Get hard-coded built-in player definitions from the BuiltinBotRegistry."""
         from .builtin_bots import BuiltinBotRegistry
+
         return BuiltinBotRegistry.get_all_builtin_players()
 
     # Player Management Operations
@@ -189,15 +190,15 @@ class PlayerRegistry:
 
             # Delegate to database service for actual deletion
             success = await self.db.delete_player(player_id)
-            
+
             if success:
                 # Remove from built-in cache if it was there (shouldn't happen, but safety)
                 if player_id in self._builtin_players_cache:
                     del self._builtin_players_cache[player_id]
-                
+
                 logger.info(f"Successfully deleted player: {player_id} ({player.player_name})")
                 return True
-            
+
             return False
 
         except (PlayerNotFoundError, PlayerRegistrationError):
@@ -208,4 +209,4 @@ class PlayerRegistry:
 
     async def cleanup(self) -> None:
         """Cleanup resources (if needed)."""
-        logger.info("PlayerRegistry cleanup completed") 
+        logger.info("PlayerRegistry cleanup completed")

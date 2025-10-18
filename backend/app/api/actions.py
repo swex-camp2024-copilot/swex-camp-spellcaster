@@ -37,4 +37,3 @@ async def submit_action(session_id: str, payload: PlayerAction) -> Dict[str, str
     except Exception as exc:
         logger.error(f"Failed to submit action: {exc}", exc_info=True)
         raise HTTPException(status_code=400, detail="Invalid action submission")
-

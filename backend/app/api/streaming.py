@@ -53,4 +53,3 @@ async def stream_session_events(session_id: str, request: Request) -> StreamingR
     )
     # Explicitly set background to close stream on client disconnect
     return response
-

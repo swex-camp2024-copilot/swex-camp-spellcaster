@@ -117,9 +117,7 @@ class TestVisualizerService:
     def test_send_event_success(self, service):
         """Test successful event send."""
         mock_queue = MagicMock()
-        event = TurnEvent(
-            turn=1, game_state={"test": "state"}, actions=[], events=[], log_line="Test log"
-        )
+        event = TurnEvent(turn=1, game_state={"test": "state"}, actions=[], events=[], log_line="Test log")
 
         result = service.send_event(mock_queue, event)
 
@@ -137,9 +135,7 @@ class TestVisualizerService:
         mock_queue = MagicMock()
         mock_queue.put_nowait.side_effect = Exception("Queue full")
 
-        event = TurnEvent(
-            turn=1, game_state={"test": "state"}, actions=[], events=[], log_line="Test log"
-        )
+        event = TurnEvent(turn=1, game_state={"test": "state"}, actions=[], events=[], log_line="Test log")
 
         result = service.send_event(mock_queue, event)
 
@@ -192,7 +188,11 @@ class TestVisualizerService:
         """Test force termination when process doesn't exit gracefully."""
         mock_process = MagicMock()
         mock_process.pid = 12345
-        mock_process.is_alive.side_effect = [True, True, False]  # Alive after join, alive after terminate, dead after kill
+        mock_process.is_alive.side_effect = [
+            True,
+            True,
+            False,
+        ]  # Alive after join, alive after terminate, dead after kill
 
         mock_queue = MagicMock()
 
@@ -281,9 +281,7 @@ class TestVisualizerServiceIntegration:
                     assert queue is not None
 
                     # Send event
-                    event = TurnEvent(
-                        turn=1, game_state={"test": "state"}, actions=[], events=[], log_line="Test"
-                    )
+                    event = TurnEvent(turn=1, game_state={"test": "state"}, actions=[], events=[], log_line="Test")
                     result = service.send_event(queue, event)
                     assert result is True
 
@@ -293,4 +291,3 @@ class TestVisualizerServiceIntegration:
                     # Verify cleanup
                     mock_process.join.assert_called()
                     mock_queue.close.assert_called()
-

@@ -78,10 +78,7 @@ async def playground_error_handler(request: Request, exc: PlaygroundError) -> JS
     Returns:
         JSON response with error details
     """
-    logger.error(
-        f"Playground error: {exc.message}",
-        extra=_sanitize_error_for_logging(exc)
-    )
+    logger.error(f"Playground error: {exc.message}", extra=_sanitize_error_for_logging(exc))
 
     return JSONResponse(
         status_code=exc.status_code,
@@ -90,7 +87,7 @@ async def playground_error_handler(request: Request, exc: PlaygroundError) -> JS
             message=exc.message,
             details=exc.details if exc.details else None,
             session_id=exc.session_id,
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -105,10 +102,7 @@ async def player_not_found_error_handler(request: Request, exc: PlayerNotFoundEr
     Returns:
         JSON response with error details
     """
-    logger.warning(
-        f"Player not found: {exc.player_id}",
-        extra=_sanitize_error_for_logging(exc)
-    )
+    logger.warning(f"Player not found: {exc.player_id}", extra=_sanitize_error_for_logging(exc))
 
     return JSONResponse(
         status_code=404,
@@ -116,7 +110,7 @@ async def player_not_found_error_handler(request: Request, exc: PlayerNotFoundEr
             error="PLAYER_NOT_FOUND",
             message=str(exc),
             details={"player_id": exc.player_id},
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -130,17 +124,14 @@ async def player_registration_error_handler(request: Request, exc: PlayerRegistr
     Returns:
         JSON response with error details
     """
-    logger.warning(
-        f"Player registration failed: {exc.message}",
-        extra=_sanitize_error_for_logging(exc)
-    )
+    logger.warning(f"Player registration failed: {exc.message}", extra=_sanitize_error_for_logging(exc))
 
     return JSONResponse(
         status_code=400,
         content=ErrorResponse(
             error="PLAYER_REGISTRATION_ERROR",
             message=str(exc),
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -155,10 +146,7 @@ async def session_not_found_error_handler(request: Request, exc: SessionNotFound
     Returns:
         JSON response with error details
     """
-    logger.warning(
-        f"Session not found: {exc.session_id}",
-        extra=_sanitize_error_for_logging(exc)
-    )
+    logger.warning(f"Session not found: {exc.session_id}", extra=_sanitize_error_for_logging(exc))
 
     return JSONResponse(
         status_code=404,
@@ -166,7 +154,7 @@ async def session_not_found_error_handler(request: Request, exc: SessionNotFound
             error="SESSION_NOT_FOUND",
             message=str(exc),
             session_id=exc.session_id,
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -180,10 +168,7 @@ async def session_already_active_error_handler(request: Request, exc: SessionAlr
     Returns:
         JSON response with error details
     """
-    logger.warning(
-        f"Session already active: {exc.session_id}",
-        extra=_sanitize_error_for_logging(exc)
-    )
+    logger.warning(f"Session already active: {exc.session_id}", extra=_sanitize_error_for_logging(exc))
 
     return JSONResponse(
         status_code=409,
@@ -191,7 +176,7 @@ async def session_already_active_error_handler(request: Request, exc: SessionAlr
             error="SESSION_ALREADY_ACTIVE",
             message=str(exc),
             session_id=exc.session_id,
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -206,10 +191,7 @@ async def invalid_action_error_handler(request: Request, exc: InvalidActionError
     Returns:
         JSON response with error details
     """
-    logger.info(
-        f"Invalid action submitted: {exc.message}",
-        extra=_sanitize_error_for_logging(exc)
-    )
+    logger.info(f"Invalid action submitted: {exc.message}", extra=_sanitize_error_for_logging(exc))
 
     return JSONResponse(
         status_code=400,
@@ -218,7 +200,7 @@ async def invalid_action_error_handler(request: Request, exc: InvalidActionError
             message=str(exc),
             session_id=exc.session_id,
             details=exc.details,
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -234,7 +216,7 @@ async def invalid_turn_error_handler(request: Request, exc: InvalidTurnError) ->
     """
     logger.info(
         f"Invalid turn number: expected {exc.expected_turn}, received {exc.received_turn}",
-        extra=_sanitize_error_for_logging(exc)
+        extra=_sanitize_error_for_logging(exc),
     )
 
     return JSONResponse(
@@ -247,7 +229,7 @@ async def invalid_turn_error_handler(request: Request, exc: InvalidTurnError) ->
                 "expected_turn": exc.expected_turn,
                 "received_turn": exc.received_turn,
             },
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -262,10 +244,7 @@ async def bot_execution_error_handler(request: Request, exc: BotExecutionError) 
     Returns:
         JSON response with error details
     """
-    logger.error(
-        f"Bot execution failed: {exc.message}",
-        extra=_sanitize_error_for_logging(exc)
-    )
+    logger.error(f"Bot execution failed: {exc.message}", extra=_sanitize_error_for_logging(exc))
 
     return JSONResponse(
         status_code=500,
@@ -273,7 +252,7 @@ async def bot_execution_error_handler(request: Request, exc: BotExecutionError) 
             error="BOT_EXECUTION_ERROR",
             message=str(exc),
             session_id=exc.session_id,
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -288,8 +267,7 @@ async def bot_timeout_error_handler(request: Request, exc: BotTimeoutError) -> J
         JSON response with error details
     """
     logger.warning(
-        f"Bot execution timed out after {exc.timeout_seconds} seconds",
-        extra=_sanitize_error_for_logging(exc)
+        f"Bot execution timed out after {exc.timeout_seconds} seconds", extra=_sanitize_error_for_logging(exc)
     )
 
     return JSONResponse(
@@ -300,7 +278,7 @@ async def bot_timeout_error_handler(request: Request, exc: BotTimeoutError) -> J
             session_id=exc.session_id,
             timeout_seconds=exc.timeout_seconds,
             operation="bot_decision",
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -315,11 +293,7 @@ async def game_engine_error_handler(request: Request, exc: GameEngineError) -> J
     Returns:
         JSON response with error details
     """
-    logger.error(
-        f"Game engine error: {exc.message}",
-        extra=_sanitize_error_for_logging(exc),
-        exc_info=True
-    )
+    logger.error(f"Game engine error: {exc.message}", extra=_sanitize_error_for_logging(exc), exc_info=True)
 
     return JSONResponse(
         status_code=500,
@@ -328,7 +302,7 @@ async def game_engine_error_handler(request: Request, exc: GameEngineError) -> J
             message=str(exc),
             session_id=exc.session_id,
             details=exc.details,
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -343,11 +317,7 @@ async def database_error_handler(request: Request, exc: DatabaseError) -> JSONRe
     Returns:
         JSON response with error details (sanitized for security)
     """
-    logger.error(
-        f"Database error: {exc.message}",
-        extra=_sanitize_error_for_logging(exc),
-        exc_info=True
-    )
+    logger.error(f"Database error: {exc.message}", extra=_sanitize_error_for_logging(exc), exc_info=True)
 
     # Don't expose internal database details to clients
     return JSONResponse(
@@ -355,7 +325,7 @@ async def database_error_handler(request: Request, exc: DatabaseError) -> JSONRe
         content=ErrorResponse(
             error="DATABASE_ERROR",
             message="A database error occurred. Please try again later.",
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -370,10 +340,7 @@ async def validation_error_handler(request: Request, exc: ValidationError) -> JS
     Returns:
         JSON response with error details
     """
-    logger.info(
-        f"Validation error for field '{exc.field}': {exc.message}",
-        extra=_sanitize_error_for_logging(exc)
-    )
+    logger.info(f"Validation error for field '{exc.field}': {exc.message}", extra=_sanitize_error_for_logging(exc))
 
     return JSONResponse(
         status_code=422,
@@ -386,7 +353,7 @@ async def validation_error_handler(request: Request, exc: ValidationError) -> JS
                     message=exc.message,
                 )
             ],
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -401,10 +368,7 @@ async def pydantic_validation_error_handler(request: Request, exc: PydanticValid
     Returns:
         JSON response with validation error details
     """
-    logger.info(
-        "Request validation failed",
-        extra={"error_count": len(exc.errors())}
-    )
+    logger.info("Request validation failed", extra={"error_count": len(exc.errors())})
 
     validation_errors = []
     for error in exc.errors():
@@ -423,7 +387,7 @@ async def pydantic_validation_error_handler(request: Request, exc: PydanticValid
             error="VALIDATION_ERROR",
             message="Request validation failed",
             validation_errors=validation_errors,
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -438,10 +402,7 @@ async def sse_connection_error_handler(request: Request, exc: SSEConnectionError
     Returns:
         JSON response with error details
     """
-    logger.error(
-        f"SSE connection error: {exc.message}",
-        extra=_sanitize_error_for_logging(exc)
-    )
+    logger.error(f"SSE connection error: {exc.message}", extra=_sanitize_error_for_logging(exc))
 
     return JSONResponse(
         status_code=500,
@@ -449,7 +410,7 @@ async def sse_connection_error_handler(request: Request, exc: SSEConnectionError
             error="SSE_CONNECTION_ERROR",
             message=str(exc),
             session_id=exc.session_id,
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -464,17 +425,14 @@ async def authorization_error_handler(request: Request, exc: AuthorizationError)
     Returns:
         JSON response with error details
     """
-    logger.warning(
-        f"Authorization error: {exc.message}",
-        extra=_sanitize_error_for_logging(exc)
-    )
+    logger.warning(f"Authorization error: {exc.message}", extra=_sanitize_error_for_logging(exc))
 
     return JSONResponse(
         status_code=403,
         content=ErrorResponse(
             error="AUTHORIZATION_ERROR",
             message=str(exc),
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -489,10 +447,7 @@ async def rate_limit_error_handler(request: Request, exc: RateLimitError) -> JSO
     Returns:
         JSON response with error details
     """
-    logger.warning(
-        f"Rate limit exceeded: {exc.message}",
-        extra=_sanitize_error_for_logging(exc)
-    )
+    logger.warning(f"Rate limit exceeded: {exc.message}", extra=_sanitize_error_for_logging(exc))
 
     return JSONResponse(
         status_code=429,
@@ -501,7 +456,7 @@ async def rate_limit_error_handler(request: Request, exc: RateLimitError) -> JSO
             message=str(exc),
             retry_after_seconds=60,  # Default retry time
             limit_type="general",
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
         headers={"Retry-After": "60"},
     )
 
@@ -517,11 +472,7 @@ async def configuration_error_handler(request: Request, exc: ConfigurationError)
     Returns:
         JSON response with error details
     """
-    logger.error(
-        f"Configuration error: {exc.message}",
-        extra=_sanitize_error_for_logging(exc),
-        exc_info=True
-    )
+    logger.error(f"Configuration error: {exc.message}", extra=_sanitize_error_for_logging(exc), exc_info=True)
 
     # Don't expose internal configuration details to clients
     return JSONResponse(
@@ -529,7 +480,7 @@ async def configuration_error_handler(request: Request, exc: ConfigurationError)
         content=ErrorResponse(
             error="CONFIGURATION_ERROR",
             message="Server configuration error. Please contact support.",
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -544,11 +495,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     Returns:
         JSON response with generic error message
     """
-    logger.error(
-        f"Unexpected error: {type(exc).__name__}",
-        extra={"error_type": type(exc).__name__},
-        exc_info=True
-    )
+    logger.error(f"Unexpected error: {type(exc).__name__}", extra={"error_type": type(exc).__name__}, exc_info=True)
 
     # Don't expose internal error details to clients
     return JSONResponse(
@@ -556,7 +503,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
         content=ErrorResponse(
             error="INTERNAL_SERVER_ERROR",
             message="An unexpected error occurred. Please try again later.",
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 

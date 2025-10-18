@@ -9,7 +9,7 @@ from backend.app.core.database import create_tables
 @pytest.mark.asyncio
 async def test_streaming_endpoint_exists():
     await create_tables()
-    
+
     # Start a session first
     payload = {
         "player_1_config": {"player_id": "builtin_sample_1", "bot_type": "builtin", "bot_id": "sample_bot_1"},

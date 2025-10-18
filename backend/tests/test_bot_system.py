@@ -4,13 +4,7 @@ import pytest
 from datetime import datetime
 from unittest.mock import Mock, patch
 
-from backend.app.models.bots import (
-    BotInterface, 
-    PlayerBot, 
-    PlayerBotFactory, 
-    BotCreationRequest,
-    BotInfo
-)
+from backend.app.models.bots import BotInterface, PlayerBot, PlayerBotFactory, BotCreationRequest, BotInfo
 from backend.app.models.players import Player, PlayerRegistration
 from backend.app.services.builtin_bots import BuiltinBotRegistry, BuiltinBotWrapper
 from backend.app.services.game_adapter import GameEngineAdapter
@@ -27,7 +21,7 @@ class TestBotInterface:
             player_name="Test Player",
             submitted_from="test",
             is_builtin=False,
-            created_at=datetime.now()
+            created_at=datetime.now(),
         )
 
         # Create a concrete implementation for testing
@@ -45,17 +39,14 @@ class TestBotInterface:
 
     def test_bot_interface_requires_decide_implementation(self):
         """Test that BotInterface requires decide method implementation."""
-        player = Player(
-            player_id="test_player",
-            player_name="Test",
-            submitted_from="test",
-            created_at=datetime.now()
-        )
+        player = Player(player_id="test_player", player_name="Test", submitted_from="test", created_at=datetime.now())
 
         # This should fail because decide is not implemented
         with pytest.raises(TypeError):
+
             class IncompleteBot(BotInterface):
                 pass
+
             IncompleteBot(player)
 
 
@@ -65,10 +56,7 @@ class TestPlayerBot:
     def test_player_bot_creation(self):
         """Test PlayerBot creation with valid code."""
         player = Player(
-            player_id="test_player",
-            player_name="Test Player",
-            submitted_from="online",
-            created_at=datetime.now()
+            player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
         )
 
         bot_code = """
@@ -83,10 +71,7 @@ def decide(state):
     def test_player_bot_invalid_syntax(self):
         """Test PlayerBot creation with invalid syntax."""
         player = Player(
-            player_id="test_player",
-            player_name="Test Player",
-            submitted_from="online",
-            created_at=datetime.now()
+            player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
         )
 
         # Invalid Python syntax
@@ -101,10 +86,7 @@ def decide(state)
     def test_player_bot_decide_execution(self):
         """Test PlayerBot decide method execution."""
         player = Player(
-            player_id="test_player",
-            player_name="Test Player",
-            submitted_from="online",
-            created_at=datetime.now()
+            player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
         )
 
         bot_code = """
@@ -131,10 +113,7 @@ def decide(state):
     def test_player_bot_missing_decide_function(self):
         """Test PlayerBot with code that doesn't define decide function."""
         player = Player(
-            player_id="test_player",
-            player_name="Test Player",
-            submitted_from="online",
-            created_at=datetime.now()
+            player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
         )
 
         bot_code = """
@@ -144,7 +123,7 @@ y = 10
 """
 
         bot = PlayerBot(player, bot_code)
-        
+
         # Should return safe default action
         state = {"self": {"hp": 100}}
         action = bot.decide(state)
@@ -153,10 +132,7 @@ y = 10
     def test_player_bot_execution_error(self):
         """Test PlayerBot with code that raises an exception."""
         player = Player(
-            player_id="test_player",
-            player_name="Test Player",
-            submitted_from="online",
-            created_at=datetime.now()
+            player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
         )
 
         bot_code = """
@@ -165,7 +141,7 @@ def decide(state):
 """
 
         bot = PlayerBot(player, bot_code)
-        
+
         # Should return safe default action on error
         state = {"self": {"hp": 100}}
         action = bot.decide(state)
@@ -182,19 +158,16 @@ class TestPlayerBotFactory:
             player_id="existing_player",
             player_name="Existing Player",
             submitted_from="online",
-            created_at=datetime.now()
+            created_at=datetime.now(),
         )
-        
+
         mock_registry = Mock()
         mock_registry.get_player.return_value = player
 
-        request = BotCreationRequest(
-            bot_code="def decide(state): return {'move': [0, 0]}",
-            player_id="existing_player"
-        )
+        request = BotCreationRequest(bot_code="def decide(state): return {'move': [0, 0]}", player_id="existing_player")
 
         bot = PlayerBotFactory.create_bot(request, mock_registry)
-        
+
         assert isinstance(bot, PlayerBot)
         assert bot.player == player
         mock_registry.get_player.assert_called_once_with("existing_player")
@@ -203,25 +176,19 @@ class TestPlayerBotFactory:
         """Test creating bot with new player registration."""
         # Mock player registry
         new_player = Player(
-            player_id="new_player_123",
-            player_name="New Player",
-            submitted_from="online",
-            created_at=datetime.now()
+            player_id="new_player_123", player_name="New Player", submitted_from="online", created_at=datetime.now()
         )
-        
+
         mock_registry = Mock()
         mock_registry.register_player.return_value = new_player
 
         request = BotCreationRequest(
             bot_code="def decide(state): return {'move': [0, 0]}",
-            player_registration=PlayerRegistration(
-                player_name="New Player",
-                submitted_from="online"
-            )
+            player_registration=PlayerRegistration(player_name="New Player", submitted_from="online"),
         )
 
         bot = PlayerBotFactory.create_bot(request, mock_registry)
-        
+
         assert isinstance(bot, PlayerBot)
         assert bot.player == new_player
         mock_registry.register_player.assert_called_once()
@@ -232,8 +199,7 @@ class TestPlayerBotFactory:
         mock_registry.get_player.return_value = None
 
         request = BotCreationRequest(
-            bot_code="def decide(state): return {'move': [0, 0]}",
-            player_id="nonexistent_player"
+            bot_code="def decide(state): return {'move': [0, 0]}", player_id="nonexistent_player"
         )
 
         with pytest.raises(ValueError, match="Player nonexistent_player not found"):
@@ -243,9 +209,7 @@ class TestPlayerBotFactory:
         """Test creating bot without player ID or registration."""
         mock_registry = Mock()
 
-        request = BotCreationRequest(
-            bot_code="def decide(state): return {'move': [0, 0]}"
-        )
+        request = BotCreationRequest(bot_code="def decide(state): return {'move': [0, 0]}")
 
         with pytest.raises(ValueError, match="Must provide either player_id or player_registration"):
             PlayerBotFactory.create_bot(request, mock_registry)
@@ -257,7 +221,7 @@ class TestBuiltinBotRegistry:
     def test_get_builtin_player(self):
         """Test getting built-in player."""
         player = BuiltinBotRegistry.get_builtin_player("builtin_sample_1")
-        
+
         assert player.player_id == "builtin_sample_1"
         assert player.player_name == "Sample Bot 1"
         assert player.is_builtin == True
@@ -267,7 +231,7 @@ class TestBuiltinBotRegistry:
         with pytest.raises(ValueError, match="Built-in player nonexistent not found"):
             BuiltinBotRegistry.get_builtin_player("nonexistent")
 
-    @patch('importlib.import_module')
+    @patch("importlib.import_module")
     def test_create_builtin_bot(self, mock_import):
         """Test creating built-in bot."""
         # Mock the bot class
@@ -277,7 +241,7 @@ class TestBuiltinBotRegistry:
         mock_import.return_value = mock_module
 
         bot = BuiltinBotRegistry.create_bot("sample_bot_1")
-        
+
         assert isinstance(bot, BuiltinBotWrapper)
         assert bot.player.player_id == "builtin_sample_1"
         mock_import.assert_called_once_with("bots.sample_bot1.sample_bot_1")
@@ -290,7 +254,7 @@ class TestBuiltinBotRegistry:
     def test_list_available_bots(self):
         """Test listing available built-in bots."""
         bots = BuiltinBotRegistry.list_available_bots()
-        
+
         assert len(bots) > 0
         assert all(isinstance(bot, BotInfo) for bot in bots)
         assert all(bot.bot_type == "builtin" for bot in bots)
@@ -298,7 +262,7 @@ class TestBuiltinBotRegistry:
     def test_get_all_builtin_players(self):
         """Test getting all built-in players."""
         players = BuiltinBotRegistry.get_all_builtin_players()
-        
+
         assert len(players) > 0
         assert all(isinstance(player, Player) for player in players)
         assert all(player.is_builtin for player in players)
@@ -329,7 +293,7 @@ class TestBuiltinBotWrapper:
             player_name="Test Player",
             submitted_from="builtin",
             is_builtin=True,
-            created_at=datetime.now()
+            created_at=datetime.now(),
         )
 
         # Create wrapper
@@ -353,7 +317,7 @@ class TestBuiltinBotWrapper:
             player_name="Test Player",
             submitted_from="builtin",
             is_builtin=True,
-            created_at=datetime.now()
+            created_at=datetime.now(),
         )
 
         wrapper = BuiltinBotWrapper(player, lambda: mock_original_bot)
@@ -371,23 +335,23 @@ class TestGameEngineAdapter:
     def test_adapter_initialization(self):
         """Test adapter initialization."""
         adapter = GameEngineAdapter()
-        
+
         assert adapter.engine is None
         assert adapter.bot1 is None
         assert adapter.bot2 is None
         assert adapter._game_started == False
 
-    @patch('backend.app.services.game_adapter.GameEngine')
+    @patch("backend.app.services.game_adapter.GameEngine")
     def test_initialize_match(self, mock_game_engine):
         """Test match initialization."""
         # Create test bots
         player1 = Player(player_id="p1", player_name="Bot1", submitted_from="test", created_at=datetime.now())
         player2 = Player(player_id="p2", player_name="Bot2", submitted_from="test", created_at=datetime.now())
-        
+
         class TestBot(BotInterface):
             def decide(self, state):
                 return {"move": [0, 0]}
-        
+
         bot1 = TestBot(player1)
         bot2 = TestBot(player2)
 
@@ -403,12 +367,12 @@ class TestGameEngineAdapter:
         """Test getting game state without initialized engine."""
         adapter = GameEngineAdapter()
         state = adapter.get_game_state()
-        
+
         assert state == {}
 
     def test_check_game_over_without_engine(self):
         """Test checking game over without initialized engine."""
         adapter = GameEngineAdapter()
         result = adapter.check_game_over()
-        
+
         assert result is None

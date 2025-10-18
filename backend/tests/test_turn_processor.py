@@ -49,4 +49,3 @@ async def test_collect_actions_autofill_builtin():
     collected = await tp.collect_actions(session_id, turn, players, is_builtin=is_builtin)
     assert collected["p1"].move is None  # builtin auto placeholder
     assert collected["p2"].move == [0, 0]  # timeout default
-

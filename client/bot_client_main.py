@@ -18,7 +18,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--player-name", default=os.environ.get("SPELLCASTERS_PLAYER_NAME", "CLI Bot"))
     parser.add_argument("--builtin-bot-id", default=os.environ.get("SPELLCASTERS_BUILTIN_BOT_ID", "sample_bot_1"))
     parser.add_argument("--max-events", type=int, default=int(os.environ.get("SPELLCASTERS_MAX_EVENTS", "10")))
-    parser.add_argument("--log-level", default=os.environ.get("LOG_LEVEL", "INFO"), choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    parser.add_argument(
+        "--log-level", default=os.environ.get("LOG_LEVEL", "INFO"), choices=["DEBUG", "INFO", "WARNING", "ERROR"]
+    )
     return parser.parse_args()
 
 
@@ -49,5 +51,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

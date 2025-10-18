@@ -38,4 +38,3 @@ async def test_admin_endpoints_exist_and_return_json():
             del_resp = await ac.delete(f"/playground/{session_id}")
             assert del_resp.status_code == 200
             assert del_resp.json().get("status") == "terminated"
-

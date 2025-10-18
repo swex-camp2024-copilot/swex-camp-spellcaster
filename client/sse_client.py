@@ -19,6 +19,7 @@ try:
         ErrorEvent,
         SessionStartEvent,
     )
+
     _HAVE_BACKEND_MODELS = True
 except Exception:
     _HAVE_BACKEND_MODELS = False
@@ -162,5 +163,3 @@ class SSEClient:
 
 
 __all__ = ["SSEClient", "SSEClientConfig"]
-
-

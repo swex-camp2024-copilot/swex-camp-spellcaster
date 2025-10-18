@@ -80,9 +80,7 @@ class VisualizerService:
             self._logger.error(f"Failed to spawn visualizer for session {session_id}: {exc}", exc_info=True)
             return (None, None)
 
-    def send_event(
-        self, queue: multiprocessing.Queue, event: Union[TurnEvent, GameOverEvent]
-    ) -> bool:
+    def send_event(self, queue: multiprocessing.Queue, event: Union[TurnEvent, GameOverEvent]) -> bool:
         """Send an event to the visualizer process.
 
         Args:
@@ -202,4 +200,3 @@ class VisualizerService:
         except Exception as exc:
             child_logger.error(f"Error in visualizer process: {exc}", exc_info=True)
             sys.exit(1)
-

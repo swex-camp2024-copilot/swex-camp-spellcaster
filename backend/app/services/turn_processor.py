@@ -133,4 +133,3 @@ class TurnProcessor:
         """Cleanup any pending state for a session."""
         async with self._lock:
             self._sessions.pop(session_id, None)
-

@@ -17,7 +17,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--base-url", default=os.environ.get("SPELLCASTERS_BASE_URL", "http://localhost:8000"))
     parser.add_argument("--session-id", default=os.environ.get("SPELLCASTERS_SESSION_ID"), required=False)
     parser.add_argument("--max-events", type=int, default=20)
-    parser.add_argument("--log-level", default=os.environ.get("LOG_LEVEL", "INFO"), choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    parser.add_argument(
+        "--log-level", default=os.environ.get("LOG_LEVEL", "INFO"), choices=["DEBUG", "INFO", "WARNING", "ERROR"]
+    )
     return parser.parse_args()
 
 
@@ -52,5 +54,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

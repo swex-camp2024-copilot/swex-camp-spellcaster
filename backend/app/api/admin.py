@@ -35,4 +35,3 @@ async def admin_cleanup_session(session_id: str) -> dict:
     if not ok:
         raise HTTPException(status_code=500, detail="Failed to cleanup session")
     return {"status": "terminated", "session_id": session_id}
-

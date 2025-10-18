@@ -36,4 +36,3 @@ async def test_replay_endpoint_streams_events():
             except asyncio.TimeoutError:
                 # The endpoint started streaming; that's sufficient to prove it works for route-level
                 pass
-

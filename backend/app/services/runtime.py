@@ -39,4 +39,3 @@ def __getattr__(name: str) -> Any:
         return getattr(state_manager, _SERVICE_MAPPING[name])
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-

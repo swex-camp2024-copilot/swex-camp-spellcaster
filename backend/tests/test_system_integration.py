@@ -97,7 +97,7 @@ async def test_error_handler_validation_error(test_client):
     # Send invalid player registration
     response = await test_client.post(
         "/players/register",
-        json={"invalid_field": "test"}  # Missing required 'player_name' field
+        json={"invalid_field": "test"},  # Missing required 'player_name' field
     )
 
     assert response.status_code == 422
@@ -112,15 +112,13 @@ async def test_complete_match_workflow(test_client):
     """Test complete end-to-end match workflow."""
     # 1. Register two players
     player1_response = await test_client.post(
-        "/players/register",
-        json={"player_name": "IntegrationBot1", "submitted_from": "online"}
+        "/players/register", json={"player_name": "IntegrationBot1", "submitted_from": "online"}
     )
     assert player1_response.status_code == 201
     player1 = player1_response.json()
 
     player2_response = await test_client.post(
-        "/players/register",
-        json={"player_name": "IntegrationBot2", "submitted_from": "online"}
+        "/players/register", json={"player_name": "IntegrationBot2", "submitted_from": "online"}
     )
     assert player2_response.status_code == 201
     player2 = player2_response.json()
@@ -129,17 +127,9 @@ async def test_complete_match_workflow(test_client):
     session_response = await test_client.post(
         "/playground/start",
         json={
-            "player_1_config": {
-                "player_id": "builtin_sample_1",
-                "bot_type": "builtin",
-                "bot_id": "sample_bot_1"
-            },
-            "player_2_config": {
-                "player_id": "builtin_sample_2",
-                "bot_type": "builtin",
-                "bot_id": "sample_bot_2"
-            }
-        }
+            "player_1_config": {"player_id": "builtin_sample_1", "bot_type": "builtin", "bot_id": "sample_bot_1"},
+            "player_2_config": {"player_id": "builtin_sample_2", "bot_type": "builtin", "bot_id": "sample_bot_2"},
+        },
     )
     assert session_response.status_code == 200
     session_data = session_response.json()
@@ -168,16 +158,13 @@ async def test_concurrent_sessions(test_client):
     session_configs = [
         {
             "player_1_config": {"player_id": "builtin_sample_1", "bot_type": "builtin", "bot_id": "sample_bot_1"},
-            "player_2_config": {"player_id": "builtin_sample_2", "bot_type": "builtin", "bot_id": "sample_bot_2"}
+            "player_2_config": {"player_id": "builtin_sample_2", "bot_type": "builtin", "bot_id": "sample_bot_2"},
         }
         for _ in range(3)
     ]
 
     # Create sessions concurrently
-    tasks = [
-        test_client.post("/playground/start", json=config)
-        for config in session_configs
-    ]
+    tasks = [test_client.post("/playground/start", json=config) for config in session_configs]
 
     responses = await asyncio.gather(*tasks)
 
@@ -212,8 +199,8 @@ async def test_admin_operations(test_client):
         "/playground/start",
         json={
             "player_1_config": {"player_id": "builtin_sample_1", "bot_type": "builtin", "bot_id": "sample_bot_1"},
-            "player_2_config": {"player_id": "builtin_sample_2", "bot_type": "builtin", "bot_id": "sample_bot_2"}
-        }
+            "player_2_config": {"player_id": "builtin_sample_2", "bot_type": "builtin", "bot_id": "sample_bot_2"},
+        },
     )
     assert session_response.status_code == 200
     session_id = session_response.json()["session_id"]
@@ -246,11 +233,7 @@ async def test_error_propagation(test_client):
     # 2. Invalid action submission (no session)
     response = await test_client.post(
         "/playground/nonexistent/action",
-        json={
-            "player_id": "test",
-            "turn": 1,
-            "action_data": {"move": [0, 0], "spell": None}
-        }
+        json={"player_id": "test", "turn": 1, "action_data": {"move": [0, 0], "spell": None}},
     )
     assert response.status_code in [400, 404, 500]  # Should error
 
@@ -267,18 +250,15 @@ async def test_sse_connection_management(test_client):
         "/playground/start",
         json={
             "player_1_config": {"player_id": "builtin_sample_1", "bot_type": "builtin", "bot_id": "sample_bot_1"},
-            "player_2_config": {"player_id": "builtin_sample_2", "bot_type": "builtin", "bot_id": "sample_bot_2"}
-        }
+            "player_2_config": {"player_id": "builtin_sample_2", "bot_type": "builtin", "bot_id": "sample_bot_2"},
+        },
     )
     assert session_response.status_code == 200
     session_id = session_response.json()["session_id"]
 
     # Try to connect to SSE stream
     # Note: Full SSE streaming test is complex in pytest, just verify endpoint exists
-    response = await test_client.get(
-        f"/playground/{session_id}/events",
-        headers={"Accept": "text/event-stream"}
-    )
+    response = await test_client.get(f"/playground/{session_id}/events", headers={"Accept": "text/event-stream"})
 
     # Should start streaming (status 200) or indicate session state
     assert response.status_code in [200, 404]
@@ -311,8 +291,7 @@ async def test_component_integration_and_data_flow(test_client):
     """Test data flows correctly between all components."""
     # 1. Register a player (tests database integration)
     player_response = await test_client.post(
-        "/players/register",
-        json={"player_name": "FlowTestBot", "submitted_from": "online"}
+        "/players/register", json={"player_name": "FlowTestBot", "submitted_from": "online"}
     )
     assert player_response.status_code == 201
 
@@ -321,8 +300,8 @@ async def test_component_integration_and_data_flow(test_client):
         "/playground/start",
         json={
             "player_1_config": {"player_id": "builtin_sample_1", "bot_type": "builtin", "bot_id": "sample_bot_1"},
-            "player_2_config": {"player_id": "builtin_sample_2", "bot_type": "builtin", "bot_id": "sample_bot_2"}
-        }
+            "player_2_config": {"player_id": "builtin_sample_2", "bot_type": "builtin", "bot_id": "sample_bot_2"},
+        },
     )
     assert session_response.status_code == 200
     session_id = session_response.json()["session_id"]

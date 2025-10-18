@@ -209,10 +209,7 @@ class StateManager:
             if not self._sse_manager or not self._match_logger:
                 raise RuntimeError("SSE manager and match logger must be initialized first")
 
-            self._session_manager = SessionManager(
-                sse_manager=self._sse_manager,
-                match_logger=self._match_logger
-            )
+            self._session_manager = SessionManager(sse_manager=self._sse_manager, match_logger=self._match_logger)
 
             self._service_status[service_name] = ServiceStatus.READY
             logger.info(f"{service_name} initialized")
@@ -233,10 +230,7 @@ class StateManager:
             if not self._db_service or not self._session_manager:
                 raise RuntimeError("Database service and session manager must be initialized first")
 
-            self._admin_service = AdminService(
-                db_service=self._db_service,
-                session_manager=self._session_manager
-            )
+            self._admin_service = AdminService(db_service=self._db_service, session_manager=self._session_manager)
 
             self._service_status[service_name] = ServiceStatus.READY
             logger.info(f"{service_name} initialized")
@@ -317,9 +311,7 @@ class StateManager:
             "is_ready": self.is_ready,
             "uptime_seconds": uptime_seconds,
             "startup_time": self._startup_time.isoformat() if self._startup_time else None,
-            "services": {
-                name: status.value for name, status in self._service_status.items()
-            },
+            "services": {name: status.value for name, status in self._service_status.items()},
             "initialization_errors": self._initialization_errors if self._initialization_errors else None,
         }
 

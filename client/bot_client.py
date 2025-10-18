@@ -44,7 +44,9 @@ class PlayerInfo:
 
 
 class BotClient:
-    def __init__(self, base_url: str, strategy: Optional[BotStrategy] = None, *, http_client: Optional[httpx.AsyncClient] = None) -> None:
+    def __init__(
+        self, base_url: str, strategy: Optional[BotStrategy] = None, *, http_client: Optional[httpx.AsyncClient] = None
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.strategy = strategy or RandomWalkStrategy()
         self._external_client = http_client is not None
@@ -77,7 +79,9 @@ class BotClient:
         resp.raise_for_status()
         return resp.json()["session_id"]
 
-    async def stream_session_events(self, session_id: str, *, max_events: Optional[int] = None) -> AsyncIterator[Dict[str, Any]]:
+    async def stream_session_events(
+        self, session_id: str, *, max_events: Optional[int] = None
+    ) -> AsyncIterator[Dict[str, Any]]:
         cfg = SSEClientConfig()
         async with SSEClient(self.base_url, session_id, config=cfg, client=self._client).connect() as sse:
             count = 0
@@ -102,5 +106,3 @@ __all__ = [
     "PlayerRegistrationRequest",
     "PlayerInfo",
 ]
-
-

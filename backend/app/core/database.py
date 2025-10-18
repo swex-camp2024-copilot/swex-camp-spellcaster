@@ -12,6 +12,7 @@ from .config import settings
 
 logger = logging.getLogger(__name__)
 
+
 def _ensure_database_directory(database_url: str) -> None:
     """Ensure the directory for a file-based SQLite database exists.
 

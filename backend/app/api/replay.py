@@ -61,4 +61,3 @@ async def replay_session_events(session_id: str, request: Request) -> StreamingR
             "X-Accel-Buffering": "no",
         },
     )
-

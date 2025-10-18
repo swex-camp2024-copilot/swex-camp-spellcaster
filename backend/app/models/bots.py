@@ -40,10 +40,10 @@ class BotInterface(ABC):
     def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
         Main decision method called by game engine.
-        
+
         Args:
             state: Current game state from the game engine
-            
+
         Returns:
             Action dictionary with format: {"move": [dx, dy], "spell": {...}}
         """
@@ -57,24 +57,21 @@ class BotInterface(ABC):
 
 class BotCreationRequest(BaseModel):
     """Request to create a new player bot."""
-    
+
     bot_code: str = Field(..., description="Python code for the bot implementation")
     player_id: Optional[str] = Field(default=None, description="Existing player ID to reuse")
-    player_registration: Optional[PlayerRegistration] = Field(
-        default=None, 
-        description="New player registration data"
-    )
+    player_registration: Optional[PlayerRegistration] = Field(default=None, description="New player registration data")
 
     def model_validate(self, values):
         """Validate that either player_id or player_registration is provided."""
-        if not values.get('player_id') and not values.get('player_registration'):
+        if not values.get("player_id") and not values.get("player_registration"):
             raise ValueError("Must provide either player_id or player_registration")
         return values
 
 
 class BotInfo(BaseModel):
     """Information about available bots."""
-    
+
     bot_type: Literal["builtin", "player"] = Field(..., description="Type of bot")
     bot_id: str = Field(..., description="Unique bot identifier")
     player_id: str = Field(..., description="Associated player ID")
@@ -136,30 +133,31 @@ class PlayerBot(BotInterface):
         try:
             # Execute the bot code
             exec(self._compiled_code, bot_globals, bot_locals)
-            
+
             # The bot code should define a 'decide' function that returns the action
             if "decide" not in bot_locals:
                 raise ValueError("Bot code must define a 'decide' function")
-            
+
             decide_func = bot_locals["decide"]
             if not callable(decide_func):
                 raise ValueError("'decide' must be a function")
-            
+
             # Call the bot's decide function
             action = decide_func(state)
-            
+
             # Validate action format
             if not isinstance(action, dict):
                 raise ValueError("Bot decision must return a dictionary")
-            
+
             return action
-            
+
         except Exception as e:
             # Log the error and return a safe default action
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"Bot {self.player_id} execution error: {e}")
-            
+
             # Return a safe default action (no move, no spell)
             return {"move": [0, 0], "spell": None}
 
@@ -188,18 +186,18 @@ class PlayerBotFactory:
     def create_bot(request: BotCreationRequest, player_registry) -> PlayerBot:
         """
         Create a player bot with reference to existing or new player.
-        
+
         User can choose to:
         1. Reuse existing Player (provide player_id)
         2. Register new Player (provide player_registration) - fresh stats
-        
+
         Args:
             request: Bot creation request with code and player info
             player_registry: Registry to get/create players
-            
+
         Returns:
             PlayerBot instance with proper player reference
-            
+
         Raises:
             ValueError: If player not found or invalid request
         """

@@ -123,7 +123,7 @@ class SessionManager:
         player = await self._db.get_player(cfg.player_id)
         if not player:
             raise ValueError(f"Player {cfg.player_id} not found")
-        dummy_code = "def decide(state):\n    return {\"move\": [0, 0], \"spell\": None}"
+        dummy_code = 'def decide(state):\n    return {"move": [0, 0], "spell": None}'
         return PlayerBot(player, dummy_code)
 
     async def _run_match_loop(self, ctx: SessionContext) -> None:
@@ -138,9 +138,8 @@ class SessionManager:
 
                 # Collect actions with timeout semantics via TurnProcessor.
                 def _is_builtin(pid: str) -> bool:
-                    return (
-                        (pid == ctx.game_state.player_1.player_id and ctx.game_state.player_1.is_builtin_bot)
-                        or (pid == ctx.game_state.player_2.player_id and ctx.game_state.player_2.is_builtin_bot)
+                    return (pid == ctx.game_state.player_1.player_id and ctx.game_state.player_1.is_builtin_bot) or (
+                        pid == ctx.game_state.player_2.player_id and ctx.game_state.player_2.is_builtin_bot
                     )
 
                 collected_actions = await self._turn_processor.collect_actions(
@@ -201,6 +200,7 @@ class SessionManager:
                     if self._logger:
                         try:
                             from ..models.events import GameOverEvent
+
                             game_over_event = ctx.adapter.create_game_over_event(result)
                             self._logger.log_game_over(ctx.session_id, game_over_event)
                         except Exception as exc:
@@ -265,8 +265,12 @@ class SessionManager:
         if not ctx:
             return
         bot_map: Dict[str, BotInterface] = {
-            ctx.adapter.bot1.player_id if hasattr(ctx.adapter, 'bot1') else ctx.game_state.player_1.player_id: ctx.adapter.bot1 if hasattr(ctx.adapter, 'bot1') else None,
-            ctx.adapter.bot2.player_id if hasattr(ctx.adapter, 'bot2') else ctx.game_state.player_2.player_id: ctx.adapter.bot2 if hasattr(ctx.adapter, 'bot2') else None,
+            ctx.adapter.bot1.player_id
+            if hasattr(ctx.adapter, "bot1")
+            else ctx.game_state.player_1.player_id: ctx.adapter.bot1 if hasattr(ctx.adapter, "bot1") else None,
+            ctx.adapter.bot2.player_id
+            if hasattr(ctx.adapter, "bot2")
+            else ctx.game_state.player_2.player_id: ctx.adapter.bot2 if hasattr(ctx.adapter, "bot2") else None,
         }
         bot = bot_map.get(player_id)
         if isinstance(bot, HumanBot):
@@ -286,4 +290,3 @@ class MockRegistry:
         # This layer is kept to satisfy PlayerBotFactory interface.
         # For now, we return None to force factory to require registration pathway in future tasks.
         return None
-

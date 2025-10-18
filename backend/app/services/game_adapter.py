@@ -33,7 +33,7 @@ class GameEngineAdapter:
     def initialize_match(self, bot1: BotInterface, bot2: BotInterface) -> None:
         """
         Initialize game engine with bot instances.
-        
+
         Args:
             bot1: First bot instance
             bot2: Second bot instance
@@ -43,18 +43,19 @@ class GameEngineAdapter:
             global GameEngine
             if GameEngine is None:
                 from game.engine import GameEngine as _GameEngine
+
                 GameEngine = _GameEngine
 
             self.bot1 = bot1
             self.bot2 = bot2
-            
+
             # Create the game engine with bot instances
             self.engine = GameEngine(bot1, bot2)
             self._game_started = True
             self._turn_events = []
-            
+
             logger.info(f"Game initialized: {bot1.name} vs {bot2.name}")
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize game engine: {e}")
             raise RuntimeError(f"Game initialization failed: {e}")
@@ -62,7 +63,7 @@ class GameEngineAdapter:
     async def execute_turn(self) -> Optional[TurnEvent]:
         """
         Execute a single turn and return turn events.
-        
+
         Returns:
             TurnEvent with turn results, or None if game ended
         """
@@ -72,16 +73,16 @@ class GameEngineAdapter:
         try:
             # Store current turn number before execution
             current_turn = self.engine.turn
-            
+
             # Execute the turn using the existing game engine
             self.engine.run_turn()
-            
+
             # Get the current game state after turn execution
             game_state = self.get_game_state()
-            
+
             # Extract turn events from the game logger
             events = self._extract_turn_events()
-            
+
             # Create turn event
             move_results = self._extract_move_results()
             # Convert MoveResult objects to dictionaries for TurnEvent validation
@@ -91,12 +92,12 @@ class GameEngineAdapter:
                 game_state=game_state,
                 actions=actions_dicts,
                 events=events,
-                log_line=self._format_log_line(current_turn + 1, events)
+                log_line=self._format_log_line(current_turn + 1, events),
             )
-            
+
             self._turn_events.append(turn_event)
             return turn_event
-            
+
         except Exception as e:
             logger.error(f"Error executing turn: {e}")
             raise RuntimeError(f"Turn execution failed: {e}")
@@ -104,7 +105,7 @@ class GameEngineAdapter:
     def get_game_state(self) -> Dict[str, Any]:
         """
         Get current game state for SSE streaming.
-        
+
         Returns:
             Dictionary containing current game state
         """
@@ -114,32 +115,34 @@ class GameEngineAdapter:
         try:
             # Use the existing build_input method to get state
             state = self.engine.build_input(self.engine.wizard1, self.engine.wizard2)
-            
+
             # Add additional backend-specific information
-            state.update({
-                "session_info": {
-                    "turn": self.engine.turn,
-                    "player_1": {
-                        "player_id": self.bot1.player_id,
-                        "name": self.bot1.name,
-                        "hp": self.engine.wizard1.hp,
-                        "mana": self.engine.wizard1.mana,
-                        "position": self.engine.wizard1.position,
-                        "is_alive": self.engine.wizard1.hp > 0
-                    },
-                    "player_2": {
-                        "player_id": self.bot2.player_id,
-                        "name": self.bot2.name,
-                        "hp": self.engine.wizard2.hp,
-                        "mana": self.engine.wizard2.mana,
-                        "position": self.engine.wizard2.position,
-                        "is_alive": self.engine.wizard2.hp > 0
+            state.update(
+                {
+                    "session_info": {
+                        "turn": self.engine.turn,
+                        "player_1": {
+                            "player_id": self.bot1.player_id,
+                            "name": self.bot1.name,
+                            "hp": self.engine.wizard1.hp,
+                            "mana": self.engine.wizard1.mana,
+                            "position": self.engine.wizard1.position,
+                            "is_alive": self.engine.wizard1.hp > 0,
+                        },
+                        "player_2": {
+                            "player_id": self.bot2.player_id,
+                            "name": self.bot2.name,
+                            "hp": self.engine.wizard2.hp,
+                            "mana": self.engine.wizard2.mana,
+                            "position": self.engine.wizard2.position,
+                            "is_alive": self.engine.wizard2.hp > 0,
+                        },
                     }
                 }
-            })
-            
+            )
+
             return state
-            
+
         except Exception as e:
             logger.error(f"Error getting game state: {e}")
             return {}
@@ -147,7 +150,7 @@ class GameEngineAdapter:
     def check_game_over(self) -> Optional[GameResult]:
         """
         Check if game has ended and return result.
-        
+
         Returns:
             GameResult if game ended, None if still ongoing
         """
@@ -156,13 +159,13 @@ class GameEngineAdapter:
 
         try:
             winner = self.engine.check_winner()
-            
+
             if winner is None:
                 # Check for maximum turns (100 turns limit)
                 if self.engine.turn >= 100:
                     return self._create_game_result("max_turns", None)
                 return None
-            
+
             # Game is over
             if winner == "Draw":
                 return self._create_game_result("draw", None)
@@ -173,7 +176,7 @@ class GameEngineAdapter:
             else:
                 logger.warning(f"Unknown winner type: {winner}")
                 return self._create_game_result("unknown", None)
-                
+
         except Exception as e:
             logger.error(f"Error checking game over: {e}")
             return None
@@ -185,10 +188,10 @@ class GameEngineAdapter:
     def create_game_over_event(self, game_result: GameResult) -> GameOverEvent:
         """
         Create a game over event from the game result.
-        
+
         Args:
             game_result: The final game result
-            
+
         Returns:
             GameOverEvent for SSE streaming
         """
@@ -196,7 +199,7 @@ class GameEngineAdapter:
             winner=game_result.winner,
             winner_name=None,  # Could be extracted from player registry if needed
             final_state=self.get_game_state(),
-            game_result=game_result.model_dump()
+            game_result=game_result.model_dump(),
         )
 
     def _create_game_result(self, end_condition: str, winner_id: Optional[str]) -> GameResult:
@@ -226,7 +229,7 @@ class GameEngineAdapter:
                 damage_dealt=self._calculate_damage_dealt(self.bot1.player_id),
                 damage_received=self._calculate_damage_received(self.bot1.player_id),
                 spells_cast=self._calculate_spells_cast(self.bot1.player_id),
-                artifacts_collected=self._calculate_artifacts_collected(self.bot1.player_id)
+                artifacts_collected=self._calculate_artifacts_collected(self.bot1.player_id),
             )
 
             player2_stats = PlayerGameStats(
@@ -238,12 +241,12 @@ class GameEngineAdapter:
                 damage_dealt=self._calculate_damage_dealt(self.bot2.player_id),
                 damage_received=self._calculate_damage_received(self.bot2.player_id),
                 spells_cast=self._calculate_spells_cast(self.bot2.player_id),
-                artifacts_collected=self._calculate_artifacts_collected(self.bot2.player_id)
+                artifacts_collected=self._calculate_artifacts_collected(self.bot2.player_id),
             )
 
             # Create the game result
             from datetime import datetime
-            
+
             return GameResult(
                 session_id="",  # Will be set by session manager
                 winner=winner,
@@ -252,18 +255,16 @@ class GameEngineAdapter:
                 total_rounds=self.engine.turn,
                 first_player=self.bot1.player_id,  # Bot1 always starts first
                 game_duration=0.0,  # Will be calculated by session manager
-                final_scores={
-                    self.bot1.player_id: player1_stats,
-                    self.bot2.player_id: player2_stats
-                },
+                final_scores={self.bot1.player_id: player1_stats, self.bot2.player_id: player2_stats},
                 end_condition=end_condition,
-                created_at=datetime.now()
+                created_at=datetime.now(),
             )
 
         except Exception as e:
             logger.error(f"Error creating game result: {e}")
             # Return a basic result in case of error
             from datetime import datetime
+
             return GameResult(
                 session_id="",
                 winner=None,
@@ -274,21 +275,21 @@ class GameEngineAdapter:
                 game_duration=0.0,
                 final_scores={},
                 end_condition="error",
-                created_at=datetime.now()
+                created_at=datetime.now(),
             )
 
     def _extract_turn_events(self) -> List[str]:
         """Extract events from the game logger for the current turn."""
         try:
-            if not self.engine or not hasattr(self.engine, 'logger'):
+            if not self.engine or not hasattr(self.engine, "logger"):
                 return []
-            
+
             # Get the current turn logs from the game logger
-            if hasattr(self.engine.logger, 'current_turn'):
+            if hasattr(self.engine.logger, "current_turn"):
                 return self.engine.logger.current_turn.copy()
-            
+
             return []
-            
+
         except Exception as e:
             logger.error(f"Error extracting turn events: {e}")
             return []
@@ -300,31 +301,35 @@ class GameEngineAdapter:
         # from the game engine's logger or state
         try:
             results = []
-            
+
             # Create basic move results for both players
             if self.engine:
-                results.append(MoveResult(
-                    success=True,
-                    damage_dealt=0,  # Would be calculated from game events
-                    damage_received=0,  # Would be calculated from game events
-                    position_after=self.engine.wizard1.position,
-                    events=["Move executed"],  # Would be extracted from game logger
-                    hp_after=self.engine.wizard1.hp,
-                    mana_after=self.engine.wizard1.mana
-                ))
-                
-                results.append(MoveResult(
-                    success=True,
-                    damage_dealt=0,
-                    damage_received=0,
-                    position_after=self.engine.wizard2.position,
-                    events=["Move executed"],
-                    hp_after=self.engine.wizard2.hp,
-                    mana_after=self.engine.wizard2.mana
-                ))
-            
+                results.append(
+                    MoveResult(
+                        success=True,
+                        damage_dealt=0,  # Would be calculated from game events
+                        damage_received=0,  # Would be calculated from game events
+                        position_after=self.engine.wizard1.position,
+                        events=["Move executed"],  # Would be extracted from game logger
+                        hp_after=self.engine.wizard1.hp,
+                        mana_after=self.engine.wizard1.mana,
+                    )
+                )
+
+                results.append(
+                    MoveResult(
+                        success=True,
+                        damage_dealt=0,
+                        damage_received=0,
+                        position_after=self.engine.wizard2.position,
+                        events=["Move executed"],
+                        hp_after=self.engine.wizard2.hp,
+                        mana_after=self.engine.wizard2.mana,
+                    )
+                )
+
             return results
-            
+
         except Exception as e:
             logger.error(f"Error extracting move results: {e}")
             return []
@@ -333,7 +338,7 @@ class GameEngineAdapter:
         """Format a single log line for the turn."""
         if not events:
             return f"Turn {turn}: No events"
-        
+
         # Join the most important events into a single line
         event_summary = "; ".join(events[:3])  # Take first 3 events
         return f"Turn {turn}: {event_summary}"

@@ -37,4 +37,3 @@ async def start_playground_match(payload: SessionCreationRequest) -> Dict[str, s
     except Exception as exc:
         logger.error(f"Failed to start session: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to start session")
-

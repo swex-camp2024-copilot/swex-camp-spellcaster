@@ -303,8 +303,8 @@ class DatabaseService:
                 # Check for active sessions
                 active_sessions_result = await session.execute(
                     select(SessionDB).where(
-                        ((SessionDB.player_1_id == player_id) | (SessionDB.player_2_id == player_id)) &
-                        (SessionDB.status == "active")
+                        ((SessionDB.player_1_id == player_id) | (SessionDB.player_2_id == player_id))
+                        & (SessionDB.status == "active")
                     )
                 )
                 active_sessions = active_sessions_result.scalars().all()
@@ -314,6 +314,7 @@ class DatabaseService:
 
                 # Delete related game results (cascade)
                 from sqlalchemy import delete
+
                 await session.execute(
                     delete(GameResultDB).where(
                         (GameResultDB.winner_id == player_id) | (GameResultDB.loser_id == player_id)
@@ -344,4 +345,4 @@ class DatabaseService:
 
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
-            return False 
+            return False

@@ -35,7 +35,7 @@ async def test_sse_client_streams_events_with_asgi_transport():
     async with _asgi_client() as ac:
         # Use SSE client with the same underlying httpx client
         cfg = SSEClientConfig()
-        
+
         # Start a builtin vs builtin session
         payload = {
             "player_1_config": {"player_id": "builtin_sample_1", "bot_type": "builtin", "bot_id": "sample_bot_1"},
@@ -48,6 +48,7 @@ async def test_sse_client_streams_events_with_asgi_transport():
         sse_client = SSEClient("http://test", session_id, config=cfg, client=ac)
 
         async with sse_client.connect():
+
             async def read_first_event():
                 async for ev in sse_client.events():
                     assert isinstance(ev, dict)
@@ -68,7 +69,7 @@ async def test_bot_client_register_start_and_stream():
         player = await bot.register_player(PlayerRegistrationRequest(player_name="E2E Bot"))
         assert player.player_id is not None
         assert player.player_name == "E2E Bot"
-        
+
         # BotClient can start a match vs builtin
         session_id = await bot.start_match_vs_builtin(player.player_id, "sample_bot_1")
         assert session_id is not None
@@ -106,4 +107,3 @@ async def test_concurrent_sessions_isolation():
         e1, e2 = await asyncio.wait_for(asyncio.gather(first_event(c1), first_event(c2)), timeout=10.0)
         assert isinstance(e1, dict) and "event" in e1
         assert isinstance(e2, dict) and "event" in e2
-

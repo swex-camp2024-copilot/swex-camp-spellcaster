@@ -35,6 +35,7 @@ class DummyEngine:
         self.bot1 = bot1
         self.bot2 = bot2
         self.turn = 0
+
         # Minimal API used by adapter
         class Wiz:
             def __init__(self, name):
@@ -42,16 +43,24 @@ class DummyEngine:
                 self.hp = 100
                 self.mana = 100
                 self.position = [0, 0]
+
         self.wizard1 = Wiz(bot1.name)
         self.wizard2 = Wiz(bot2.name)
 
         class Logger:
             def __init__(self):
                 self.current_turn = []
+
         self.logger = Logger()
 
     def build_input(self, w1, w2):
-        return {"self": {"hp": 100, "mana": 100, "position": [0, 0]}, "opponent": {"hp": 100, "mana": 100, "position": [0, 0]}, "turn": self.turn, "artifacts": [], "minions": []}
+        return {
+            "self": {"hp": 100, "mana": 100, "position": [0, 0]},
+            "opponent": {"hp": 100, "mana": 100, "position": [0, 0]},
+            "turn": self.turn,
+            "artifacts": [],
+            "minions": [],
+        }
 
     def run_turn(self):
         self.turn += 1
@@ -71,10 +80,12 @@ class DummyEngine:
 async def test_create_session_and_run_loop(monkeypatch):
     # Patch GameEngine symbol exposed by adapter
     from backend.app.services import game_adapter as ga
+
     ga.GameEngine = DummyEngine
 
     # Ensure DB tables exist for the async engine used by DatabaseService
     from backend.app.core.database import create_tables
+
     await create_tables()
 
     manager = SessionManager()
@@ -88,10 +99,10 @@ async def test_create_session_and_run_loop(monkeypatch):
     # Wait a small amount for loop to complete
     # In real tests we'd add synchronization; for now sleep briefly
     import asyncio
+
     await asyncio.sleep(0.2)
 
     ctx = await manager.get_session(session_id)
     assert ctx.game_state.turn_index >= 1
     # Cleanup
     await manager.cleanup_session(session_id)
-

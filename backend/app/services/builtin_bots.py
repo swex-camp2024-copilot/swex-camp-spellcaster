@@ -43,7 +43,7 @@ class BuiltinBotRegistry:
             sprite_path="assets/wizards/sample_bot1.png",
             minion_sprite_path="assets/minions/minion_1.png",
             is_builtin=True,
-            created_at=datetime.now()
+            created_at=datetime.now(),
         ),
         "builtin_sample_2": Player(
             player_id="builtin_sample_2",
@@ -52,7 +52,7 @@ class BuiltinBotRegistry:
             sprite_path="assets/wizards/sample_bot2.png",
             minion_sprite_path="assets/minions/minion_2.png",
             is_builtin=True,
-            created_at=datetime.now()
+            created_at=datetime.now(),
         ),
         "builtin_sample_3": Player(
             player_id="builtin_sample_3",
@@ -61,7 +61,7 @@ class BuiltinBotRegistry:
             sprite_path="assets/wizards/sample_bot3.png",
             minion_sprite_path="assets/minions/minion_3.png",
             is_builtin=True,
-            created_at=datetime.now()
+            created_at=datetime.now(),
         ),
         "builtin_tactical": Player(
             player_id="builtin_tactical",
@@ -70,7 +70,7 @@ class BuiltinBotRegistry:
             sprite_path="assets/wizards/tactical_bot.png",
             minion_sprite_path="assets/minions/tactical_minion.png",
             is_builtin=True,
-            created_at=datetime.now()
+            created_at=datetime.now(),
         ),
         "builtin_rincewind": Player(
             player_id="builtin_rincewind",
@@ -79,7 +79,7 @@ class BuiltinBotRegistry:
             sprite_path="assets/wizards/rincewind.png",
             minion_sprite_path="assets/minions/minion_1.png",
             is_builtin=True,
-            created_at=datetime.now()
+            created_at=datetime.now(),
         ),
         "builtin_ai": Player(
             player_id="builtin_ai",
@@ -88,8 +88,8 @@ class BuiltinBotRegistry:
             sprite_path="assets/wizards/ai_bot.png",
             minion_sprite_path="assets/minions/ai_minion.png",
             is_builtin=True,
-            created_at=datetime.now()
-        )
+            created_at=datetime.now(),
+        ),
     }
 
     # Built-in bot configurations
@@ -99,43 +99,43 @@ class BuiltinBotRegistry:
             "bot_module": "bots.sample_bot1.sample_bot_1",
             "bot_class": "SampleBot1",
             "difficulty": "easy",
-            "description": "A simple bot for beginners - focuses on basic movement and healing"
+            "description": "A simple bot for beginners - focuses on basic movement and healing",
         },
         "sample_bot_2": {
             "player_id": "builtin_sample_2",
             "bot_module": "bots.sample_bot2.sample_bot_2",
             "bot_class": "SampleBot2",
             "difficulty": "easy",
-            "description": "Another simple bot with slightly different strategy"
+            "description": "Another simple bot with slightly different strategy",
         },
         "sample_bot_3": {
             "player_id": "builtin_sample_3",
             "bot_module": "bots.sample_bot3.sample_bot_3",
             "bot_class": "SampleBot3",
             "difficulty": "easy",
-            "description": "Third sample bot with basic tactics"
+            "description": "Third sample bot with basic tactics",
         },
         "tactical_bot": {
             "player_id": "builtin_tactical",
             "bot_module": "bots.tactical_bot.tactical_bot",
             "bot_class": "TacticalBot",
             "difficulty": "medium",
-            "description": "An advanced tactical bot with state-based strategy"
+            "description": "An advanced tactical bot with state-based strategy",
         },
         "rincewind_bot": {
             "player_id": "builtin_rincewind",
             "bot_module": "bots.rincewind_bot.rincewind_bot",
             "bot_class": "RincewindBot",
             "difficulty": "medium",
-            "description": "A defensive bot that prefers running away and strategic positioning"
+            "description": "A defensive bot that prefers running away and strategic positioning",
         },
         "ai_bot": {
             "player_id": "builtin_ai",
             "bot_module": "bots.ai_bot.ai_bot",
             "bot_class": "AIBot",
             "difficulty": "hard",
-            "description": "Deep learning-based bot using DQN for optimal strategies"
-        }
+            "description": "Deep learning-based bot using DQN for optimal strategies",
+        },
     }
 
     @classmethod
@@ -158,15 +158,16 @@ class BuiltinBotRegistry:
             # Dynamically import the bot class
             module_name = config["bot_module"]
             class_name = config["bot_class"]
-            
+
             # Import the module
             import importlib
+
             module = importlib.import_module(module_name)
             bot_class = getattr(module, class_name)
-            
+
             # Create wrapped bot instance
             return BuiltinBotWrapper(player, bot_class)
-            
+
         except ImportError as e:
             logger.error(f"Failed to import bot module {config['bot_module']}: {e}")
             raise ValueError(f"Bot {bot_id} implementation not found")
@@ -181,14 +182,16 @@ class BuiltinBotRegistry:
         for bot_id, config in cls.BUILTIN_BOTS.items():
             try:
                 player = cls.get_builtin_player(config["player_id"])
-                bots.append(BotInfo(
-                    bot_type="builtin",
-                    bot_id=bot_id,
-                    player_id=player.player_id,
-                    player_name=player.player_name,
-                    description=config.get("description"),
-                    difficulty=config.get("difficulty")
-                ))
+                bots.append(
+                    BotInfo(
+                        bot_type="builtin",
+                        bot_id=bot_id,
+                        player_id=player.player_id,
+                        player_name=player.player_name,
+                        description=config.get("description"),
+                        difficulty=config.get("difficulty"),
+                    )
+                )
             except Exception as e:
                 logger.warning(f"Skipping bot {bot_id} due to error: {e}")
                 continue
@@ -217,12 +220,12 @@ class BuiltinBotRegistry:
 
         config = cls.BUILTIN_BOTS[bot_id]
         player = cls.get_builtin_player(config["player_id"])
-        
+
         return BotInfo(
             bot_type="builtin",
             bot_id=bot_id,
             player_id=player.player_id,
             player_name=player.player_name,
             description=config.get("description"),
-            difficulty=config.get("difficulty")
+            difficulty=config.get("difficulty"),
         )

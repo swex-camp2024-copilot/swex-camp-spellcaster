@@ -90,9 +90,7 @@ class MatchLogger:
         if not state:
             # Nothing to do
             return
-        summary = (
-            f"[{event.timestamp.strftime('%H:%M:%S')}] Game over: winner={event.winner or 'draw'}"
-        )
+        summary = f"[{event.timestamp.strftime('%H:%M:%S')}] Game over: winner={event.winner or 'draw'}"
         with state.file_path.open("a", encoding="utf-8") as fp:
             fp.write(summary + "\n")
 
@@ -108,4 +106,3 @@ class MatchLogger:
     def finalize(self, session_id: str) -> None:
         """Cleanup in-memory state; leaves file on disk."""
         self._sessions.pop(session_id, None)
-

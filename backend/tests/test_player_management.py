@@ -30,10 +30,7 @@ class TestPlayerRegistry:
     @pytest.fixture
     def sample_registration(self):
         """Sample player registration data."""
-        return PlayerRegistration(
-            player_name="TestPlayer",
-            submitted_from="online"
-        )
+        return PlayerRegistration(player_name="TestPlayer", submitted_from="online")
 
     @pytest.mark.asyncio
     async def test_register_player_success(self, player_registry, mock_db_service, sample_registration):
@@ -43,9 +40,9 @@ class TestPlayerRegistry:
             player_name=sample_registration.player_name,
             submitted_from=sample_registration.submitted_from,
             created_at=datetime.now(),
-            is_builtin=False
+            is_builtin=False,
         )
-        
+
         mock_db_service.list_all_players.return_value = []
         mock_db_service.create_player.return_value = expected_player
 
@@ -74,9 +71,9 @@ class TestPlayerRegistry:
             player_name="TestPlayer",
             submitted_from="online",
             created_at=datetime.now(),
-            is_builtin=False
+            is_builtin=False,
         )
-        
+
         mock_db_service.get_player.return_value = expected_player
 
         player = await player_registry.get_player(player_id)
@@ -104,9 +101,9 @@ class TestPlayerRegistry:
             player_name="TestPlayer",
             submitted_from="online",
             created_at=datetime.now(),
-            is_builtin=False
+            is_builtin=False,
         )
-        
+
         mock_db_service.get_player.return_value = test_player
         mock_db_service.delete_player.return_value = True
 
@@ -133,9 +130,9 @@ class TestPlayerRegistry:
             player_name="Sample Bot 1",
             submitted_from="builtin",
             created_at=datetime.now(),
-            is_builtin=True
+            is_builtin=True,
         )
-        
+
         mock_db_service.get_player.return_value = builtin_player
 
         with pytest.raises(PlayerRegistrationError) as exc_info:
@@ -153,9 +150,9 @@ class TestPlayerRegistry:
             player_name="TestPlayer",
             submitted_from="online",
             created_at=datetime.now(),
-            is_builtin=False
+            is_builtin=False,
         )
-        
+
         mock_db_service.get_player.return_value = expected_player
 
         exists = await player_registry.validate_player_exists(player_id)

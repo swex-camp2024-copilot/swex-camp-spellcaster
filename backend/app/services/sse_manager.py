@@ -33,6 +33,7 @@ class SSEStream:
                 # Parse the JSON to extract the event type for proper SSE formatting
                 try:
                     import json
+
                     parsed = json.loads(item)
                     event_type = parsed.get("event", "message")
                     yield f"event: {event_type}\ndata: {item}\n\n"
@@ -111,4 +112,3 @@ class SSEManager:
             await self.close_session_streams(session_id)
 
         logger.info(f"Disconnected all SSE connections ({len(session_ids)} sessions)")
-
