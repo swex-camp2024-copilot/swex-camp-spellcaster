@@ -78,6 +78,7 @@ class SessionCreationRequest(BaseModel):
     player_1_config: Dict[str, Any] = Field(..., description="Player 1 configuration")
     player_2_config: Dict[str, Any] = Field(..., description="Player 2 configuration")
     settings: Optional[Dict[str, Any]] = Field(default=None, description="Optional game settings override")
+    visualize: bool = Field(default=False, description="Enable pygame visualization for this session")
 
 
 class SessionInfo(BaseModel):

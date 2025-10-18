@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     bot_execution_timeout: float = 1.0
     max_bot_memory_mb: int = 100
 
+    # Visualization
+    enable_visualization: bool = True
+    max_visualized_sessions: int = 10
+    visualizer_queue_size: int = 100
+    visualizer_shutdown_timeout: float = 5.0
+
     model_config = {"env_file": ".env", "env_prefix": "PLAYGROUND_", "case_sensitive": False}
 
 

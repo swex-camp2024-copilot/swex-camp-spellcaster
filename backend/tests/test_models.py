@@ -30,7 +30,7 @@ from backend.app.models.events import (
 )
 from backend.app.models.players import Player, PlayerConfig, PlayerRegistration
 from backend.app.models.results import GameResult, GameResultType, PlayerGameStats
-from backend.app.models.sessions import GameState, PlayerSlot, TurnStatus
+from backend.app.models.sessions import GameState, PlayerSlot, SessionCreationRequest, TurnStatus
 
 
 class TestPlayerModels:
@@ -170,6 +170,45 @@ class TestSessionModels:
         assert TurnStatus.ACTIVE == "active"
         assert TurnStatus.COMPLETED == "completed"
         assert TurnStatus.CANCELLED == "cancelled"
+
+    def test_session_creation_request_defaults(self):
+        """Test session creation request with default visualize value."""
+        request = SessionCreationRequest(
+            player_1_config={"bot_type": "builtin", "bot_id": "sample_bot_1"},
+            player_2_config={"bot_type": "builtin", "bot_id": "sample_bot_2"}
+        )
+        
+        assert request.visualize is False  # Should default to False
+        assert request.player_1_config["bot_type"] == "builtin"
+        assert request.player_2_config["bot_type"] == "builtin"
+        assert request.settings is None
+
+    def test_session_creation_request_with_visualize(self):
+        """Test session creation request with visualize enabled."""
+        request = SessionCreationRequest(
+            player_1_config={"bot_type": "builtin", "bot_id": "sample_bot_1"},
+            player_2_config={"bot_type": "builtin", "bot_id": "sample_bot_2"},
+            visualize=True
+        )
+        
+        assert request.visualize is True
+
+    def test_session_creation_request_validation(self):
+        """Test session creation request validation."""
+        # Should accept boolean values
+        request_true = SessionCreationRequest(
+            player_1_config={"bot_type": "builtin"},
+            player_2_config={"bot_type": "builtin"},
+            visualize=True
+        )
+        assert request_true.visualize is True
+        
+        request_false = SessionCreationRequest(
+            player_1_config={"bot_type": "builtin"},
+            player_2_config={"bot_type": "builtin"},
+            visualize=False
+        )
+        assert request_false.visualize is False
 
 
 class TestEventModels:
@@ -535,3 +574,26 @@ def sample_game_state():
 def sample_move():
     """Create a sample move for testing."""
     return Move(player_id=str(uuid4()), turn=1, move=[1, 0], spell=SpellAction(name="fireball", target=[5, 3]))
+
+
+class TestConfigurationSettings:
+    """Test configuration settings."""
+
+    def test_visualization_config_defaults(self):
+        """Test that visualization config options have correct defaults."""
+        from backend.app.core.config import settings
+        
+        # Test visualization config defaults
+        assert settings.enable_visualization is True
+        assert settings.max_visualized_sessions == 10
+        assert settings.visualizer_queue_size == 100
+        assert settings.visualizer_shutdown_timeout == 5.0
+
+    def test_visualization_config_types(self):
+        """Test that visualization config options have correct types."""
+        from backend.app.core.config import settings
+        
+        assert isinstance(settings.enable_visualization, bool)
+        assert isinstance(settings.max_visualized_sessions, int)
+        assert isinstance(settings.visualizer_queue_size, int)
+        assert isinstance(settings.visualizer_shutdown_timeout, float)

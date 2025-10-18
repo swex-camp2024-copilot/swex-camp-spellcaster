@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import multiprocessing
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -31,6 +32,11 @@ class SessionContext:
     adapter: GameEngineAdapter
     task: Optional[asyncio.Task]
     created_at: datetime
+
+    # Visualization support
+    visualizer_process: Optional[multiprocessing.Process] = None
+    visualizer_queue: Optional[multiprocessing.Queue] = None
+    visualizer_enabled: bool = False
 
 
 class SessionManager:
