@@ -38,14 +38,20 @@ This document specifies the backend for the **Spellcasters** hackathon project (
 
 **Key components**
 
-* **PlayerService** — register players, maintain stats.
-* **BotService** — manage **built‑in** bot instances/factories (no upload endpoints).
-* **SessionManager** — create/run/cleanup Playground match sessions, hold in‑memory state, emit SSE.
-* **StateManager** — expose process/state metrics for admin views.
-* **GameEngine** — pure functions applying simultaneous actions to `GameState`.
-* **Storage** — SQLite via **SQLModel**; filesystem for match log files.
+* **PlayerRegistry** — register players, maintain stats (in `/backend/app/services/player_registry.py`)
+* **BuiltinBots** — manage **built‑in** bot instances/factories (in `/backend/app/services/builtin_bots.py`)
+* **SessionManager** — create/run/cleanup Playground match sessions, hold in‑memory state, emit SSE (in `/backend/app/services/session_manager.py`)
+* **StateManager** — centralized lifecycle management for all services, health monitoring, and statistics (in `/backend/app/core/state.py`)
+* **SSEManager** — manage SSE connections per session, broadcast events (in `/backend/app/services/sse_manager.py`)
+* **MatchLogger** — record turn events for replay (in `/backend/app/services/match_logger.py`)
+* **TurnProcessor** — coordinate turn execution, action collection (in `/backend/app/services/turn_processor.py`)
+* **GameAdapter** — bridge between backend and game engine (in `/backend/app/services/game_adapter.py`)
+* **ErrorHandlers** — global exception handling with security-aware logging (in `/backend/app/core/error_handlers.py`)
+* **Storage** — SQLite via **SQLModel**; in-memory replay logs
 
-**Concurrency model**: each active match runs in its own `asyncio.Task`; within a match, logic is single‑threaded. Calls to untrusted bot `decide()` are executed in a dedicated `ThreadPoolExecutor` (one worker per session) to avoid blocking the event loop.
+**Concurrency model**: each active match runs in its own `asyncio.Task`; within a match, logic is single‑threaded. Built-in bots execute synchronously within the match loop.
+
+**Service Initialization**: All services are initialized and managed by the `StateManager` during application startup via lifespan hooks. The `runtime` module provides lazy access to services using Python's module-level `__getattr__` for backward compatibility.
 
 ---
 
@@ -137,27 +143,83 @@ matches(
 
 ## 4. Configuration (Env Vars)
 
-| Name                      | Default              | Description                                      |
-| ------------------------- | -------------------- | ------------------------------------------------ |
-| `TURN_DELAY_SECONDS`      | `1`                  | Delay between processed turns                    |
-| `TURN_TIMEOUT_SECONDS`    | `5`                  | Wait for player action before skip               |
-| `MAX_TURNS`               | `100`                | Draw threshold                                   |
-| `BOT_DECIDE_TIMEOUT_MS`   | `100`                | Max time for `decide()` (per turn).              |
-| `PLAYGROUND_IDLE_TTL_MIN` | `30`                 | Keep finished session in memory                  |
-| `PLAYGROUND_MAX_SESSIONS` | `50`                 | Safety cap                                       |
-| `DB_PATH`                 | `data/playground.db` | Absolute path to SQLite DB (resolved at startup) |
+Configuration is managed via `/backend/app/core/config.py` using Pydantic Settings. Environment variables can be prefixed with `PLAYGROUND_`.
+
+| Name                                 | Default                                    | Description                               |
+| ------------------------------------ | ------------------------------------------ | ----------------------------------------- |
+| `PLAYGROUND_DATABASE_URL`            | `sqlite+aiosqlite:///./data/playground.db` | SQLite database connection URL            |
+| `PLAYGROUND_HOST`                    | `0.0.0.0`                                  | Server bind host                          |
+| `PLAYGROUND_PORT`                    | `8000`                                     | Server bind port                          |
+| `PLAYGROUND_TURN_TIMEOUT_SECONDS`    | `5.0`                                      | Wait for player action before skip        |
+| `PLAYGROUND_MAX_TURNS_PER_MATCH`     | `100`                                      | Draw threshold                            |
+| `PLAYGROUND_MATCH_LOOP_DELAY_SECONDS`| `1.0`                                      | Delay between processed turns             |
+| `PLAYGROUND_SESSION_CLEANUP_MINUTES` | `30`                                       | Keep finished session in memory           |
+| `PLAYGROUND_MAX_CONCURRENT_SESSIONS` | `50`                                       | Safety cap for concurrent sessions        |
+
+See `/backend/app/core/config.py` for complete configuration details.
 
 ---
 
 ## 5. API Specification
 
-All responses are JSON. Errors use `{ "error": { "code": "…", "message": "…" } }` with appropriate HTTP status.
+All responses are JSON. Errors use structured `ErrorResponse` model with proper HTTP status codes:
 
-### 5.1 Health & Version
+```json
+{
+  "error": "ERROR_TYPE",
+  "message": "Human-readable error message",
+  "details": { "...": "..." },
+  "session_id": "optional-session-id",
+  "timestamp": "2025-01-15T10:30:00Z"
+}
+```
 
-**GET** `/health` → `{ "status": "ok" }`
+See `/backend/app/models/errors.py` for specialized error response types (ValidationErrorResponse, TimeoutErrorResponse, etc.).
 
-**GET** `/version` → `{ "version": "0.1.0" }`
+### 5.1 Health & Monitoring
+
+**GET** `/health` — Comprehensive health check with StateManager status
+
+Response:
+```json
+{
+  "status": "healthy|degraded|unhealthy",
+  "service": "spellcasters-playground-backend",
+  "version": "1.0.0",
+  "timestamp": "2025-01-15T10:30:00Z",
+  "state_manager": {
+    "status": "ready",
+    "is_ready": true,
+    "uptime_seconds": 1234.5,
+    "services": {
+      "database": "ready",
+      "sse_manager": "ready",
+      "match_logger": "ready",
+      "session_manager": "ready",
+      "admin_service": "ready"
+    }
+  }
+}
+```
+
+**GET** `/stats` — System statistics
+
+Response:
+```json
+{
+  "service": "spellcasters-playground-backend",
+  "version": "1.0.0",
+  "timestamp": "2025-01-15T10:30:00Z",
+  "statistics": {
+    "uptime_seconds": 1234.5,
+    "active_sessions": 5,
+    "active_sse_connections": 8,
+    "total_players": 42
+  }
+}
+```
+
+**GET** `/` — Root endpoint with API information
 
 ### 5.2 Players
 
@@ -166,14 +228,24 @@ All responses are JSON. Errors use `{ "error": { "code": "…", "message": "…"
 * Request:
 
 ```json
-{ "player_name": "FireMage", "submitted_from": "online" }
+{ "name": "FireMage", "submission_method": "http" }
 ```
 
-* Rules: `player_name` unique (case‑insensitive). Failure ⇒ 409.
+* Rules: `name` unique (case‑insensitive). Failure ⇒ 409.
 * Response `201 Created`:
 
 ```json
-{ "player_id": "uuid-v4", "player_name": "FireMage" }
+{
+  "player_id": "uuid-v4",
+  "name": "FireMage",
+  "submission_method": "http",
+  "is_builtin": false,
+  "total_matches": 0,
+  "wins": 0,
+  "losses": 0,
+  "draws": 0,
+  "created_at": "2025-01-15T10:30:00Z"
+}
 ```
 
 **GET** `/players/{player_id}` — returns player metadata and basic stats.
@@ -187,15 +259,27 @@ All responses are JSON. Errors use `{ "error": { "code": "…", "message": "…"
 * Request:
 
 ```json
-{ "player_1_id": "uuid-p1", "player_2_id": "builtin_sample_1", "tick_delay_ms": 1000 }
+{
+  "player_1_config": {
+    "bot_type": "builtin|http",
+    "bot_id": "sample_bot_1",
+    "player_id": "optional-uuid"
+  },
+  "player_2_config": {
+    "bot_type": "builtin",
+    "bot_id": "sample_bot_2"
+  }
+}
 ```
 
-* Validates both IDs exist (built‑ins recognized by exact builtin IDs). Creates `session_id`, persists a `sessions` row (and `game_results` after completion), and spawns a match task.
-* Response:
+* Validates configurations and creates session. Built-ins use `bot_id` directly, HTTP bots require `player_id`.
+* Response `200 OK`:
 
 ```json
-{ "session_id": "uuid-session", "sse_url": "/playground/uuid-session/events" }
+{ "session_id": "uuid-session" }
 ```
+
+Client should then connect to `/playground/{session_id}/events` for SSE stream.
 
 **POST** `/playground/{session_id}/action`
 
@@ -236,9 +320,83 @@ All responses are JSON. Errors use `{ "error": { "code": "…", "message": "…"
 
 ---
 
-## 6. Session Lifecycle & Engine
+## 6. Error Handling & State Management
 
-### 6.1 In‑Memory Session (per match)
+### 6.1 Global Error Handlers
+
+All exceptions are handled by centralized error handlers in `/backend/app/core/error_handlers.py`:
+
+* **PlaygroundError** base class for all custom exceptions with:
+  - HTTP status code
+  - Error message
+  - Optional session_id
+  - Optional details dictionary
+
+* **Specialized handlers** for 15+ exception types:
+  - PlayerNotFoundError, PlayerRegistrationError
+  - SessionNotFoundError, SessionAlreadyActiveError
+  - InvalidActionError, InvalidTurnError
+  - BotExecutionError, BotTimeoutError
+  - GameEngineError, DatabaseError
+  - ValidationError, SSEConnectionError
+  - AuthorizationError, RateLimitError
+  - ConfigurationError
+
+* **Security-aware logging**: Sanitizes sensitive data before logging
+* **Structured responses**: Uses ErrorResponse models with proper HTTP status codes
+* **Pydantic validation**: Automatic handling of request validation errors
+
+All handlers are registered via `register_error_handlers(app)` during application startup.
+
+### 6.2 State Manager
+
+The `StateManager` in `/backend/app/core/state.py` provides centralized lifecycle management:
+
+* **Service initialization** in proper dependency order:
+  1. DatabaseService
+  2. SSEManager
+  3. MatchLogger
+  4. SessionManager (depends on SSE + MatchLogger)
+  5. AdminService (depends on Database + SessionManager)
+
+* **Health monitoring** via `get_health()`:
+  - Overall system status (ready/degraded/unhealthy)
+  - Individual service states
+  - Uptime tracking
+  - Initialization error tracking
+
+* **Statistics collection** via `get_statistics()`:
+  - Active sessions count
+  - Active SSE connections count
+  - System uptime
+  - Total players
+
+* **Graceful shutdown** in reverse dependency order:
+  - Terminates all active sessions
+  - Disconnects all SSE streams
+  - Cleans up all services
+
+The StateManager is initialized during FastAPI lifespan startup and cleaned up on shutdown.
+
+### 6.3 Service Access Pattern
+
+Services are accessed via `/backend/app/services/runtime.py` which uses Python's module-level `__getattr__` for lazy loading:
+
+```python
+from backend.app.services import runtime
+
+# Access services lazily
+session = await runtime.session_manager.get_session(session_id)
+await runtime.sse_manager.broadcast(session_id, event)
+```
+
+This provides backward compatibility while using the centralized StateManager.
+
+---
+
+## 7. Session Lifecycle & Engine
+
+### 7.1 In‑Memory Session (per match)
 
 ```python
 class PlayerSide(TypedDict):
@@ -259,7 +417,7 @@ class Session(TypedDict):
     created_at: datetime
 ```
 
-### 6.2 Loop (per turn)
+### 7.2 Loop (per turn)
 
 ```
 while not game_over and turn_index < MAX_TURNS:
@@ -271,12 +429,12 @@ while not game_over and turn_index < MAX_TURNS:
   await asyncio.sleep(TURN_DELAY_SECONDS)
 ```
 
-### 6.3 Bot Execution Isolation
+### 7.3 Bot Execution Isolation
 
 * `decide(state)` executed via `asyncio.to_thread(...)` into a per‑session `ThreadPoolExecutor(max_workers=1)` with wall‑clock limit **BOT\_DECIDE\_TIMEOUT\_MS**. Timeout ⇒ treat as **no action** and log.
 * Restricted built‑ins; deny `open`, `import os`, `subprocess`, etc. Whitelist safe modules (`math`, `random`).
 
-### 6.4 End & Stats Update
+### 7.4 End & Stats Update
 
 * `game_over` when any HP ≤ 0 or `MAX_TURNS` reached (draw).
 * Update `players` stats: increment `total_matches`; apply win/loss/draw for both.
@@ -285,7 +443,7 @@ while not game_over and turn_index < MAX_TURNS:
 
 ---
 
-## 7. SSE Event Contract
+## 8. SSE Event Contract
 
 * Content‑Type: `text/event-stream`; `Cache-Control: no-cache`.
 * Each message uses `event: <type>` + `data: <json-string>` (stringified via `json.dumps`).
@@ -301,9 +459,9 @@ while not game_over and turn_index < MAX_TURNS:
 
 ---
 
-## 8. Interaction Diagrams (Key Journeys)
+## 9. Interaction Diagrams (Key Journeys)
 
-### 8.1 Player Registration — obtain unique Player ID
+### 9.1 Player Registration — obtain unique Player ID
 
 ```mermaid
 sequenceDiagram
@@ -320,7 +478,7 @@ sequenceDiagram
   API-->>User: 201 {player_id, player_name}
 ```
 
-### 8.2 Playground Game — adhoc 1v1 arena
+### 9.2 Playground Game — adhoc 1v1 arena
 
 ```mermaid
 sequenceDiagram
@@ -350,7 +508,7 @@ sequenceDiagram
 
 ---
 
-## 9. Error Handling & Edge Cases
+## 10. Error Handling & Edge Cases
 
 * Duplicate player name ⇒ `409 Conflict`.
 * Invalid `session_id` / not participant ⇒ `404` / `403`.
@@ -361,27 +519,88 @@ sequenceDiagram
 
 ---
 
-## 10. Implementation Notes & Recommendations
+## 11. Implementation Notes & Recommendations
 
-* **Frameworks**: FastAPI; `sse-starlette` for SSE helpers; **SQLModel** for SQLite (`DB_PATH` absolute).
-* **Sessions**: keep an in‑memory dict protected by `asyncio.Lock`; periodic sweeper cleans up finished sessions after `PLAYGROUND_IDLE_TTL_MIN`.
-* **Built‑in bots**: implement local classes (`sample_bot_1`, `tactical_bot`); map to builtin player IDs `builtin_sample_1`, `builtin_tactical`.
-* **Security**: restricted globals for user code; deny filesystem and process access.
-* **Logging**: plain‑text per‑turn log lines in memory; flush to file at match end.
+### 11.1 Core Modules
+
+* **`/backend/app/main.py`** — FastAPI application with lifespan hooks for StateManager initialization
+* **`/backend/app/core/`** — Core functionality:
+  - `state.py` — StateManager for service lifecycle
+  - `error_handlers.py` — Global exception handling
+  - `exceptions.py` — Custom exception classes
+  - `config.py` — Pydantic Settings configuration
+  - `database.py` — SQLModel database initialization
+
+* **`/backend/app/services/`** — Business logic services:
+  - `session_manager.py` — Session lifecycle and match orchestration
+  - `sse_manager.py` — SSE connection management and broadcasting
+  - `match_logger.py` — Turn event logging for replay
+  - `turn_processor.py` — Turn execution coordination
+  - `player_registry.py` — Player registration and stats
+  - `builtin_bots.py` — Built-in bot management
+  - `game_adapter.py` — Game engine integration
+  - `admin_service.py` — Admin operations
+  - `database.py` — Database operations
+  - `runtime.py` — Lazy service accessor pattern
+
+* **`/backend/app/api/`** — API route handlers:
+  - `players.py` — Player endpoints
+  - `sessions.py` — Session creation
+  - `actions.py` — Action submission
+  - `streaming.py` — SSE streaming
+  - `replay.py` — Replay streaming
+  - `admin.py` — Admin endpoints
+
+* **`/backend/app/models/`** — Pydantic/SQLModel data models:
+  - `database.py` — Database models
+  - `players.py` — Player models
+  - `sessions.py` — Session and game state models
+  - `actions.py` — Action models
+  - `events.py` — SSE event models
+  - `errors.py` — Error response models
+
+### 11.2 Key Implementation Details
+
+* **StateManager lifecycle**: Initialized in FastAPI lifespan startup, services initialized in dependency order, graceful shutdown in reverse order
+* **Service access**: Use `from backend.app.services import runtime` and access services via properties (e.g., `runtime.session_manager`)
+* **Error handling**: All exceptions flow through centralized handlers, security-aware logging, structured error responses
+* **SSE management**: Connection tracking per session, graceful disconnect on shutdown, heartbeat events
+* **Replay**: In-memory turn event storage via MatchLogger, fast streaming without delays
+* **Sessions**: In-memory state with async coordination, background match tasks, automatic cleanup
+* **Built-in bots**: Loaded via `builtin_bots.py`, mapped to specific bot IDs (`sample_bot_1`, `sample_bot_2`, etc.)
+
+### 11.3 Testing
+
+* **Unit tests**: Individual service components, models, utilities
+* **Integration tests**: Complete workflows in `/backend/tests/test_system_integration.py`
+  - End-to-end match flows
+  - Concurrent session handling
+  - SSE streaming
+  - Error propagation
+  - Component integration
+* **Test fixtures**: `/backend/tests/conftest.py` with test_client, database fixtures
+* Run tests: `uv run pytest` or `uv run pytest backend/tests/test_system_integration.py -v`
 
 ---
 
-## 11. Testing Matrix
+## 12. Testing Matrix
 
 * **Unit**: player registration; duplicate name; engine `apply_turn`; timeout path; stats update; player deletion rules.
 * **Integration**: PvE and PvP match; SSE stream consumption; replay; concurrent sessions.
-* **Admin**: `/admin/players` returns expected shape; health/version endpoints.
+  - See `/backend/tests/test_system_integration.py` for comprehensive integration tests
+  - Tests cover: complete match workflows, concurrent sessions, SSE streaming, error handling, component integration
+* **Admin**: `/admin/players` returns expected shape; health/stats endpoints.
 * **Load (lightweight)**: 20 concurrent Playground sessions; ensure event‑loop responsive.
 
 ---
 
-## 12. Glossary
+## 13. Glossary
 
 * **Playground**: on‑demand 1v1 match (player vs player or built‑in).
 * **SSE**: Server‑Sent Events; uni‑directional push over HTTP.
 * **Replay**: fast stream of recorded turn events of a finished session retained in memory.
+* **StateManager**: centralized service lifecycle manager providing initialization, health monitoring, and graceful shutdown.
+* **ErrorHandlers**: global exception handling system with security-aware logging and structured error responses.
+* **MatchLogger**: service that records turn events in memory for replay functionality.
+* **SSEManager**: manages SSE connections per session and broadcasts events to connected clients.
+* **Runtime**: module-level service accessor using `__getattr__` for lazy loading from StateManager.
