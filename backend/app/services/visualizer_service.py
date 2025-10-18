@@ -22,6 +22,7 @@ class VisualizerService:
 
         Returns:
             True if pygame can be imported and visualization is enabled in config
+
         """
         if not settings.enable_visualization:
             return False
@@ -52,6 +53,7 @@ class VisualizerService:
 
         Returns:
             Tuple of (process, queue) or (None, None) on failure
+
         """
         try:
             # Check if visualization is available
@@ -89,6 +91,7 @@ class VisualizerService:
 
         Returns:
             True if sent successfully, False otherwise
+
         """
         try:
             # Serialize event to dictionary for IPC
@@ -112,6 +115,7 @@ class VisualizerService:
             process: Process to terminate
             queue: IPC queue to close (optional)
             timeout: Timeout in seconds for graceful shutdown
+
         """
         try:
             if process is None:
@@ -155,11 +159,11 @@ class VisualizerService:
     @staticmethod
     def _visualizer_process_main(
         session_id: str,
-        event_queue: multiprocessing.Queue,  # noqa: ARG004
-        player1_name: str,  # noqa: ARG004
-        player2_name: str,  # noqa: ARG004
-        player1_sprite: Optional[str],  # noqa: ARG004
-        player2_sprite: Optional[str],  # noqa: ARG004
+        event_queue: multiprocessing.Queue,
+        player1_name: str,
+        player2_name: str,
+        player1_sprite: Optional[str],
+        player2_sprite: Optional[str],
     ) -> None:
         """Entry point for visualizer child process.
 
@@ -167,36 +171,22 @@ class VisualizerService:
 
         Args:
             session_id: Session identifier
-            event_queue: Queue to receive events from parent process (unused in placeholder)
-            player1_name: Name of player 1 (unused in placeholder)
-            player2_name: Name of player 2 (unused in placeholder)
-            player1_sprite: Optional sprite path for player 1 (unused in placeholder)
-            player2_sprite: Optional sprite path for player 2 (unused in placeholder)
+            event_queue: Queue to receive events from parent process
+            player1_name: Name of player 1
+            player2_name: Name of player 2
+            player1_sprite: Optional sprite path for player 1
+            player2_sprite: Optional sprite path for player 2
 
-        Note:
-            This is a placeholder implementation. Full implementation with VisualizerAdapter
-            will be added in Task 3.
         """
-        # Import here to avoid importing in parent process
-        import sys
+        # Import visualizer adapter here to avoid importing in parent process
+        from .visualizer_adapter import run_visualizer_adapter
 
-        # Set up logging for child process
-        logging.basicConfig(
-            level=logging.INFO, format=f"[Visualizer-{session_id}] %(levelname)s: %(message)s", stream=sys.stdout
+        # Run the visualizer adapter (handles logging setup internally)
+        run_visualizer_adapter(
+            session_id=session_id,
+            event_queue=event_queue,
+            player1_name=player1_name,
+            player2_name=player2_name,
+            player1_sprite=player1_sprite,
+            player2_sprite=player2_sprite,
         )
-        child_logger = logging.getLogger(__name__)
-
-        try:
-            child_logger.info(f"Visualizer process started for session {session_id}")
-
-            # Import visualizer adapter (will be implemented in Task 3)
-            # For now, we'll just log that we would initialize it
-            child_logger.info("Visualizer adapter would be initialized here (Task 3)")
-
-            # Placeholder: In Task 3, we'll implement the actual event loop
-            # For now, just exit cleanly
-            child_logger.info("Visualizer process exiting (placeholder for Task 3 implementation)")
-
-        except Exception as exc:
-            child_logger.error(f"Error in visualizer process: {exc}", exc_info=True)
-            sys.exit(1)

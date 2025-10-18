@@ -1,7 +1,6 @@
 """Unit tests for VisualizerService."""
 
-import multiprocessing
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -100,7 +99,7 @@ class TestVisualizerService:
 
     @patch("backend.app.services.visualizer_service.multiprocessing.Process")
     @patch("backend.app.services.visualizer_service.multiprocessing.Queue")
-    def test_spawn_visualizer_exception_handling(self, mock_queue_class, mock_process_class, service):
+    def test_spawn_visualizer_exception_handling(self, _mock_queue_class, mock_process_class, service):
         """Test visualizer spawn handles exceptions gracefully."""
         with patch.object(service, "is_visualization_available", return_value=True):
             # Make Process raise an exception
@@ -229,14 +228,12 @@ class TestVisualizerService:
         # Should not raise exception
         service.terminate_visualizer(mock_process, None)
 
-    def test_visualizer_process_main_placeholder(self):
-        """Test visualizer process main entry point (placeholder for Task 3)."""
-        # This is a placeholder test - full implementation will be in Task 3
-        # For now, just verify the method exists and can be called
+    def test_visualizer_process_main(self):
+        """Test visualizer process main entry point."""
         mock_queue = MagicMock()
 
-        # The method should exit cleanly without errors
-        try:
+        # Mock the run_visualizer_adapter function at the import location
+        with patch("backend.app.services.visualizer_adapter.run_visualizer_adapter") as mock_run:
             VisualizerService._visualizer_process_main(
                 session_id="test-session",
                 event_queue=mock_queue,
@@ -245,9 +242,16 @@ class TestVisualizerService:
                 player1_sprite=None,
                 player2_sprite=None,
             )
-        except SystemExit:
-            # Process may exit with sys.exit() which is expected
-            pass
+
+            # Verify run_visualizer_adapter was called with correct arguments
+            mock_run.assert_called_once_with(
+                session_id="test-session",
+                event_queue=mock_queue,
+                player1_name="Player1",
+                player2_name="Player2",
+                player1_sprite=None,
+                player2_sprite=None,
+            )
 
 
 class TestVisualizerServiceIntegration:
@@ -260,34 +264,36 @@ class TestVisualizerServiceIntegration:
 
     def test_full_lifecycle_with_mocked_process(self, service):
         """Test full lifecycle: spawn, send events, terminate."""
-        with patch("backend.app.services.visualizer_service.multiprocessing.Process") as mock_process_class:
-            with patch("backend.app.services.visualizer_service.multiprocessing.Queue") as mock_queue_class:
-                with patch.object(service, "is_visualization_available", return_value=True):
-                    # Mock queue and process
-                    mock_queue = MagicMock()
-                    mock_queue_class.return_value = mock_queue
+        with (
+            patch("backend.app.services.visualizer_service.multiprocessing.Process") as mock_process_class,
+            patch("backend.app.services.visualizer_service.multiprocessing.Queue") as mock_queue_class,
+            patch.object(service, "is_visualization_available", return_value=True),
+        ):
+            # Mock queue and process
+            mock_queue = MagicMock()
+            mock_queue_class.return_value = mock_queue
 
-                    mock_process = MagicMock()
-                    mock_process.pid = 12345
-                    mock_process.is_alive.return_value = False
-                    mock_process_class.return_value = mock_process
+            mock_process = MagicMock()
+            mock_process.pid = 12345
+            mock_process.is_alive.return_value = False
+            mock_process_class.return_value = mock_process
 
-                    # Spawn
-                    process, queue = service.spawn_visualizer(
-                        session_id="test-session", player1_name="Player1", player2_name="Player2"
-                    )
+            # Spawn
+            process, queue = service.spawn_visualizer(
+                session_id="test-session", player1_name="Player1", player2_name="Player2"
+            )
 
-                    assert process is not None
-                    assert queue is not None
+            assert process is not None
+            assert queue is not None
 
-                    # Send event
-                    event = TurnEvent(turn=1, game_state={"test": "state"}, actions=[], events=[], log_line="Test")
-                    result = service.send_event(queue, event)
-                    assert result is True
+            # Send event
+            event = TurnEvent(turn=1, game_state={"test": "state"}, actions=[], events=[], log_line="Test")
+            result = service.send_event(queue, event)
+            assert result is True
 
-                    # Terminate
-                    service.terminate_visualizer(process, queue)
+            # Terminate
+            service.terminate_visualizer(process, queue)
 
-                    # Verify cleanup
-                    mock_process.join.assert_called()
-                    mock_queue.close.assert_called()
+            # Verify cleanup
+            mock_process.join.assert_called()
+            mock_queue.close.assert_called()
