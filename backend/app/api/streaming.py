@@ -4,11 +4,11 @@ import asyncio
 import logging
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
-from ..services.runtime import sse_manager, session_manager
-from ..services.session_manager import SessionNotFoundError as _SessionNotFoundError
+from ..core.exceptions import SessionNotFoundError
+from ..services import runtime
 from ..models.events import HeartbeatEvent
 
 router = APIRouter()
@@ -20,11 +20,11 @@ async def stream_session_events(session_id: str, request: Request) -> StreamingR
     """Stream real-time session events over Server-Sent Events (SSE)."""
     # Validate session exists
     try:
-        await session_manager.get_session(session_id)
-    except _SessionNotFoundError:
-        raise HTTPException(status_code=404, detail="Session not found")
+        await runtime.session_manager.get_session(session_id)
+    except SessionNotFoundError:
+        raise  # Re-raise to be handled by custom error handler
 
-    stream = await sse_manager.add_connection(session_id)
+    stream = await runtime.sse_manager.add_connection(session_id)
 
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
@@ -39,7 +39,7 @@ async def stream_session_events(session_id: str, request: Request) -> StreamingR
                     break
                 yield chunk
         finally:
-            await sse_manager.remove_connection(session_id, stream)
+            await runtime.sse_manager.remove_connection(session_id, stream)
             await stream.close()
 
     response = StreamingResponse(

@@ -14,10 +14,12 @@ async def test_start_endpoint_returns_session_id():
         "player_2_config": {"player_id": "builtin_sample_2", "bot_type": "builtin", "bot_id": "sample_bot_2"}
     }
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.post("/playground/start", json=payload)
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "session_id" in data and isinstance(data["session_id"], str) and len(data["session_id"]) > 0
+    # Manually trigger lifespan to initialize state manager
+    async with app.router.lifespan_context(app):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.post("/playground/start", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "session_id" in data and isinstance(data["session_id"], str) and len(data["session_id"]) > 0
 

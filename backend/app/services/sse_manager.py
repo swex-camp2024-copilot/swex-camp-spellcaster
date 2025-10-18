@@ -87,3 +87,28 @@ class SSEManager:
     async def heartbeat(self, session_id: str) -> None:
         await self.broadcast(session_id, HeartbeatEvent())
 
+    def get_connection_count(self) -> int:
+        """Get total number of active SSE connections across all sessions.
+
+        Returns:
+            Total connection count
+        """
+        total = 0
+        for streams in self._streams_by_session.values():
+            total += len(streams)
+        return total
+
+    async def disconnect_all(self) -> None:
+        """Disconnect all SSE connections across all sessions.
+
+        Used during server shutdown to gracefully close all client connections.
+        """
+        logger.info("Disconnecting all SSE connections...")
+        async with self._lock:
+            session_ids = list(self._streams_by_session.keys())
+
+        for session_id in session_ids:
+            await self.close_session_streams(session_id)
+
+        logger.info(f"Disconnected all SSE connections ({len(session_ids)} sessions)")
+

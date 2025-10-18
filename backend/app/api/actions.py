@@ -6,7 +6,7 @@ from typing import Dict
 from fastapi import APIRouter, HTTPException
 
 from ..models.actions import PlayerAction, ActionData
-from ..services.runtime import session_manager
+from ..services import runtime
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ async def submit_action(session_id: str, payload: PlayerAction) -> Dict[str, str
     """Submit an action for a given session/turn."""
     try:
         # Validate session and turn
-        ctx = await session_manager.get_session(session_id)
+        ctx = await runtime.session_manager.get_session(session_id)
         expected_turn = ctx.game_state.turn_index + 1
         if payload.turn != expected_turn:
             raise HTTPException(status_code=400, detail=f"Invalid turn: expected {expected_turn}, got {payload.turn}")
@@ -27,7 +27,7 @@ async def submit_action(session_id: str, payload: PlayerAction) -> Dict[str, str
             raise HTTPException(status_code=400, detail="player_id is not part of this session")
 
         # Basic turn validation will be handled in SessionManager collection
-        await session_manager.submit_action(
+        await runtime.session_manager.submit_action(
             session_id=session_id,
             player_id=payload.player_id,
             turn=payload.turn,

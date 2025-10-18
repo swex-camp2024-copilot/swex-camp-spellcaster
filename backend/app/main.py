@@ -10,8 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .core.database import create_tables
-from .core.exceptions import PlaygroundError
-from .models.errors import ErrorResponse
+from .core.error_handlers import register_error_handlers
+from .core.state import get_state_manager, initialize_state_manager, shutdown_state_manager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -23,13 +23,31 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     # Startup
     logger.info("Starting Spellcasters Playground Backend...")
+
+    # Create database tables
     await create_tables()
     logger.info("Database tables created/verified")
+
+    # Initialize state manager with all services
+    await initialize_state_manager()
+    logger.info("State manager initialized")
+
+    # Register error handlers
+    register_error_handlers(app)
+    logger.info("Error handlers registered")
+
+    logger.info("Spellcasters Playground Backend started successfully")
 
     yield
 
     # Shutdown
     logger.info("Shutting down Spellcasters Playground Backend...")
+
+    # Shutdown state manager and all services
+    await shutdown_state_manager()
+    logger.info("State manager shutdown complete")
+
+    logger.info("Spellcasters Playground Backend shutdown complete")
 
 
 # Create FastAPI application
@@ -50,86 +68,62 @@ app.add_middleware(
 )
 
 
-# Global exception handler for PlaygroundError
-@app.exception_handler(PlaygroundError)
-async def playground_error_handler(request, exc: PlaygroundError) -> JSONResponse:
-    """Handle custom playground errors."""
-    logger.error(f"Playground error: {exc}", extra={"error_type": type(exc).__name__})
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=ErrorResponse(
-            error=type(exc).__name__.replace("Error", "").upper(),
-            message=str(exc),
-            session_id=getattr(exc, "session_id", None),
-        ).model_dump(),
-    )
-
-
-# Global exception handler for general exceptions
-@app.exception_handler(Exception)
-async def general_exception_handler(request, exc: Exception) -> JSONResponse:
-    """Handle unexpected errors."""
-    logger.error(f"Unexpected error: {exc}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content=ErrorResponse(error="INTERNAL_SERVER_ERROR", message="An unexpected error occurred").model_dump(),
-    )
-
-
-# Import specific exceptions for handlers
-from .core.exceptions import DatabaseError, PlayerNotFoundError, PlayerRegistrationError
-
-
-# Specific exception handlers for player-related errors
-@app.exception_handler(PlayerRegistrationError)
-async def player_registration_error_handler(request, exc: PlayerRegistrationError) -> JSONResponse:
-    """Handle player registration errors."""
-    logger.warning(f"Player registration error: {exc}")
-    return JSONResponse(
-        status_code=400,
-        content=ErrorResponse(
-            error="PLAYER_REGISTRATION_ERROR",
-            message=str(exc)
-        ).model_dump()
-    )
-
-
-@app.exception_handler(PlayerNotFoundError)
-async def player_not_found_error_handler(request, exc: PlayerNotFoundError) -> JSONResponse:
-    """Handle player not found errors."""
-    logger.warning(f"Player not found: {exc}")
-    return JSONResponse(
-        status_code=404,
-        content=ErrorResponse(
-            error="PLAYER_NOT_FOUND",
-            message=str(exc)
-        ).model_dump()
-    )
-
-
-@app.exception_handler(DatabaseError)
-async def database_error_handler(request, exc: DatabaseError) -> JSONResponse:
-    """Handle database errors."""
-    logger.error(f"Database error: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content=ErrorResponse(
-            error="DATABASE_ERROR",
-            message="A database error occurred"
-        ).model_dump()
-    )
-
-
 # Health check endpoint
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "service": "spellcasters-playground-backend",
-        "version": "1.0.0",
-        "timestamp": datetime.now().isoformat(),
-    }
+    """Health check endpoint with service status details.
+
+    Returns:
+        Health status including all service states
+    """
+    try:
+        state_manager = get_state_manager()
+        health = state_manager.get_health()
+
+        return {
+            "status": "healthy" if state_manager.is_ready else "degraded",
+            "service": "spellcasters-playground-backend",
+            "version": "1.0.0",
+            "timestamp": datetime.now().isoformat(),
+            "state_manager": health,
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "service": "spellcasters-playground-backend",
+            "version": "1.0.0",
+            "timestamp": datetime.now().isoformat(),
+            "error": str(e),
+        }
+
+
+# Statistics endpoint
+@app.get("/stats")
+async def get_statistics() -> Dict[str, Any]:
+    """Get system statistics.
+
+    Returns:
+        System statistics including active sessions, connections, etc.
+    """
+    try:
+        state_manager = get_state_manager()
+        stats = state_manager.get_statistics()
+
+        return {
+            "service": "spellcasters-playground-backend",
+            "version": "1.0.0",
+            "timestamp": datetime.now().isoformat(),
+            "statistics": stats,
+        }
+    except Exception as e:
+        logger.error(f"Failed to get statistics: {e}")
+        return {
+            "service": "spellcasters-playground-backend",
+            "version": "1.0.0",
+            "timestamp": datetime.now().isoformat(),
+            "error": str(e),
+        }
 
 
 # Root endpoint
@@ -148,9 +142,6 @@ app.include_router(streaming.router, tags=["streaming"])
 app.include_router(actions.router, tags=["actions"])
 app.include_router(replay.router, tags=["replay"])
 app.include_router(admin.router, tags=["admin"])
-
-# TODO: Include additional API routers as they are implemented
-# app.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 
 if __name__ == "__main__":

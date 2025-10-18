@@ -6,12 +6,12 @@ import asyncio
 import logging
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
+from ..core.exceptions import SessionNotFoundError
 from ..models.events import ReplayTurnEvent
-from ..services.runtime import match_logger, session_manager
-from ..services.session_manager import SessionNotFoundError as _SessionNotFoundError
+from ..services import runtime
 
 
 router = APIRouter()
@@ -24,17 +24,17 @@ async def replay_session_events(session_id: str, request: Request) -> StreamingR
     # Validate session exists or recently finished (we keep state in memory)
     try:
         # If session is gone, we still allow replay if logger has events
-        ctx = await session_manager.get_session(session_id)
+        ctx = await runtime.session_manager.get_session(session_id)
         _ = ctx  # unused
-    except _SessionNotFoundError:
+    except SessionNotFoundError:
         # Fallback: allow replay only if we have any logged events; else 404
-        events = match_logger.get_turn_events(session_id) if match_logger else []
+        events = runtime.match_logger.get_turn_events(session_id) if runtime.match_logger else []
         if not events:
-            raise HTTPException(status_code=404, detail="Session not found")
+            raise SessionNotFoundError(session_id)
 
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
-            events = match_logger.get_turn_events(session_id) if match_logger else []
+            events = runtime.match_logger.get_turn_events(session_id) if runtime.match_logger else []
             # Convert TurnEvent -> ReplayTurnEvent and emit quickly
             for ev in events:
                 replay = ReplayTurnEvent(

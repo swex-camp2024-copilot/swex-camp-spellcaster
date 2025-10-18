@@ -5,11 +5,14 @@ from collections.abc import AsyncGenerator
 from uuid import uuid4
 
 import pytest
+import pytest_asyncio
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
 
 from backend.app.core.config import Settings
+from backend.app.main import app
 from backend.app.models.database import PlayerDB, SessionDB
 from backend.app.models.players import Player, PlayerRegistration
 from backend.app.models.sessions import GameState, PlayerSlot
@@ -53,6 +56,19 @@ async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
 
     async with async_session_factory() as session:
         yield session
+
+
+@pytest_asyncio.fixture
+async def test_client() -> AsyncGenerator[AsyncClient, None]:
+    """Create test client for API testing with proper app lifecycle.
+
+    This fixture properly starts and stops the FastAPI app with all its services.
+    """
+    # Manually trigger lifespan events
+    async with app.router.lifespan_context(app):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test", timeout=10.0) as client:
+            yield client
 
 
 @pytest.fixture

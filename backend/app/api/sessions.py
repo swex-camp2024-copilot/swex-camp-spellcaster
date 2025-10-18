@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..models.players import PlayerConfig
 from ..models.sessions import SessionCreationRequest
-from ..services.runtime import session_manager
+from ..services import runtime
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ async def start_playground_match(payload: SessionCreationRequest) -> Dict[str, s
         validate_cfg(p1_cfg)
         validate_cfg(p2_cfg)
 
-        session_id = await session_manager.create_session(p1_cfg, p2_cfg)
+        session_id = await runtime.session_manager.create_session(p1_cfg, p2_cfg)
         return {"session_id": session_id}
 
     except HTTPException:
