@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Overview
+
+**Spellcasters** is a hackathon game challenge where participants program bots to battle in a turn-based, wizard-themed strategy arena. Each bot controls a wizard who can move, cast spells, summon minions, and collect artifacts — all on a 10x10 battlefield.
+
+**GitHub Project**: [swex-camp-spellcaster](https://github.com/swex-camp2024-copilot/swex-camp-spellcaster)
+
 ## Common Commands
 
 ### Development Setup
@@ -50,6 +56,9 @@ uv run pytest backend/tests/ -v
 
 # Run backend tests with coverage
 uv run pytest backend/tests/ --cov=backend.app --cov-report=html
+
+# Run client e2e tests (requires backend server running)
+uv run pytest client/tests/e2e/ -v
 ```
 
 ### Running the Game
@@ -101,12 +110,24 @@ uv run python -m client.sse_client_main \
   --session-id <SESSION_ID> \
   --max-events 10
 
-# Register a player and start a match vs builtin bot
+# Register a player and start a match vs builtin bot (random strategy)
 uv run python -m client.bot_client_main \
   --base-url http://localhost:8000 \
-  --player-name "CLI Bot" \
+  --player-name "Random Bot" \
   --builtin-bot-id sample_bot_1 \
-  --max-events 10
+  --bot-type random \
+  --max-events 100
+
+# Register a player and use a custom bot from bots/ directory
+uv run python -m client.bot_client_main \
+  --base-url http://localhost:8000 \
+  --player-name "Sample Bot 1" \
+  --builtin-bot-id sample_bot_2 \
+  --bot-type custom \
+  --bot-path bots.sample_bot1.sample_bot_1.SampleBot1 \
+  --max-events 100
+
+# Note: Bot clients automatically submit actions during matches
 ```
 
 ## Architecture Overview
@@ -128,16 +149,37 @@ uv run python -m client.bot_client_main \
 
 ### Backend Architecture (FastAPI)
 - **API Layer**: `backend/app/api/` - REST endpoints and route handlers
-- **Core**: `backend/app/core/` - Configuration, database setup, authentication
-- **Models**: `backend/app/models/` - SQLModel data models for database
+  - `sessions.py` - Session creation and management endpoints
+  - `players.py` - Player registration and info endpoints
+  - `actions.py` - Action submission endpoints
+  - `streaming.py` - SSE event streaming endpoints
+  - `replay.py` - Match replay endpoints
+- **Core**: `backend/app/core/` - Configuration, database setup, error handling
+  - `config.py` - Environment-based settings
+  - `database.py` - SQLModel async database setup
+  - `state.py` - Application state management
+- **Models**: `backend/app/models/` - Pydantic and SQLModel data models
+  - `players.py`, `sessions.py`, `events.py`, `actions.py`, `results.py`
 - **Services**: `backend/app/services/` - Business logic and game orchestration
+  - `session_manager.py` - Core session lifecycle and game loop
+  - `game_adapter.py` - Adapter between backend and game engine
+  - `turn_processor.py` - Turn-based action processing
+  - `player_registry.py` - Player management and validation
+  - `builtin_bots.py` - Built-in bot implementations
+  - `sse_manager.py` - Server-Sent Events management
+  - `match_logger.py` - Match logging and replay
+  - `visualizer_adapter.py` - Integration with Pygame visualizer
 - **Database**: SQLite with SQLModel ORM, stored in `data/playground.db`
 
 ### Client Architecture
-- **SSE Client**: `client/sse_client.py` - Async SSE streaming client
+- **SSE Client**: `client/sse_client.py` - Async SSE streaming client for event consumption
 - **Bot Client**: `client/bot_client.py` - Bot client simulator for remote gameplay
+  - `RandomWalkStrategy` - Built-in random move generator for testing
+  - `BotInterfaceAdapter` - Adapter to use local bots with remote backend
 - **CLI Tools**: `client/*_main.py` - Command-line interfaces for testing
-- **E2E Tests**: `client/tests/e2e/` - End-to-end integration tests
+  - `sse_client_main.py` - Stream events from existing sessions
+  - `bot_client_main.py` - Register players and play matches
+- **E2E Tests**: `client/tests/e2e/` - End-to-end integration tests with real backend
 
 ### Bot Development
 Bots must implement `BotInterface` with:
@@ -155,6 +197,8 @@ Game state includes:
 - **Bot Discovery**: Automatic bot loading from `bots/` directory using reflection
 - **Match Logging**: Complete game state snapshots for replay and analysis
 - **Modular Architecture**: Clean separation between game engine, visualization, and backend
+- **Adapter Pattern**: `game_adapter.py` bridges backend models with game engine; `visualizer_adapter.py` integrates Pygame visualization with backend
+- **Event-Driven Architecture**: SSE streaming for real-time game state updates
 - **Modern Python**: Uses UV package manager, Pydantic models, type hints throughout
 
 ## Project Structure Notes
@@ -172,17 +216,58 @@ The backend uses environment variables for configuration. Create a `.env` file i
 ```env
 # Database
 PLAYGROUND_DATABASE_URL=sqlite+aiosqlite:///./data/playground.db
+PLAYGROUND_DATABASE_ECHO=false
 
 # Server
 PLAYGROUND_HOST=0.0.0.0
 PLAYGROUND_PORT=8000
+PLAYGROUND_RELOAD=true
 
 # Game Settings
 PLAYGROUND_TURN_TIMEOUT_SECONDS=5.0
+PLAYGROUND_MATCH_LOOP_DELAY_SECONDS=1.0
 PLAYGROUND_MAX_TURNS_PER_MATCH=100
+
+# Bot Execution
+PLAYGROUND_BOT_EXECUTION_TIMEOUT=1.0
+PLAYGROUND_MAX_BOT_MEMORY_MB=100
 ```
 
 See [backend/README.md](backend/README.md) for full configuration options.
+
+## API Endpoints
+
+When the backend server is running, the following endpoints are available:
+
+### Core Endpoints
+- `GET /` - API information and status
+- `GET /health` - Health check endpoint
+- `GET /docs` - Interactive API documentation (Swagger UI)
+- `GET /redoc` - Alternative API documentation
+
+### Player Management
+- `POST /players/register` - Register a new player
+- `GET /players/{player_id}` - Get player information
+
+### Session Management
+- `POST /playground/start` - Start a new game session
+  - Accepts `PlayerConfig` for both players (builtin or remote bots)
+  - Returns `session_id` for the created session
+  - Optional `visualize` parameter to enable Pygame visualization
+
+### Game Actions
+- `POST /playground/{session_id}/action` - Submit an action for a turn
+  - Requires `player_id`, `move`, and optional `spell`
+
+### Event Streaming
+- `GET /playground/{session_id}/events` - SSE stream of game events
+  - Real-time turn events, game state updates, and game over notifications
+
+### Match Replay
+- `GET /playground/{session_id}/replay` - Get complete match history and replay data
+
+### Admin
+- `GET /admin/players` - List all registered players (admin only)
 
 ## Troubleshooting
 
