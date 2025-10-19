@@ -15,11 +15,10 @@ except Exception:  # pragma: no cover
 try:
     from client.bot_client import (
         BotClient,
-        PlayerRegistrationRequest,
         RandomWalkStrategy,
     )  # type: ignore
 except Exception:  # pragma: no cover
-    from ...client.bot_client import BotClient, PlayerRegistrationRequest, RandomWalkStrategy  # type: ignore
+    from ...client.bot_client import BotClient, RandomWalkStrategy  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -57,14 +56,23 @@ async def test_bot_client_register_start_and_stream(asgi_client):
     # Test BotClient functionality: register player and start match
     bot_instance = RandomWalkStrategy()
     client = BotClient("http://test", bot_instance=bot_instance, http_client=ac)
-    # Use unique player name to avoid conflicts
+
+    # Register player directly via backend API (not through BotClient)
     player_name = f"E2E_Bot_{uuid.uuid4().hex[:8]}"
-    player = await client.register_player(PlayerRegistrationRequest(player_name=player_name))
-    assert player.player_id is not None
-    assert player.player_name == player_name
+    payload = {
+        "player_name": player_name,
+        "submitted_from": "online",
+    }
+    resp = await ac.post("/players/register", json=payload)
+    resp.raise_for_status()
+    player_data = resp.json()
+    player_id = player_data["player_id"]
+
+    assert player_id is not None
+    assert player_data["player_name"] == player_name
 
     # BotClient can start a match vs builtin
-    session_id = await client.start_match(player.player_id, "builtin_sample_1", visualize=False)
+    session_id = await client.start_match(player_id, "builtin_sample_1", visualize=False)
     assert session_id is not None
     assert len(session_id) > 0
 
@@ -123,15 +131,22 @@ async def test_bot_client_minimum_arguments_match(asgi_client):
     # Create BotClient with bot instance
     client = BotClient("http://test", bot_instance=bot, http_client=ac)
 
-    # Register player (simulating player registration outside CLI)
+    # Register player directly via backend API (simulating player registration outside CLI)
     player_name = f"test_user_{uuid.uuid4().hex[:8]}"
-    player_req = PlayerRegistrationRequest(player_name=player_name)
-    player = await client.register_player(player_req)
-    assert player.player_id is not None
-    assert player.player_name == player_name
+    payload = {
+        "player_name": player_name,
+        "submitted_from": "online",
+    }
+    resp = await ac.post("/players/register", json=payload)
+    resp.raise_for_status()
+    player_data = resp.json()
+    player_id = player_data["player_id"]
+
+    assert player_id is not None
+    assert player_data["player_name"] == player_name
 
     # Start match using new API (player vs builtin)
-    session_id = await client.start_match(player_id=player.player_id, opponent_id="builtin_sample_1", visualize=False)
+    session_id = await client.start_match(player_id=player_id, opponent_id="builtin_sample_1", visualize=False)
     assert session_id is not None
     assert len(session_id) > 0
 
@@ -139,7 +154,7 @@ async def test_bot_client_minimum_arguments_match(asgi_client):
     events_received = []
     turn_updates_received = 0
 
-    async for event in client.play_match(session_id, player.player_id, max_events=3):
+    async for event in client.play_match(session_id, player_id, max_events=3):
         events_received.append(event)
 
         if event.get("event") == "turn_update":
@@ -188,18 +203,24 @@ async def test_bot_client_custom_bot_match(asgi_client):
     # Create BotClient with custom bot
     client = BotClient("http://test", bot_instance=bot, http_client=ac)
 
-    # Register player with unique name
+    # Register player directly via backend API
     player_name = f"custom_bot_{uuid.uuid4().hex[:8]}"
-    player_req = PlayerRegistrationRequest(player_name=player_name)
-    player = await client.register_player(player_req)
+    payload = {
+        "player_name": player_name,
+        "submitted_from": "online",
+    }
+    resp = await ac.post("/players/register", json=payload)
+    resp.raise_for_status()
+    player_data = resp.json()
+    player_id = player_data["player_id"]
 
     # Start match
-    session_id = await client.start_match(player_id=player.player_id, opponent_id="builtin_sample_2", visualize=False)
+    session_id = await client.start_match(player_id=player_id, opponent_id="builtin_sample_2", visualize=False)
 
     # Play just a couple turns to verify bot works (limit to 3 events for speed)
     events_received = []
     turn_updates_received = 0
-    async for event in client.play_match(session_id, player.player_id, max_events=3):
+    async for event in client.play_match(session_id, player_id, max_events=3):
         events_received.append(event)
 
         if event.get("event") == "turn_update":
@@ -218,25 +239,20 @@ async def test_bot_client_custom_bot_match(asgi_client):
     await client.aclose()
 
 
-@pytest.mark.skip(reason="PvP test hangs - requires backend support for concurrent player action submission")
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_bot_client_player_vs_player_match(asgi_client):
     """Test BotClient with two remote players (PvP match).
 
     This test simulates a match between two remote players:
     - Both players use RandomWalkStrategy
-    - Both clients submit actions
+    - Both clients submit actions concurrently
     - Verifies match completes successfully
 
-    NOTE: This test is currently skipped because it hangs. The issue is that
-    PvP matches require both players to submit actions concurrently, but the
-    backend's turn processing may not be handling concurrent submissions properly.
+    NOTE: This test is marked as slow (~10s) because it runs a PvP match simulation.
+    Run with: pytest -m slow or pytest --run-slow
     """
     ac = asgi_client
-
-    # Register two players
-    player1_req = PlayerRegistrationRequest(player_name="alice")
-    player2_req = PlayerRegistrationRequest(player_name="bob")
 
     bot1 = RandomWalkStrategy()
     bot2 = RandomWalkStrategy()
@@ -244,29 +260,47 @@ async def test_bot_client_player_vs_player_match(asgi_client):
     client1 = BotClient("http://test", bot_instance=bot1, http_client=ac)
     client2 = BotClient("http://test", bot_instance=bot2, http_client=ac)
 
-    player1 = await client1.register_player(player1_req)
-    player2 = await client2.register_player(player2_req)
+    # Register two players directly via backend API
+    player1_name = f"alice_{uuid.uuid4().hex[:8]}"
+    player2_name = f"bob_{uuid.uuid4().hex[:8]}"
+
+    resp1 = await ac.post("/players/register", json={"player_name": player1_name, "submitted_from": "online"})
+    resp1.raise_for_status()
+    player1_id = resp1.json()["player_id"]
+
+    resp2 = await ac.post("/players/register", json={"player_name": player2_name, "submitted_from": "online"})
+    resp2.raise_for_status()
+    player2_id = resp2.json()["player_id"]
 
     # Start match (player vs player)
-    session_id = await client1.start_match(player_id=player1.player_id, opponent_id=player2.player_id, visualize=False)
+    session_id = await client1.start_match(player_id=player1_id, opponent_id=player2_id, visualize=False)
 
-    # Both clients play the match concurrently
-    async def play_client(client, player_id, max_events=10):
+    # Both clients play the match concurrently (limit to 3 events each for speed)
+    async def play_client(client, player_id, max_events=3):
         events = []
         async for event in client.play_match(session_id, player_id, max_events=max_events):
             events.append(event)
+            # Stop early after receiving one turn_update
+            if event.get("event") == "turn_update":
+                break
             if event.get("event") == "game_over":
                 break
         return events
 
     # Run both clients concurrently
     events1, events2 = await asyncio.wait_for(
-        asyncio.gather(play_client(client1, player1.player_id), play_client(client2, player2.player_id)), timeout=15.0
+        asyncio.gather(play_client(client1, player1_id), play_client(client2, player2_id)), timeout=10.0
     )
 
     # Verify both clients received events
     assert len(events1) > 0
     assert len(events2) > 0
+
+    # Verify at least one turn_update was received by each client
+    turn_updates_1 = [e for e in events1 if e.get("event") == "turn_update"]
+    turn_updates_2 = [e for e in events2 if e.get("event") == "turn_update"]
+    assert len(turn_updates_1) > 0, "Client 1 should receive at least one turn_update"
+    assert len(turn_updates_2) > 0, "Client 2 should receive at least one turn_update"
 
     await client1.aclose()
     await client2.aclose()

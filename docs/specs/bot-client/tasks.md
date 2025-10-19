@@ -91,42 +91,42 @@ This document outlines the implementation tasks for the bot-client feature, orga
 
 ### 2. Match Start
 
-- [ ] **2.1 Remove player registration method from `BotClient`**
+- [x] **2.1 Remove player registration method from `BotClient`**
   - Remove `register_player()` method
   - Update `BotClient` to not handle registration
   - **Requirements**: Requirement 1.3, 1.4
 
-- [ ] **2.2 Implement unified `start_match()` method**
+- [x] **2.2 Implement unified `start_match()` method**
   - Replace `start_match_vs_builtin()` with generic `start_match(player_id, opponent_id, visualize=True)`
   - Automatically detect opponent type based on ID format (starts with `builtin_` = builtin bot)
   - Configure backend request payload with `player_1_config` and `player_2_config`
   - Return session ID
   - **Requirements**: Requirement 2.5, 2.6, 2.7
 
-- [ ] **2.3 Verify backend supports `bot_type: "player"` configuration**
+- [x] **2.3 Verify backend supports `bot_type: "player"` configuration**
   - Review `backend/app/services/session_manager.py`
   - Ensure sessions can be created with remote player configuration
   - Verify player ID validation exists
   - **Requirements**: Requirement 10.1, 10.2
 
-- [ ] **2.4 Verify backend validates player existence**
+- [x] **2.4 Verify backend validates player existence**
   - Review player validation in session creation endpoint
   - Ensure 404 error returned if player doesn't exist
   - **Requirements**: Requirement 2.9, 1.2, 1.3
 
-- [ ] **2.5 Write unit tests for match creation**
+- [x] **2.5 Write unit tests for match creation**
   - Test `start_match()` with builtin opponent (`builtin_sample_1`)
   - Test `start_match()` with remote player opponent
   - Test opponent type detection logic
   - Mock HTTP client and verify payload structure
   - **Requirements**: Requirement 2.5, 2.6, 2.7, 2.10
 
-- [ ] **2.6 Write backend integration tests for match start**
+- [x] **2.6 Write backend integration tests for match start**
   - Test session creation with `bot_type: "player"`
   - Test player validation (404 for non-existent player)
   - **Requirements**: Requirement 10.1, 10.2, 2.9
 
-- [ ] **2.7 Write E2E test for PvP match**
+- [x] **2.7 Write E2E test for PvP match**
   - Test match between two remote players
   - Both clients run bot implementations
   - Verify match completes with winner

@@ -33,6 +33,13 @@ async def start_playground_match(payload: SessionCreationRequest) -> dict[str, s
 
     except HTTPException:
         raise
+    except ValueError as exc:
+        # Handle player not found and invalid bot configuration errors
+        error_msg = str(exc)
+        if "not found" in error_msg.lower():
+            raise HTTPException(status_code=404, detail=error_msg) from exc
+        else:
+            raise HTTPException(status_code=400, detail=error_msg) from exc
     except Exception as exc:
         logger.error(f"Failed to start session: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to start session") from exc

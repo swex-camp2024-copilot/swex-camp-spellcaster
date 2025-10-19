@@ -42,20 +42,6 @@ class RandomWalkStrategy:
         return {"move": [self._toggle, max(0, self._toggle)], "spell": None}
 
 
-@dataclass
-class PlayerRegistrationRequest:
-    player_name: str
-    submitted_from: str = "online"
-    sprite_path: Optional[str] = None
-    minion_sprite_path: Optional[str] = None
-
-
-@dataclass
-class PlayerInfo:
-    player_id: str
-    player_name: str
-
-
 class BotClient:
     """Client for interacting with the Spellcasters backend."""
 
@@ -71,30 +57,6 @@ class BotClient:
         self.bot = bot_instance
         self._external_client = http_client is not None
         self._client = http_client or httpx.AsyncClient(timeout=httpx.Timeout(10.0))
-
-    async def register_player(self, req: PlayerRegistrationRequest) -> PlayerInfo:
-        """Register a new player with the backend.
-
-        Args:
-            req: Player registration request with name and optional sprite paths
-
-        Returns:
-            PlayerInfo with player_id and player_name
-
-        Raises:
-            httpx.HTTPStatusError: If request fails (e.g., 409 for duplicate name)
-        """
-        url = f"{self.base_url}/players/register"
-        payload = {
-            "player_name": req.player_name,
-            "submitted_from": req.submitted_from,
-            "sprite_path": req.sprite_path,
-            "minion_sprite_path": req.minion_sprite_path,
-        }
-        resp = await self._client.post(url, json=payload)
-        resp.raise_for_status()
-        data = resp.json()
-        return PlayerInfo(player_id=data["player_id"], player_name=data["player_name"])
 
     async def start_match(self, player_id: str, opponent_id: str, visualize: bool = True) -> str:
         """Start a match and return session ID.
@@ -231,6 +193,4 @@ class BotClient:
 __all__ = [
     "BotClient",
     "RandomWalkStrategy",
-    "PlayerRegistrationRequest",
-    "PlayerInfo",
 ]

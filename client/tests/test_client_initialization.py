@@ -223,3 +223,112 @@ class TestBotPathValidation:
             import asyncio
 
             asyncio.run(run_bot("http://localhost:8000", "user", "builtin_sample_1", 100, "custom", None))
+
+
+class TestMatchCreation:
+    """Tests for BotClient match creation."""
+
+    @pytest.mark.asyncio
+    async def test_start_match_with_builtin_opponent(self):
+        """Test starting a match against a builtin bot."""
+        from unittest.mock import AsyncMock
+
+        import httpx
+
+        bot = RandomWalkStrategy()
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_response = Mock()
+        mock_response.json.return_value = {"session_id": "test-session-123"}
+        mock_response.raise_for_status = Mock()
+        mock_client.post.return_value = mock_response
+
+        client = BotClient("http://localhost:8000", bot_instance=bot, http_client=mock_client)
+        session_id = await client.start_match("player1", "builtin_sample_1", visualize=False)
+
+        assert session_id == "test-session-123"
+        mock_client.post.assert_called_once()
+        call_args = mock_client.post.call_args
+        assert call_args[0][0] == "http://localhost:8000/playground/start"
+        payload = call_args[1]["json"]
+        assert payload["player_1_config"]["player_id"] == "player1"
+        assert payload["player_1_config"]["bot_type"] == "player"
+        assert payload["player_2_config"]["player_id"] == "builtin_sample_1"
+        assert payload["player_2_config"]["bot_type"] == "builtin"
+        assert payload["player_2_config"]["bot_id"] == "sample_bot_1"
+        assert payload["visualize"] is False
+
+    @pytest.mark.asyncio
+    async def test_start_match_with_remote_player_opponent(self):
+        """Test starting a match against a remote player."""
+        from unittest.mock import AsyncMock
+
+        import httpx
+
+        bot = RandomWalkStrategy()
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_response = Mock()
+        mock_response.json.return_value = {"session_id": "test-session-456"}
+        mock_response.raise_for_status = Mock()
+        mock_client.post.return_value = mock_response
+
+        client = BotClient("http://localhost:8000", bot_instance=bot, http_client=mock_client)
+        session_id = await client.start_match("player1", "player2", visualize=True)
+
+        assert session_id == "test-session-456"
+        mock_client.post.assert_called_once()
+        call_args = mock_client.post.call_args
+        assert call_args[0][0] == "http://localhost:8000/playground/start"
+        payload = call_args[1]["json"]
+        assert payload["player_1_config"]["player_id"] == "player1"
+        assert payload["player_1_config"]["bot_type"] == "player"
+        assert payload["player_2_config"]["player_id"] == "player2"
+        assert payload["player_2_config"]["bot_type"] == "player"
+        assert "bot_id" not in payload["player_2_config"]
+        assert payload["visualize"] is True
+
+    @pytest.mark.asyncio
+    async def test_opponent_type_detection_builtin_sample(self):
+        """Test opponent type detection for builtin_sample_ bots."""
+        from unittest.mock import AsyncMock
+
+        import httpx
+
+        bot = RandomWalkStrategy()
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_response = Mock()
+        mock_response.json.return_value = {"session_id": "test-session"}
+        mock_response.raise_for_status = Mock()
+        mock_client.post.return_value = mock_response
+
+        client = BotClient("http://localhost:8000", bot_instance=bot, http_client=mock_client)
+
+        # Test builtin_sample_1 -> sample_bot_1
+        await client.start_match("player1", "builtin_sample_1")
+        payload = mock_client.post.call_args[1]["json"]
+        assert payload["player_2_config"]["bot_id"] == "sample_bot_1"
+
+        # Test builtin_sample_2 -> sample_bot_2
+        await client.start_match("player1", "builtin_sample_2")
+        payload = mock_client.post.call_args[1]["json"]
+        assert payload["player_2_config"]["bot_id"] == "sample_bot_2"
+
+    @pytest.mark.asyncio
+    async def test_opponent_type_detection_builtin_other(self):
+        """Test opponent type detection for non-sample builtin bots."""
+        from unittest.mock import AsyncMock
+
+        import httpx
+
+        bot = RandomWalkStrategy()
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_response = Mock()
+        mock_response.json.return_value = {"session_id": "test-session"}
+        mock_response.raise_for_status = Mock()
+        mock_client.post.return_value = mock_response
+
+        client = BotClient("http://localhost:8000", bot_instance=bot, http_client=mock_client)
+
+        # Test builtin_tactical -> tactical_bot
+        await client.start_match("player1", "builtin_tactical")
+        payload = mock_client.post.call_args[1]["json"]
+        assert payload["player_2_config"]["bot_id"] == "tactical_bot"
