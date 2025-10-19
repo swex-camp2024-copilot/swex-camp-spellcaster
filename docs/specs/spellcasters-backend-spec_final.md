@@ -228,17 +228,17 @@ Response:
 * Request:
 
 ```json
-{ "name": "FireMage", "submission_method": "http" }
+{ "player_name": "FireMage", "submitted_from": "online" }
 ```
 
-* Rules: `name` unique (case‑insensitive). Failure ⇒ 409.
+* Rules: `player_name` unique (case‑insensitive). Failure ⇒ 409.
 * Response `201 Created`:
 
 ```json
 {
   "player_id": "uuid-v4",
-  "name": "FireMage",
-  "submission_method": "http",
+  "player_name": "FireMage",
+  "submitted_from": "online",
   "is_builtin": false,
   "total_matches": 0,
   "wins": 0,

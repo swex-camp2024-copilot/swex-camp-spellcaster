@@ -1,6 +1,7 @@
 """Configuration settings for the Spellcasters Playground Backend."""
 
 from pathlib import Path
+
 from pydantic_settings import BaseSettings
 
 
@@ -49,6 +50,8 @@ class Settings(BaseSettings):
     max_visualized_sessions: int = 10
     visualizer_queue_size: int = 100
     visualizer_shutdown_timeout: float = 5.0
+    visualizer_animation_duration: float = 0.5
+    visualizer_initial_render_delay: float = 0.3
 
     model_config = {"env_file": ".env", "env_prefix": "PLAYGROUND_", "case_sensitive": False}
 

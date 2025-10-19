@@ -6,6 +6,8 @@ import queue
 import sys
 from typing import Any, Optional
 
+from ..core.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -53,7 +55,7 @@ class VisualizerAdapter:
         """
         try:
             # Import pygame here to avoid importing in parent process
-            import pygame  # noqa: F401
+            import pygame
 
             pygame.init()
             self._logger.info(f"Pygame initialized for session {self._session_id}")
@@ -166,12 +168,12 @@ class VisualizerAdapter:
             if prev_state:
                 # Animate transition from previous state to current state
                 self._visualizer.animate_transition(prev_state, game_state, len(self._states) - 2)
-                self._visualizer.wait_for(0.5)  # ANIMATION_DURATION
+                self._visualizer.wait_for(settings.visualizer_animation_duration)
             else:
                 # First state - just render it
                 self._visualizer.info_bar_state = game_state
                 self._visualizer.render_frame(game_state, turn)
-                self._visualizer.wait_for(0.3)
+                self._visualizer.wait_for(settings.visualizer_initial_render_delay)
 
             # Update info bar
             self._visualizer.info_bar_state = game_state
@@ -202,7 +204,7 @@ class VisualizerAdapter:
                 prev_state = self._states[-1] if self._states else None
                 if prev_state and prev_state != final_state:
                     self._visualizer.animate_transition(prev_state, final_state, len(self._states) - 1)
-                    self._visualizer.wait_for(0.5)
+                    self._visualizer.wait_for(settings.visualizer_animation_duration)
                     self._states.append(final_state)
 
             self._logger.info(f"Game over for session {self._session_id}, winner: {winner_name}")

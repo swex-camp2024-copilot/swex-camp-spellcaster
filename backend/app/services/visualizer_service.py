@@ -15,7 +15,7 @@ class VisualizerService:
 
     def __init__(self):
         """Initialize the visualizer service."""
-        self._logger = logging.getLogger(__name__)
+        pass
 
     def is_visualization_available(self) -> bool:
         """Check if visualization is available.
@@ -58,7 +58,7 @@ class VisualizerService:
         try:
             # Check if visualization is available
             if not self.is_visualization_available():
-                self._logger.warning(
+                logger.warning(
                     f"Visualization requested for session {session_id} but not available "
                     "(pygame not installed or visualization disabled in config)"
                 )
@@ -75,11 +75,11 @@ class VisualizerService:
             )
             process.start()
 
-            self._logger.info(f"Visualizer spawned for session {session_id} (PID: {process.pid})")
+            logger.info(f"Visualizer spawned for session {session_id} (PID: {process.pid})")
             return (process, queue)
 
         except Exception as exc:
-            self._logger.error(f"Failed to spawn visualizer for session {session_id}: {exc}", exc_info=True)
+            logger.error(f"Failed to spawn visualizer for session {session_id}: {exc}", exc_info=True)
             return (None, None)
 
     def send_event(self, queue: multiprocessing.Queue, event: Union[TurnEvent, GameOverEvent]) -> bool:
@@ -100,7 +100,7 @@ class VisualizerService:
             return True
         except Exception as exc:
             # Queue full or other error - log and continue
-            self._logger.warning(f"Failed to send event to visualizer: {exc}")
+            logger.warning(f"Failed to send event to visualizer: {exc}")
             return False
 
     def terminate_visualizer(
@@ -134,7 +134,7 @@ class VisualizerService:
 
             # Force kill if still alive
             if process.is_alive():
-                self._logger.warning(f"Visualizer process {process.pid} did not terminate gracefully, force killing")
+                logger.warning(f"Visualizer process {process.pid} did not terminate gracefully, force killing")
                 process.terminate()
                 process.join(timeout=1.0)
 
@@ -151,10 +151,10 @@ class VisualizerService:
                 except Exception:
                     pass  # Queue might already be closed
 
-            self._logger.info(f"Visualizer process {process.pid} terminated")
+            logger.info(f"Visualizer process {process.pid} terminated")
 
         except Exception as exc:
-            self._logger.error(f"Error terminating visualizer process: {exc}", exc_info=True)
+            logger.error(f"Error terminating visualizer process: {exc}", exc_info=True)
 
     @staticmethod
     def _visualizer_process_main(

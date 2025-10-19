@@ -9,7 +9,7 @@ This implementation plan converts the feature design into a series of incrementa
 ### 1. Project Foundation and Data Models
 
 - [x] 1.1 Create FastAPI project structure in `/backend` directory
-  - Set up directory structure with `app/`, `tsts/`, and configuration files
+  - Set up directory structure with `app/`, `tests/`, and configuration files
   - Update `pyproject.toml`/`requirements.txt` with FastAPI, Pydantic, SQLModel, SQLite dependencies
   - Initialize SQLite database at permanent path `data/playground.db` and ensure `data/` directory is created at startup
   - Resolve database file path to an absolute path based on the repository root so execution is independent of current working directory

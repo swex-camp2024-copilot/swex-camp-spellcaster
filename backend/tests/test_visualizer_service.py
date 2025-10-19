@@ -19,7 +19,7 @@ class TestVisualizerService:
     def test_init(self, service):
         """Test service initialization."""
         assert service is not None
-        assert service._logger is not None
+        # No instance attributes to check - service uses module-level logger
 
     def test_is_visualization_available_with_pygame(self, service):
         """Test visualization availability when pygame is installed."""
