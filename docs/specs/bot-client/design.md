@@ -5,23 +5,26 @@
 ### 1.1 Purpose
 
 This document details the technical design for enabling remote bot clients to play Spellcasters matches against the backend server via HTTP/SSE communication. The feature provides a client library and CLI tool that allows bot developers to:
-- Register players remotely
-- Connect to match sessions
+- Use existing player identities (or OS username by default)
+- Start matches against builtin bots or other remote players
 - Receive real-time game events via Server-Sent Events (SSE)
 - Submit bot actions automatically during gameplay
-- Integrate existing `BotInterface` implementations without modification
+- Load and use existing `BotInterface` implementations dynamically
+- Properly clean up resources when matches end
 
 ### 1.2 Design Goals
 
-1. **Ease of Use**: Simple CLI tool for running bots against the backend
-2. **Bot Compatibility**: Support both built-in strategies and existing `BotInterface` bots
+1. **Ease of Use**: Simple CLI tool with sensible defaults (OS username, random bot)
+2. **Bot Compatibility**: Dynamic loading of existing `BotInterface` implementations
 3. **Resilient Communication**: Automatic SSE reconnection and error handling
 4. **Event-Driven**: React to game events and submit actions in real-time
-5. **Modern Python**: Async/await throughout, type hints, clean separation of concerns
+5. **Resource Management**: Proper cleanup of client, server, and visualizer resources
+6. **Modern Python**: Async/await throughout, type hints, clean separation of concerns
 
 ### 1.3 Related Documents
 
-- Backend Specification: `docs/specs/spellcasters-backend/spellcasters-backend-spec_final.md`
+- Overall functionla specifcaiton: `docs/specs/spellcasters-functional-spec.md`
+- Backend design: `docs/specs/spellcasters-backend/design.md`
 - Bot Interface: `bots/bot_interface.py`
 - Game Engine: `game/engine.py`
 
@@ -36,14 +39,14 @@ graph TB
     subgraph Client["Client Process"]
         CLI[CLI Runner<br/>bot_client_main.py]
         BotClient[BotClient]
-        Strategy[BotStrategy<br/>decide logic]
+        BotImpl[Bot Implementation<br/>from bots/ directory]
 
         CLI --> BotClient
-        BotClient --> Strategy
+        BotClient --> BotImpl
     end
 
     subgraph HTTP["HTTP API Calls"]
-        Register[POST /players/register]
+        Start[POST /playground/start]
         Events[GET /playground/:id/events<br/>SSE Stream]
         Action[POST /playground/:id/action]
     end
@@ -53,17 +56,19 @@ graph TB
         SessionMgr[SessionManager]
         SSEMgr[SSEManager<br/>events]
         TurnProc[TurnProcessor<br/>GameAdapter]
+        Visualizer[Pygame Visualizer]
 
         SessionMgr --> PlayerReg
         SessionMgr --> SSEMgr
         SessionMgr --> TurnProc
+        SessionMgr --> Visualizer
     end
 
-    BotClient -->|1. Register| Register
-    BotClient -->|2. Stream| Events
-    BotClient -->|3. Submit| Action
+    BotClient -->|1. Start Match| Start
+    BotClient -->|2. Stream Events| Events
+    BotClient -->|3. Submit Actions| Action
 
-    Register --> SessionMgr
+    Start --> SessionMgr
     Events --> SessionMgr
     Action --> SessionMgr
 
@@ -78,27 +83,31 @@ graph TB
 
 ```mermaid
 sequenceDiagram
-    participant Client
+    participant CLI as CLI<br/>(bot_client_main)
+    participant Client as BotClient
     participant Backend
     participant GameEngine as Game Engine
+    participant Visualizer
 
-    Note over Client,GameEngine: 1. Registration Phase
-    Client->>+Backend: POST /players/register<br/>{player_name: "Bot"}
-    Backend-->>-Client: {player_id: "uuid"}
+    Note over CLI,Visualizer: 1. Initialization Phase
+    CLI->>CLI: Get player_id<br/>(default: whoami)
+    CLI->>CLI: Load bot implementation<br/>(RandomWalk or custom)
+    CLI->>Client: Create BotClient<br/>with bot instance
 
-    Note over Client,GameEngine: 2. Match Start Phase
-    Client->>+Backend: POST /playground/start
+    Note over CLI,Visualizer: 2. Match Start Phase
+    Client->>+Backend: POST /playground/start<br/>{player_id, opponent_id}
     Backend->>GameEngine: Create session
+    Backend->>Visualizer: Start visualizer (if enabled)
     Backend-->>-Client: {session_id: "uuid"}
 
-    Note over Client,GameEngine: 3. Event Streaming Phase
+    Note over CLI,Visualizer: 3. Event Streaming & Gameplay Phase
     Client->>Backend: GET /playground/{id}/events<br/>(SSE connection)
     Backend-->>Client: SSE: session_start
     Backend->>GameEngine: Start game loop
     GameEngine-->>Backend: Initial state
     Backend-->>Client: SSE: turn_update (turn 0)
 
-    Note over Client,GameEngine: 4. Action Submission Loop
+    Note over CLI,Visualizer: 4. Action Submission Loop
     loop Each Turn
         Note over Client: Extract game_state<br/>Call bot.decide()<br/>Get action
         Client->>Backend: POST /playground/{id}/action<br/>{turn: N+1, action_data}
@@ -106,13 +115,19 @@ sequenceDiagram
         Note over Backend: Queue action<br/>Wait for opponent
         Backend->>GameEngine: Execute turn<br/>(both actions ready)
         GameEngine-->>Backend: Updated state
+        Visualizer->>Visualizer: Update display
         Backend-->>Client: SSE: turn_update (turn N+1)
     end
 
-    Note over Client,GameEngine: 5. Game Over
+    Note over CLI,Visualizer: 5. Game Over & Cleanup
     GameEngine-->>Backend: Game over condition
     Backend-->>Client: SSE: game_over
-    Client->>Backend: Close connection
+    Client->>Client: Stop processing<br/>Display "Match complete"
+    Note over Client: SSE connection remains active<br/>No more events received
+    CLI->>CLI: User presses Ctrl+C
+    Client->>Backend: Close SSE connection
+    Backend->>Visualizer: Terminate visualizer window
+    Backend->>Backend: Clean up session resources
 ```
 
 ---
@@ -126,55 +141,61 @@ The main client library for interacting with the Spellcasters backend.
 **Key Methods**:
 ```python
 class BotClient:
-    async def register_player(req: PlayerRegistrationRequest) -> PlayerInfo
-    async def start_match_vs_builtin(player_id: str, builtin_bot_id: str, max_events: int) -> str
-    async def stream_session_events(session_id: str, max_events: Optional[int]) -> AsyncIterator[Dict]
-    async def submit_action(session_id: str, player_id: str, turn: int, action: Dict) -> None
-    async def play_match(session_id: str, player_id: str, max_events: Optional[int]) -> AsyncIterator[Dict]
+    def __init__(self, base_url: str, bot_instance: Any, *, http_client: Optional[httpx.AsyncClient] = None):
+        """Initialize with backend URL and bot implementation instance."""
+        
+    async def start_match(player_id: str, opponent_id: str, visualize: bool = True) -> str:
+        """Start a match and return session ID."""
+        
+    async def stream_session_events(session_id: str, max_events: Optional[int]) -> AsyncIterator[Dict]:
+        """Stream SSE events from a session."""
+        
+    async def submit_action(session_id: str, player_id: str, turn: int, action: Dict) -> None:
+        """Submit an action for a turn."""
+        
+    async def play_match(session_id: str, player_id: str, max_events: Optional[int]) -> AsyncIterator[Dict]:
+        """Automatically play a match (stream events + submit actions)."""
 ```
 
 **Responsibilities**:
-- Player registration with backend
-- Match creation against built-in bots
+- Match creation with backend (player vs player or player vs builtin)
 - SSE event streaming via `SSEClient`
 - Action submission to backend
-- Automated gameplay combining streaming + action submission
+- Automated gameplay: calling bot's `decide()` and submitting actions
+- Resource cleanup on termination
 
-### 3.2 Bot Strategy Interface
+### 3.2 Bot Implementation Interface
 
-Uses strategy pattern to support different bot implementations.
+Bot implementations must conform to the `BotInterface` from `bots/bot_interface.py`.
 
-**Abstract Base**:
+**Interface Requirements**:
 ```python
-class BotStrategy:
-    async def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
+class BotInterface:
+    @property
+    def name(self) -> str:
+        """Unique bot identifier."""
+        
+    def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Process game state and return action decision.
-
+        
+        Args:
+            state: Game state containing turn, self, opponent, artifacts, minions
+            
         Returns:
             Action dict with format: {"move": [dx, dy], "spell": {...} or None}
         """
 ```
 
-**Built-in Strategies**:
-- `RandomWalkStrategy`: Simple toggle-based movement for testing
-- `BotInterfaceAdapter`: Wraps existing `BotInterface` implementations
+**Built-in Bot Types**:
+- `RandomWalkStrategy`: Simple toggle-based movement for testing (no file loading needed)
+- Custom bots: Loaded from `bots/` directory via module path (e.g., `bots.sample_bot1.sample_bot_1.SampleBot1`)
 
-### 3.3 BotInterfaceAdapter
+**Design Rationale**: 
+- No strategy abstraction layer - bot implementations ARE the strategy
+- Client directly calls bot's synchronous `decide()` method
+- Bots remain unchanged from existing implementation in `bots/` directory
 
-Bridges async client interface with sync `BotInterface`.
-
-```python
-class BotInterfaceAdapter(BotStrategy):
-    def __init__(self, bot_instance: Any) -> None:
-        self._bot = bot_instance
-
-    async def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        return self._bot.decide(state)  # Call sync method
-```
-
-**Design Rationale**: Allows existing bots to work without modification, adapts sync to async seamlessly.
-
-### 3.4 SSEClient (`client/sse_client.py`)
+### 3.3 SSEClient (`client/sse_client.py`)
 
 Low-level SSE client with automatic reconnection.
 
@@ -195,24 +216,38 @@ class SSEClientConfig:
     max_retries: int = 5
 ```
 
-### 3.5 CLI Runner (`client/bot_client_main.py`)
+### 3.4 CLI Runner (`client/bot_client_main.py`)
 
 Command-line interface for running bot matches.
 
 **Features**:
+- Uses existing player identities (defaults to OS username via `whoami`)
 - Dynamic bot loading from module paths
-- Support for built-in and custom bot strategies
+- Support for random and custom bot implementations
+- Matches against builtin bots or remote players
 - Fully automated match gameplay
 - Configurable logging and event limits
+- Proper cleanup on termination
 
 **CLI Arguments**:
-- `--base-url`: Backend server URL (default: http://localhost:8000)
-- `--player-name`: Player name for registration
-- `--builtin-bot-id`: Opponent bot ID (default: sample_bot_1)
-- `--max-events`: Maximum events to process (default: 100)
-- `--log-level`: DEBUG, INFO, WARNING, ERROR (default: INFO)
-- `--bot-type`: `random` or `custom` (default: random)
-- `--bot-path`: Module path for custom bots (e.g., `bots.sample_bot1.sample_bot_1.SampleBot1`)
+- `--base-url`: Backend server URL (default: http://localhost:8000, env: `BASE_URL`)
+- `--player-id`: Existing registered player ID (default: OS username via `whoami`, env: `PLAYER_ID`)
+- `--opponent-id`: Opponent ID - builtin bot or player (default: `builtin_sample_1`, env: `OPPONENT_ID`)
+- `--bot-type`: Bot strategy - `random` or `custom` (default: `random`, env: `BOT_TYPE`)
+- `--bot-path`: Module path for custom bots (required if `--bot-type=custom`, env: `BOT_PATH`)
+  - Format: `module.path.ClassName`
+  - Example: `bots.sample_bot1.sample_bot_1.SampleBot1`
+- `--max-events`: Maximum events to process (default: 100, env: `MAX_EVENTS`)
+- `--log-level`: Logging level (default: INFO, env: `LOG_LEVEL`)
+
+**Workflow**:
+1. Get player_id (from argument or `whoami`)
+2. Load bot implementation (RandomWalkStrategy or custom bot from `bots/`)
+3. Create BotClient with bot instance
+4. Start match against opponent
+5. Automatically play match (stream events + submit actions)
+6. Display "Match complete. Press Ctrl+C to exit." when game ends
+7. Clean up resources on Ctrl+C
 
 ---
 
@@ -365,170 +400,9 @@ flowchart TD
 
 ---
 
-## 6. Design Decisions
+## 6. Error Scenarios and Handling
 
-### 6.1 Strategy Pattern for Bot Abstraction
-
-**Decision**: Use strategy pattern with `BotStrategy` base class and `BotInterfaceAdapter`.
-
-**Rationale**:
-- Separation of client logic from bot decision logic
-- Easy to add new strategies without modifying client
-- Backward compatible with existing `BotInterface` bots
-- Improved testability with mock strategies
-
-**Alternatives Considered**:
-- Direct `BotInterface` usage: Couples client to sync interface
-- Callback-based: More complex, harder to debug
-- Inheritance-based: Less flexible composition
-
-**Trade-offs**:
-- ✅ Clean separation, easy to extend
-- ❌ Extra abstraction layer (minimal overhead)
-- ❌ Async wrapper around sync `bot.decide()` (acceptable for scope)
-
-### 6.2 Async-First Client Design
-
-**Decision**: Implement client using `asyncio` and async/await patterns.
-
-**Rationale**:
-- Backend uses FastAPI (async framework)
-- Efficient I/O for SSE streaming and HTTP requests
-- Single client can handle concurrent streaming + action submission
-- Modern Python standard for network programming
-
-**Trade-offs**:
-- ✅ Better performance, cleaner code
-- ❌ Requires async/await understanding (acceptable for target audience)
-
-### 6.3 Combined Event Stream + Action Submission
-
-**Decision**: Provide both separate methods and combined `play_match()` method.
-
-**Rationale**:
-- Flexibility for advanced users with separate methods
-- Convenience for common use case with `play_match()`
-- Progressive disclosure (beginners use simple method, advanced use separate)
-
-**Trade-offs**:
-- ✅ Best of both worlds
-- ❌ Slightly larger API surface (acceptable)
-
-### 6.4 Action Submission on Every turn_update
-
-**Decision**: Submit action for every `turn_update` event received.
-
-**Rationale**:
-- Game uses simultaneous turns (not alternating)
-- Simplicity: no need to track turn ownership
-- Backend handles validation and queuing
-
-**Trade-offs**:
-- ✅ Simple, aligns with game mechanics
-- ✅ Backend validates appropriately
-- ❌ May submit actions that get rejected (backend handles gracefully)
-
-### 6.5 Dynamic Bot Loading
-
-**Decision**: Load bots via `importlib` using module path strings.
-
-**Rationale**:
-- Maximum flexibility without code changes
-- CLI-friendly (specify bot via argument)
-- Standard Python mechanism
-- Easy to extend with new bots
-
-**Alternatives**:
-- Hardcoded registry: Must update for each bot
-- Config file: Extra file to maintain
-- Directory scanning: Implicit, security concerns
-
-**Trade-offs**:
-- ✅ Maximum flexibility
-- ✅ Standard library approach
-- ❌ Runtime errors if path wrong (clear error messages)
-- ❌ No compile-time checking (acceptable)
-
-### 6.6 SSE Reconnection Strategy
-
-**Decision**: Exponential backoff (0.5s to 8s, max 5 retries).
-
-**Rationale**:
-- Resilience to network issues
-- Good network citizen (prevents server overload)
-- Standard practice
-- Configurable via `SSEClientConfig`
-
-**Trade-offs**:
-- ✅ Balance resilience and network citizenship
-- ✅ Configurable for different environments
-- ❌ Adds complexity (well-tested pattern)
-
-### 6.7 Error Handling Philosophy
-
-**Decision**:
-- Client: Log errors, continue processing events
-- Backend: HTTP errors for validation, default actions for timeouts
-
-**Rationale**:
-- Resilience: single error doesn't terminate match
-- Debugging: errors are logged
-- User experience: match continues despite mistakes
-- Graceful degradation: default action better than crash
-
-**Trade-offs**:
-- ✅ Best balance of resilience and debuggability
-- ✅ Matches complete even with errors
-- ❌ May hide issues (mitigated by logging)
-
-### 6.8 Turn Number Synchronization
-
-**Decision**: Client extracts current turn from event, submits for turn + 1.
-
-**Rationale**:
-- Clear semantics: action is for *next* turn
-- Server is authority on turn numbers
-- Avoids race conditions and desync
-- Backend validates turn number
-
-**Trade-offs**:
-- ✅ Server is source of truth
-- ✅ Validation prevents desync
-- ❌ Must extract turn from each event (minimal overhead)
-
-### 6.9 No Authentication (Hackathon Version)
-
-**Decision**: No authentication or authorization.
-
-**Rationale**:
-- Hackathon scope: focus on functionality
-- Simplicity for development and testing
-- Can add later without breaking core design
-- Clearly documented as future work
-
-**Trade-offs**:
-- ✅ Faster development, simpler testing
-- ❌ Not production-ready (acceptable for hackathon)
-
-### 6.10 Automatic Match Playing (No Flag Required)
-
-**Decision**: Client always plays match automatically (no `--auto-play` flag).
-
-**Rationale**:
-- Primary use case is automated play
-- Simplifies CLI (fewer confusing options)
-- Clearer intent: tool is for playing matches
-- Reduces user friction
-
-**Trade-offs**:
-- ✅ Simpler, more focused tool
-- ❌ Cannot observe without participating (acceptable - use SSE client for observation)
-
----
-
-## 7. Error Scenarios and Handling
-
-### 7.1 Client Submits Wrong Turn Number
+### 6.1 Client Submits Wrong Turn Number
 
 ```
 Client → POST action {turn: 5}
@@ -539,7 +413,7 @@ Client: Logs error, continues listening
 
 **Handling**: Client logs error, continues streaming. Backend rejects with clear error message.
 
-### 7.2 Action Submission Timeout
+### 6.2 Action Submission Timeout
 
 ```
 Backend: Waiting for turn 4 actions (5s timeout)
@@ -552,7 +426,7 @@ Backend → SSE: turn_update (turn 4)
 
 **Handling**: Backend uses default action, match continues.
 
-### 7.3 Bot Decision Error
+### 6.3 Bot Decision Error
 
 ```
 Client: Receives turn_update (turn 3)
@@ -565,7 +439,7 @@ Backend: Times out, uses default action
 
 **Handling**: Client catches exception, logs, continues. Backend uses default action.
 
-### 7.4 SSE Connection Lost
+### 6.4 SSE Connection Lost
 
 ```
 Client: SSE connection dropped
@@ -577,157 +451,3 @@ Client: May have missed events (uses latest state)
 ```
 
 **Handling**: Automatic reconnection with exponential backoff. Client uses latest state on reconnect.
-
----
-
-## 8. Concurrency Model
-
-### 8.1 Client Side
-
-- Single-threaded async event loop (`asyncio`)
-- SSE connection runs continuously, yielding events
-- Action submission happens inline when `turn_update` received
-- No separate threads or processes
-
-### 8.2 Backend Side
-
-- Each match session runs in its own `asyncio.Task`
-- Turn processing is sequential within a session
-- Action collection has timeout (default 5 seconds)
-- SSE broadcasting uses async queues
-
----
-
-## 9. Performance Characteristics
-
-- **Bot Decision Timeout**: 100ms soft budget per bot
-- **Turn Timeout**: 5 seconds hard timeout (configurable)
-- **SSE Heartbeat**: Every 5 seconds
-- **Connection Retry**: Max 5 retries with exponential backoff (0.5s to 8s)
-
----
-
-## 10. Security Considerations
-
-- No authentication in hackathon version (planned for future)
-- No rate limiting (planned for future)
-- Input validation on all API endpoints
-- Security-aware error logging (no sensitive data in logs)
-
----
-
-## 11. Testing Strategy
-
-### 11.1 Unit Tests
-
-- `BotClient` methods (registration, match start, action submission)
-- `BotInterfaceAdapter` wrapping sync bots
-- `SSEClient` event parsing and reconnection logic
-- Dynamic bot loading from module paths
-
-### 11.2 Integration Tests
-
-- End-to-end match with `RandomWalkStrategy`
-- End-to-end match with custom `BotInterface` bot
-- SSE connection handling and reconnection
-- Error scenarios (wrong turn, timeout, bot error)
-
-### 11.3 Manual Testing
-
-```bash
-# Test with RandomWalkStrategy
-uv run python -m client.bot_client_main \
-  --base-url http://localhost:8000 \
-  --player-name "Random Bot" \
-  --builtin-bot-id sample_bot_1 \
-  --bot-type random
-
-# Test with custom bot
-uv run python -m client.bot_client_main \
-  --base-url http://localhost:8000 \
-  --player-name "Sample Bot 1 Remote" \
-  --builtin-bot-id sample_bot_2 \
-  --bot-type custom \
-  --bot-path bots.sample_bot1.sample_bot_1.SampleBot1
-```
-
----
-
-## 12. Future Enhancements
-
-### 12.1 Authentication
-
-- JWT tokens for API access
-- Player identity verification
-- Session ownership validation
-- Secure credential storage
-
-### 12.2 Rate Limiting
-
-- Per-player rate limits
-- Per-IP rate limits
-- Burst allowances
-- Graceful degradation
-
-### 12.3 Advanced Bot Strategies
-
-- Stateful bots (learning across matches)
-- Multi-bot coordination
-- Bot versioning and upgrades
-- Resource limits (CPU, memory)
-
-### 12.4 Metrics and Monitoring
-
-- Client-side metrics (latency, errors)
-- Server-side metrics (active connections, turn times)
-- Distributed tracing
-- Performance profiling
-
-### 12.5 Protocol Versioning
-
-- Semantic versioning
-- Backward compatibility
-- Deprecation strategy
-- Version negotiation
-
----
-
-## 13. Deployment Considerations
-
-- Client runs on any machine with Python 3.10+
-- Requires network access to backend server (HTTP/HTTPS)
-- SSE connections are long-lived (keep-alive recommended)
-- Backend must be running before client connects
-
----
-
-## 14. Best Practices
-
-### 14.1 For Client Developers
-
-1. **Validate game state** before calling `bot.decide()`
-2. **Submit actions quickly** - bot decision time counts toward timeout
-3. **Handle SSE errors gracefully** - let SSEClient handle reconnection
-4. **Log all errors** but don't crash
-5. **Respect event ordering** - process in order received
-
-### 14.2 For Backend Developers
-
-1. **Always validate** action submissions
-2. **Use appropriate timeouts** - allow time for bot decisions
-3. **Send heartbeats regularly** - prevent connection timeouts
-4. **Broadcast events atomically** - ensure all SSE connections receive in order
-
----
-
-## 15. Summary
-
-The client bot integration provides a robust, flexible system for remote bot gameplay:
-
-1. **Simple to Use**: CLI tool with minimal required arguments
-2. **Backward Compatible**: Existing `BotInterface` bots work without modification
-3. **Resilient**: Automatic reconnection and comprehensive error handling
-4. **Modern**: Async/await, type hints, clean architecture
-5. **Extensible**: Easy to add new bot strategies and features
-
-The design balances simplicity for hackathon participants with robustness for reliable automated gameplay, while maintaining clear paths for future production-readiness enhancements.
