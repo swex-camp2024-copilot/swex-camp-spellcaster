@@ -16,61 +16,72 @@ The Spellcasters Playground Backend is a FastAPI-based real-time multiplayer bot
 
 ```mermaid
 graph TB
-    subgraph "Client Layer"
+    subgraph Client["Client Layer"]
         WEB[Web Client]
         BOT[Bot Client]
     end
     
-    subgraph "Backend Layer"
+    subgraph Backend["Backend Layer"]
         API[FastAPI Server]
-        SSE[SSE Endpoints]
+        SSE[SSE Manager]
         SESSION[Session Manager]
-        MATCH[Match Engine]
+        TURN[Turn Processor]
     end
     
-    subgraph "Game Layer"
+    subgraph Game["Game Layer"]
         ENGINE[Game Engine]
+        ADAPTER[Game Adapter]
         RULES[Game Rules]
-        LOGGER[Game Logger]
+        LOGGER[Match Logger]
     end
     
-    subgraph "Bot Layer"
+    subgraph BotLayer["Bot Layer"]
         INTERFACE[Bot Interface]
         BUILTIN[Built-in Bots]
         PLAYERBOT[Player Bots]
+        HUMAN[Human Bot]
     end
     
-    subgraph "Player Layer"
-        PLAYERS[Player Registry]
+    subgraph PlayerLayer["Player Layer"]
+        REGISTRY[Player Registry]
         BUILTINPLAYERS[Built-in Players]
     end
     
-    subgraph "Storage Layer"
-        DATABASE[SQLite Database]
+    subgraph Storage["Storage Layer"]
+        DATABASE[(SQLite Database)]
         LOGS[Match Logs]
         MEMORY[Session Cache]
     end
     
+    subgraph Visualization["Visualization Layer"]
+        VIZSERVICE[Visualizer Service]
+        VIZADAPTER[Visualizer Adapter]
+        PYGAME[Pygame Window]
+    end
+    
     WEB --> API
-    BOT --> PLAYERBOT
+    BOT --> API
     API --> SSE
     API --> SESSION
-    API --> PLAYERS
-    SESSION --> MATCH
-    MATCH --> ENGINE
-    MATCH --> INTERFACE
-    PLAYERBOT --> MATCH
-    PLAYERBOT --> PLAYERS
-    BUILTIN --> BUILTINPLAYERS
+    API --> REGISTRY
+    SESSION --> TURN
+    SESSION --> VIZSERVICE
+    TURN --> ADAPTER
+    ADAPTER --> ENGINE
+    ADAPTER --> INTERFACE
     ENGINE --> RULES
     ENGINE --> LOGGER
     INTERFACE --> BUILTIN
     INTERFACE --> PLAYERBOT
+    INTERFACE --> HUMAN
+    BUILTIN --> BUILTINPLAYERS
+    PLAYERBOT --> REGISTRY
     SESSION --> MEMORY
     LOGGER --> LOGS
-    PLAYERS --> DATABASE
-    MATCH --> DATABASE
+    REGISTRY --> DATABASE
     SESSION --> DATABASE
+    VIZSERVICE --> VIZADAPTER
+    VIZADAPTER --> PYGAME
 ```
 
 ### Technology Stack
@@ -85,6 +96,76 @@ graph TB
 - **Logging**: Structured logging with session context
 
 ## Data Models
+
+### Domain Entity Relationships
+
+```mermaid
+erDiagram
+    Player ||--o{ Session : "participates in"
+    Player ||--o{ GameResult : "has results"
+    Session ||--|| GameResult : "produces"
+    Player ||--o| BotInterface : "controls"
+    BotInterface ||--|| PlayerSlot : "occupies"
+    Session ||--|{ PlayerSlot : "contains"
+    Session ||--o{ TurnEvent : "generates"
+    
+    Player {
+        string player_id PK
+        string player_name UK
+        string submitted_from
+        string sprite_path
+        string minion_sprite_path
+        int total_matches
+        int wins
+        int losses
+        int draws
+        datetime created_at
+        bool is_builtin
+    }
+    
+    Session {
+        string session_id PK
+        string p1_id FK
+        string p2_id FK
+        string status
+        datetime started_at
+        datetime ended_at
+    }
+    
+    GameResult {
+        string result_id PK
+        string session_id FK
+        string winner_id FK
+        int turns_played
+        int damage_p1
+        int damage_p2
+        string summary
+        datetime created_at
+    }
+    
+    BotInterface {
+        string player_id FK
+        string bot_type
+        bool is_builtin
+    }
+    
+    PlayerSlot {
+        string player_id FK
+        BotInterface bot_instance
+        string connection_handle
+        bool is_builtin_bot
+    }
+    
+    TurnEvent {
+        string event_type
+        int turn
+        dict game_state
+        list actions
+        list events
+        string log_line
+        datetime timestamp
+    }
+```
 
 ### Player Models
 
@@ -854,36 +935,33 @@ The backend includes optional Pygame visualization support for real-time match r
 
 #### Architecture Overview
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                      Backend Process                            │
-│                                                                  │
-│  ┌──────────────┐      ┌─────────────────┐                     │
-│  │  Session     │      │   Visualizer    │                     │
-│  │  Manager     │─────▶│   Service       │                     │
-│  └──────────────┘      └─────────────────┘                     │
-│                                │                                 │
-│                                │ spawn process                   │
-│                                ▼                                 │
-│                        ┌──────────────┐                         │
-│                        │multiprocessing│                        │
-│                        │    .Queue     │                        │
-│                        └──────────────┘                         │
-└────────────────────────────│───────────────────────────────────┘
-                             │ game state events
-                             ▼
-┌────────────────────────────────────────────────────────────────┐
-│                   Visualizer Process                            │
-│                                                                  │
-│  ┌──────────────┐      ┌─────────────────┐                     │
-│  │  Visualizer  │      │     Pygame      │                     │
-│  │  Adapter     │─────▶│   Visualizer    │                     │
-│  └──────────────┘      └─────────────────┘                     │
-│        │                        │                                │
-│        │ receives events        │ renders game                  │
-│        ▼                        ▼                                │
-│  Event Queue           Pygame Window                            │
-└────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph BackendProcess["Backend Process"]
+        SessionMgr[Session Manager]
+        VizService[Visualizer Service]
+        MPQueue[multiprocessing.Queue]
+        
+        SessionMgr -->|creates| VizService
+        VizService -->|spawns process| MPQueue
+        SessionMgr -.->|game state events| MPQueue
+    end
+    
+    subgraph VisualizerProcess["Visualizer Process (separate Python process)"]
+        VizAdapter[Visualizer Adapter]
+        EventQueue[Event Queue]
+        PygameViz[Pygame Visualizer]
+        PygameWindow[Pygame Window]
+        
+        EventQueue -->|receives events| VizAdapter
+        VizAdapter -->|translates & renders| PygameViz
+        PygameViz -->|displays| PygameWindow
+    end
+    
+    MPQueue -.->|IPC via Queue| EventQueue
+    
+    style BackendProcess fill:#e1f5ff
+    style VisualizerProcess fill:#fff4e1
 ```
 
 #### VisualizerService Component

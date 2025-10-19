@@ -65,87 +65,77 @@ This document specifies the backend for the **Spellcasters** hackathon project (
 
 > Use **SQLModel** models (Pydantic v2) to initialize schema. All timestamps in UTC. DB file path: `data/playground.db` (absolute).
 
-### 3.1 Players
-
+```mermaid
+erDiagram
+    players ||--o{ sessions : "player 1"
+    players ||--o{ sessions : "player 2"
+    players ||--o{ game_results : "winner"
+    sessions ||--|| game_results : "produces"
+    tournaments ||--o{ tournament_players : "contains"
+    players ||--o{ tournament_players : "participates"
+    tournaments ||--o{ matches : "organizes"
+    
+    players {
+        TEXT player_id PK "UUIDv4"
+        TEXT player_name UK "Unique, NOT NULL"
+        INTEGER is_builtin "0/1 boolean, DEFAULT 0"
+        TEXT sprite_path "Optional asset hint"
+        TEXT minion_sprite_path "Optional asset hint"
+        TEXT submitted_from "e.g. online, seed"
+        INTEGER total_matches "DEFAULT 0"
+        INTEGER wins "DEFAULT 0"
+        INTEGER losses "DEFAULT 0"
+        INTEGER draws "DEFAULT 0"
+        TEXT created_at "NOT NULL, UTC"
+        TEXT updated_at "NOT NULL, UTC"
+    }
+    
+    sessions {
+        TEXT session_id PK "UUIDv4"
+        TEXT p1_id FK "NOT NULL, CASCADE"
+        TEXT p2_id FK "NOT NULL, CASCADE"
+        TEXT status "running|completed|aborted"
+        TEXT started_at "UTC"
+        TEXT ended_at "UTC"
+    }
+    
+    game_results {
+        TEXT result_id PK "UUIDv4"
+        TEXT session_id FK "NOT NULL, CASCADE"
+        TEXT winner_id FK "NULL for draw"
+        INTEGER turns_played
+        INTEGER damage_p1
+        INTEGER damage_p2
+        TEXT summary
+        TEXT created_at "NOT NULL, UTC"
+    }
+    
+    tournaments {
+        TEXT tournament_id PK "UUIDv4, Reserved"
+        TEXT name "NOT NULL"
+        TEXT status "draft|ready|running|completed"
+        TEXT created_at "NOT NULL, UTC"
+        TEXT updated_at "NOT NULL, UTC"
+    }
+    
+    tournament_players {
+        TEXT tournament_id PK,FK "CASCADE"
+        TEXT player_id PK,FK "CASCADE"
+    }
+    
+    matches {
+        TEXT match_id PK "UUIDv4, Reserved"
+        TEXT tournament_id FK
+        TEXT p1_id "NOT NULL"
+        TEXT p2_id "NOT NULL"
+        INTEGER scheduled_ord
+        TEXT status "pending|running|completed|aborted"
+        TEXT winner_id
+        INTEGER turns_played
+        TEXT started_at "UTC"
+        TEXT ended_at "UTC"
+    }
 ```
-players(
-  player_id           TEXT PRIMARY KEY,  -- UUIDv4
-  player_name         TEXT UNIQUE NOT NULL,
-  is_builtin          INTEGER NOT NULL DEFAULT 0,    -- 0/1 boolean
-  sprite_path         TEXT,                           -- optional asset hint
-  minion_sprite_path  TEXT,                           -- optional asset hint
-  submitted_from      TEXT,                           -- e.g. "online", "seed"
-  total_matches       INTEGER NOT NULL DEFAULT 0,
-  wins                INTEGER NOT NULL DEFAULT 0,
-  losses              INTEGER NOT NULL DEFAULT 0,
-  draws               INTEGER NOT NULL DEFAULT 0,
-  created_at          TEXT NOT NULL,
-  updated_at          TEXT NOT NULL
-)
-```
-
-### 3.2 Sessions (Playground)
-
-```
-sessions(
-  session_id   TEXT PRIMARY KEY, -- UUIDv4
-  p1_id        TEXT NOT NULL REFERENCES players(player_id) ON DELETE CASCADE,
-  p2_id        TEXT NOT NULL REFERENCES players(player_id) ON DELETE CASCADE,
-  status       TEXT NOT NULL CHECK (status IN ('running','completed','aborted')),
-  started_at   TEXT,
-  ended_at     TEXT
-)
-```
-
-### 3.3 Game Results
-
-```
-game_results(
-  result_id    TEXT PRIMARY KEY, -- UUIDv4
-  session_id   TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
-  winner_id    TEXT,             -- NULL for draw
-  turns_played INTEGER,
-  damage_p1    INTEGER,
-  damage_p2    INTEGER,
-  summary      TEXT,
-  created_at   TEXT NOT NULL
-)
-```
-
-### 3.4 Tournaments (Reserved for future spec)
-
-```
-tournaments(
-  tournament_id TEXT PRIMARY KEY, -- UUIDv4
-  name          TEXT NOT NULL,
-  status        TEXT NOT NULL CHECK (status IN ('draft','ready','running','completed')),
-  created_at    TEXT NOT NULL,
-  updated_at    TEXT NOT NULL
-)
-
-tournament_players(
-  tournament_id TEXT NOT NULL REFERENCES tournaments(tournament_id) ON DELETE CASCADE,
-  player_id     TEXT NOT NULL REFERENCES players(player_id) ON DELETE CASCADE,
-  PRIMARY KEY (tournament_id, player_id)
-)
-
-matches(
-  match_id      TEXT PRIMARY KEY, -- UUIDv4
-  tournament_id TEXT REFERENCES tournaments(tournament_id),
-  p1_id         TEXT NOT NULL,
-  p2_id         TEXT NOT NULL,
-  scheduled_ord INTEGER,
-  status        TEXT NOT NULL CHECK (status IN ('pending','running','completed','aborted')),
-  winner_id     TEXT,
-  turns_played  INTEGER,
-  started_at    TEXT,
-  ended_at      TEXT
-)
-```
-
-> Tables present for forward‑compatibility; Tournament endpoints and flows are **not** part of this spec.
-
----
 
 ## 4. Configuration (Env Vars)
 
