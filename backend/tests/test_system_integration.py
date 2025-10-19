@@ -9,6 +9,8 @@ Tests complete workflows including:
 """
 
 import asyncio
+import time
+
 import pytest
 from httpx import AsyncClient
 from fastapi import status
@@ -110,15 +112,17 @@ async def test_error_handler_validation_error(test_client):
 @pytest.mark.asyncio
 async def test_complete_match_workflow(test_client):
     """Test complete end-to-end match workflow."""
-    # 1. Register two players
+    # 1. Register two players with unique names to avoid conflicts across test runs
+    timestamp = int(time.time() * 1000)
+
     player1_response = await test_client.post(
-        "/players/register", json={"player_name": "IntegrationBot1", "submitted_from": "online"}
+        "/players/register", json={"player_name": f"IntegrationBot1_{timestamp}", "submitted_from": "online"}
     )
     assert player1_response.status_code == 201
     player1 = player1_response.json()
 
     player2_response = await test_client.post(
-        "/players/register", json={"player_name": "IntegrationBot2", "submitted_from": "online"}
+        "/players/register", json={"player_name": f"IntegrationBot2_{timestamp}", "submitted_from": "online"}
     )
     assert player2_response.status_code == 201
     player2 = player2_response.json()
@@ -289,9 +293,11 @@ async def test_health_and_stats_integration(test_client):
 @pytest.mark.asyncio
 async def test_component_integration_and_data_flow(test_client):
     """Test data flows correctly between all components."""
-    # 1. Register a player (tests database integration)
+    # 1. Register a player (tests database integration) with unique name
+    timestamp = int(time.time() * 1000)
+
     player_response = await test_client.post(
-        "/players/register", json={"player_name": "FlowTestBot", "submitted_from": "online"}
+        "/players/register", json={"player_name": f"FlowTestBot_{timestamp}", "submitted_from": "online"}
     )
     assert player_response.status_code == 201
 

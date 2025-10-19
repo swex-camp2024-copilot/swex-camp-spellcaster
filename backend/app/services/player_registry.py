@@ -54,12 +54,14 @@ class PlayerRegistry:
             if not registration.player_name or registration.player_name.strip() == "":
                 raise PlayerRegistrationError("Player name cannot be empty")
 
-            # Check for duplicate names (optional business rule)
+            # Enforce case-insensitive uniqueness for player names (per spec §1.6)
             existing_players = await self.db.list_all_players(include_builtin=True)
             for existing in existing_players:
                 if existing.player_name.lower() == registration.player_name.lower():
-                    logger.warning(f"Player name '{registration.player_name}' already exists")
-                    # Allow duplicate names for now, but log for monitoring
+                    logger.warning(f"Duplicate player name rejected: '{registration.player_name}'")
+                    raise PlayerRegistrationError(
+                        f"Player name '{registration.player_name}' is already taken (case-insensitive)"
+                    )
 
             # Create player in database
             player = await self.db.create_player(registration)

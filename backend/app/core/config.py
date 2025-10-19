@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     match_loop_delay_seconds: float = 1.0
     max_turns_per_match: int = 100
 
+    # Session management
+    session_cleanup_minutes: int = 30
+    max_concurrent_sessions: int = 50
+
     # Logging
     log_level: str = "INFO"
     log_dir: str = "backend/logs"

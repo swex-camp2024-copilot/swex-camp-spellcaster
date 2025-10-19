@@ -64,6 +64,17 @@ async def register_player(
 
     except PlayerRegistrationError as e:
         logger.warning(f"Player registration failed: {e}")
+        # Return 409 Conflict for duplicate names (per spec §5.1)
+        if "already taken" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "DUPLICATE_PLAYER_NAME",
+                    "message": str(e),
+                    "player_name": registration.player_name,
+                },
+            )
+        # Other registration errors return 400
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": "PLAYER_REGISTRATION_ERROR", "message": str(e), "player_name": registration.player_name},

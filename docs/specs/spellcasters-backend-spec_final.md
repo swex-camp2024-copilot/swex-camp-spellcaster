@@ -24,10 +24,14 @@ This document specifies the backend for the **Spellcasters** hackathon project (
 * **Rate limiting:** **None** for now (including `/action`).
 * **Bot execution time:** **100 ms** per `decide()` (soft budget); turn/action hard timeout **`TURN_TIMEOUT_SECONDS = 5`** seconds.
 * **Replay retention:** **In‑memory only** until session cleanup (no DB replay table).
-* **Built‑in bots (IDs per design):**
+* **Built‑in bots (IDs per implementation):**
 
-  * Player IDs: `builtin_sample_1`, `builtin_tactical`
-  * Bot classes: `sample_bot_1`, `tactical_bot`
+  * **Player IDs**: `builtin_sample_1`, `builtin_sample_2`, `builtin_sample_3`, `builtin_tactical`, `builtin_rincewind`, `builtin_ai`
+  * **Bot IDs**: `sample_bot_1`, `sample_bot_2`, `sample_bot_3`, `tactical_bot`, `rincewind_bot`, `ai_bot`
+  * **Difficulty levels**:
+    - Easy: `sample_bot_1`, `sample_bot_2`, `sample_bot_3` (basic movement and healing)
+    - Medium: `tactical_bot`, `rincewind_bot` (strategic positioning, state-based decisions)
+    - Hard: `ai_bot` (deep learning with DQN)
 * **Persistence:** **SQLite** via **SQLModel**. Database file is **`data/playground.db`** resolved to an **absolute path** from repo root.
 
 ---
@@ -46,6 +50,8 @@ This document specifies the backend for the **Spellcasters** hackathon project (
 * **MatchLogger** — record turn events for replay (in `/backend/app/services/match_logger.py`)
 * **TurnProcessor** — coordinate turn execution, action collection (in `/backend/app/services/turn_processor.py`)
 * **GameAdapter** — bridge between backend and game engine (in `/backend/app/services/game_adapter.py`)
+* **VisualizerService** — manage Pygame visualizer process lifecycle (in `/backend/app/services/visualizer_service.py`)
+* **VisualizerAdapter** — bridge backend events to Pygame visualizer (in `/backend/app/services/visualizer_adapter.py`)
 * **ErrorHandlers** — global exception handling with security-aware logging (in `/backend/app/core/error_handlers.py`)
 * **Storage** — SQLite via **SQLModel**; in-memory replay logs
 
@@ -148,8 +154,10 @@ Configuration is managed via `/backend/app/core/config.py` using Pydantic Settin
 | Name                                 | Default                                    | Description                               |
 | ------------------------------------ | ------------------------------------------ | ----------------------------------------- |
 | `PLAYGROUND_DATABASE_URL`            | `sqlite+aiosqlite:///./data/playground.db` | SQLite database connection URL            |
+| `PLAYGROUND_DATABASE_ECHO`           | `false`                                    | Enable SQLAlchemy query logging           |
 | `PLAYGROUND_HOST`                    | `0.0.0.0`                                  | Server bind host                          |
 | `PLAYGROUND_PORT`                    | `8000`                                     | Server bind port                          |
+| `PLAYGROUND_RELOAD`                  | `true`                                     | Enable hot reload for development         |
 | `PLAYGROUND_TURN_TIMEOUT_SECONDS`    | `5.0`                                      | Wait for player action before skip        |
 | `PLAYGROUND_MAX_TURNS_PER_MATCH`     | `100`                                      | Draw threshold                            |
 | `PLAYGROUND_MATCH_LOOP_DELAY_SECONDS`| `1.0`                                      | Delay between processed turns             |
@@ -250,6 +258,45 @@ Response:
 
 **GET** `/players/{player_id}` — returns player metadata and basic stats.
 
+**GET** `/players` — list all players.
+
+* Query params: `?include_builtin=true` (default: `true`)
+* Response `200 OK`:
+
+```json
+[
+  {
+    "player_id": "uuid-v4",
+    "player_name": "FireMage",
+    "submitted_from": "online",
+    "is_builtin": false,
+    "total_matches": 5,
+    "wins": 3,
+    "losses": 2,
+    "draws": 0,
+    "created_at": "2025-01-15T10:30:00Z"
+  }
+]
+```
+
+**GET** `/players/builtin/list` — list only built-in players.
+
+* Response `200 OK`: Same format as `/players` but filtered to `is_builtin: true`
+
+**GET** `/players/stats/summary` — get player statistics summary.
+
+* Response `200 OK`:
+
+```json
+{
+  "total_players": 42,
+  "builtin_players": 6,
+  "user_players": 36,
+  "total_matches_played": 150,
+  "active_players": 25
+}
+```
+
 **DELETE** `/players/{player_id}` — delete a player if not builtin and not part of running sessions; cascades `game_results`. Returns `204 No Content`.
 
 ### 5.3 Playground (Arena)
@@ -261,18 +308,27 @@ Response:
 ```json
 {
   "player_1_config": {
-    "bot_type": "builtin|http",
+    "bot_type": "builtin|player",
     "bot_id": "sample_bot_1",
-    "player_id": "optional-uuid"
+    "player_id": "optional-uuid",
+    "is_human": false
   },
   "player_2_config": {
     "bot_type": "builtin",
-    "bot_id": "sample_bot_2"
+    "bot_id": "sample_bot_2",
+    "player_id": "optional-uuid",
+    "is_human": false
+  },
+  "visualize": false,
+  "settings": {
+    "optional": "game-settings-override"
   }
 }
 ```
 
-* Validates configurations and creates session. Built-ins use `bot_id` directly, HTTP bots require `player_id`.
+* Validates configurations and creates session. Built-ins use `bot_id` directly, player bots require `player_id`.
+* `visualize: true` enables Pygame visualization window for this session (requires visualization support, see §12).
+* `is_human: true` marks player as human-controlled (actions submitted via `/action` endpoint).
 * Response `200 OK`:
 
 ```json
@@ -447,15 +503,91 @@ while not game_over and turn_index < MAX_TURNS:
 
 * Content‑Type: `text/event-stream`; `Cache-Control: no-cache`.
 * Each message uses `event: <type>` + `data: <json-string>` (stringified via `json.dumps`).
+* All events include a `timestamp` field in ISO format.
 * Events:
 
-  * `turn_update` —
+  * **`heartbeat`** — Keep-alive event sent immediately on connection and periodically
 
     ```json
-    { "turn": n, "state": {…}, "actions": [{"player_id": "…", "resolved": {…}}, …], "events": ["…"], "log_line": "…" }
+    {
+      "event": "heartbeat",
+      "timestamp": "2025-01-15T10:30:00Z"
+    }
     ```
-  * `game_over` — `{ "winner": "player_id|null", "reason": "hp_zero|max_turns" }`
-  * `replay_turn` — same as `turn_update`, emitted by replay endpoint.
+
+  * **`session_start`** — Session initialization event
+
+    ```json
+    {
+      "event": "session_start",
+      "session_id": "uuid-v4",
+      "player_1_name": "FireMage",
+      "player_2_name": "TacticalBot",
+      "initial_state": { "...": "..." },
+      "timestamp": "2025-01-15T10:30:00Z"
+    }
+    ```
+
+  * **`turn_update`** — Turn execution event
+
+    ```json
+    {
+      "event": "turn_update",
+      "turn": 5,
+      "game_state": { "...": "..." },
+      "actions": [
+        { "player_id": "p1", "resolved": { "move": [1, 0], "spell": null } },
+        { "player_id": "p2", "resolved": null }
+      ],
+      "events": ["p2 timeout"],
+      "log_line": "Turn 5: p2 timed out",
+      "timestamp": "2025-01-15T10:30:01Z"
+    }
+    ```
+
+  * **`game_over`** — Match completion event
+
+    ```json
+    {
+      "event": "game_over",
+      "winner": "player_id|null",
+      "winner_name": "FireMage|null",
+      "final_state": { "...": "..." },
+      "game_result": {
+        "result_type": "win|loss|draw",
+        "turns_played": 42,
+        "end_condition": "hp_zero|max_turns",
+        "...": "..."
+      },
+      "timestamp": "2025-01-15T10:35:00Z"
+    }
+    ```
+
+  * **`replay_turn`** — Replay event (fast streaming without delays)
+
+    ```json
+    {
+      "event": "replay_turn",
+      "turn": 5,
+      "game_state": { "...": "..." },
+      "actions": [ "..." ],
+      "events": [ "..." ],
+      "log_line": "Turn 5: ...",
+      "timestamp": "2025-01-15T10:30:01Z"
+    }
+    ```
+
+  * **`error`** — Error notification event
+
+    ```json
+    {
+      "event": "error",
+      "error_type": "SESSION_NOT_FOUND|INVALID_ACTION|...",
+      "message": "Human-readable error message",
+      "session_id": "optional-session-id",
+      "timestamp": "2025-01-15T10:30:00Z"
+    }
+    ```
 
 ---
 
@@ -539,6 +671,8 @@ sequenceDiagram
   - `player_registry.py` — Player registration and stats
   - `builtin_bots.py` — Built-in bot management
   - `game_adapter.py` — Game engine integration
+  - `visualizer_service.py` — Pygame visualizer process management
+  - `visualizer_adapter.py` — Backend-to-Pygame event bridge
   - `admin_service.py` — Admin operations
   - `database.py` — Database operations
   - `runtime.py` — Lazy service accessor pattern
@@ -552,12 +686,14 @@ sequenceDiagram
   - `admin.py` — Admin endpoints
 
 * **`/backend/app/models/`** — Pydantic/SQLModel data models:
-  - `database.py` — Database models
-  - `players.py` — Player models
-  - `sessions.py` — Session and game state models
-  - `actions.py` — Action models
-  - `events.py` — SSE event models
-  - `errors.py` — Error response models
+  - `database.py` — Database models (PlayerDB, SessionDB, GameResultDB)
+  - `players.py` — Player models (Player, PlayerRegistration, PlayerConfig)
+  - `sessions.py` — Session and game state models (GameState, PlayerSlot, SessionCreationRequest)
+  - `actions.py` — Action models (ActionData, PlayerAction)
+  - `events.py` — SSE event models (TurnEvent, GameOverEvent, HeartbeatEvent, etc.)
+  - `errors.py` — Error response models (ErrorResponse, ValidationErrorResponse, etc.)
+  - `bots.py` — Bot interface and models (BotInterface, HumanBot, PlayerBot)
+  - `results.py` — Game result models
 
 ### 11.2 Key Implementation Details
 
@@ -583,7 +719,89 @@ sequenceDiagram
 
 ---
 
-## 12. Testing Matrix
+## 12. Visualization System
+
+The backend includes integrated Pygame visualization support for real-time match rendering in a separate window. This feature is optional and can be enabled per-session.
+
+### 12.1 Architecture
+
+The visualization system uses a multiprocessing-based architecture to isolate Pygame from the async backend:
+
+* **VisualizerService** (`/backend/app/services/visualizer_service.py`) — Manages visualizer process lifecycle
+  - Creates and manages visualization processes per session
+  - Handles process cleanup on session end
+  - Enforces concurrent visualization limits
+
+* **VisualizerAdapter** (`/backend/app/services/visualizer_adapter.py`) — Bridges backend events to Pygame
+  - Runs in separate process with its own event loop
+  - Receives game state updates via multiprocessing.Queue
+  - Translates backend events to Pygame visualizer format
+  - Manages Pygame window lifecycle
+
+* **Integration points**:
+  - SessionManager creates visualizer process when `visualize=true`
+  - Game state updates are sent to visualizer queue after each turn
+  - Visualizer process terminates when match ends or session is cleaned up
+
+### 12.2 Configuration
+
+Visualization behavior is controlled via environment variables (see §4):
+
+| Variable                               | Default | Description                                |
+| -------------------------------------- | ------- | ------------------------------------------ |
+| `PLAYGROUND_ENABLE_VISUALIZATION`      | `true`  | Global enable/disable flag                 |
+| `PLAYGROUND_MAX_VISUALIZED_SESSIONS`   | `10`    | Maximum concurrent visualized sessions     |
+| `PLAYGROUND_VISUALIZER_QUEUE_SIZE`     | `100`   | Event queue size per visualizer            |
+| `PLAYGROUND_VISUALIZER_SHUTDOWN_TIMEOUT` | `5.0` | Graceful shutdown timeout (seconds)        |
+| `PLAYGROUND_VISUALIZER_ANIMATION_DURATION` | `0.5` | Move animation duration (seconds)        |
+| `PLAYGROUND_VISUALIZER_INITIAL_RENDER_DELAY` | `0.3` | Initial render delay (seconds)          |
+
+### 12.3 Usage
+
+Enable visualization when creating a session:
+
+```json
+POST /playground/start
+{
+  "player_1_config": { "bot_type": "builtin", "bot_id": "sample_bot_1" },
+  "player_2_config": { "bot_type": "builtin", "bot_id": "tactical_bot" },
+  "visualize": true
+}
+```
+
+When `visualize: true`:
+1. Backend spawns a separate visualizer process
+2. Pygame window opens showing the game board
+3. Match state updates are rendered in real-time
+4. Window closes automatically when match completes
+
+### 12.4 Limitations
+
+* **Headless environments**: Visualization requires a display (X11, Wayland, or macOS display server). In headless environments (CI, Docker without display), set `PLAYGROUND_ENABLE_VISUALIZATION=false`.
+* **Concurrent sessions**: Limited by `PLAYGROUND_MAX_VISUALIZED_SESSIONS` to prevent resource exhaustion.
+* **Process overhead**: Each visualized session spawns a separate Python process with Pygame.
+
+### 12.5 Implementation Details
+
+* **Process isolation**: Visualizer runs in `multiprocessing.Process` to avoid Pygame/asyncio conflicts
+* **Event queue**: Game state updates sent via `multiprocessing.Queue` with configurable size
+* **Graceful shutdown**: Visualizer process receives shutdown signal and cleans up Pygame resources
+* **Error handling**: Visualizer errors logged but don't crash main backend process
+* **Sprite support**: Players can specify custom sprite paths via `sprite_path` and `minion_sprite_path`
+
+### 12.6 Testing
+
+Visualization integration is tested in `/backend/tests/`:
+* `test_visualizer_adapter.py` — Adapter event translation
+* `test_visualizer_service.py` — Service lifecycle management
+* `test_visualizer_integration.py` — End-to-end visualization workflows
+* `test_session_manager_visualizer.py` — SessionManager integration
+
+Tests mock Pygame to avoid display requirements in CI environments.
+
+---
+
+## 13. Testing Matrix
 
 * **Unit**: player registration; duplicate name; engine `apply_turn`; timeout path; stats update; player deletion rules.
 * **Integration**: PvE and PvP match; SSE stream consumption; replay; concurrent sessions.
@@ -594,7 +812,7 @@ sequenceDiagram
 
 ---
 
-## 13. Glossary
+## 14. Glossary
 
 * **Playground**: on‑demand 1v1 match (player vs player or built‑in).
 * **SSE**: Server‑Sent Events; uni‑directional push over HTTP.
@@ -604,3 +822,7 @@ sequenceDiagram
 * **MatchLogger**: service that records turn events in memory for replay functionality.
 * **SSEManager**: manages SSE connections per session and broadcasts events to connected clients.
 * **Runtime**: module-level service accessor using `__getattr__` for lazy loading from StateManager.
+* **VisualizerService**: manages Pygame visualizer process lifecycle for real-time match rendering.
+* **VisualizerAdapter**: bridges backend game events to Pygame visualizer format in separate process.
+* **BotInterface**: abstract base class defining the contract for all bots (built-in and player-submitted).
+* **HumanBot**: bot implementation that allows human players to submit actions via HTTP endpoints.

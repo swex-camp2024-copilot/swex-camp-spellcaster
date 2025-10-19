@@ -716,6 +716,53 @@ class PlayerBotFactory:
 4. Must execute within timeout and resource constraints
 5. Bot code evaluation happens within the `decide()` method
 
+#### Human Player Support
+
+The backend supports human players who submit actions via HTTP endpoints rather than automated bot logic:
+
+```python
+class HumanBot(BotInterface):
+    """Human-controlled bot that plays the last submitted action"""
+
+    def __init__(self, player: Player):
+        super().__init__(player)
+        self._last_action: Optional[ActionData] = None
+
+    def set_action(self, action: ActionData) -> None:
+        """Set the action for the next turn (called by action endpoint)"""
+        self._last_action = action
+
+    def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Return the last submitted action, or no-op if none submitted"""
+        if self._last_action is None:
+            return {"move": [0, 0], "spell": None}
+        action = self._last_action
+        return {"move": action.move, "spell": action.spell}
+```
+
+**Human Player Workflow**:
+1. Player registers via `/players/register`
+2. Session created with `is_human: true` in player config
+3. Human player submits actions via `POST /playground/{session_id}/action`
+4. Actions are stored in `HumanBot` instance and retrieved during turn processing
+5. If no action submitted within timeout, default no-op action is used
+
+**Configuration**:
+```json
+{
+  "player_1_config": {
+    "player_id": "uuid-of-registered-player",
+    "bot_type": "player",
+    "is_human": true
+  },
+  "player_2_config": {
+    "player_id": "builtin_sample_1",
+    "bot_type": "builtin",
+    "bot_id": "sample_bot_1",
+    "is_human": false
+  }
+}
+```
 
 ### 3. Session Management System
 
@@ -801,7 +848,264 @@ class GameEngineAdapter:
 - **Action Validation**: Integrate backend action validation with game rules
 - **Logging Integration**: Connect game logger with match logging system
 
-### 6. Player Action Processing
+### 6. Visualization System
+
+The backend includes optional Pygame visualization support for real-time match rendering. The visualization system uses a multiprocessing architecture to isolate Pygame from the async backend.
+
+#### Architecture Overview
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                      Backend Process                            │
+│                                                                  │
+│  ┌──────────────┐      ┌─────────────────┐                     │
+│  │  Session     │      │   Visualizer    │                     │
+│  │  Manager     │─────▶│   Service       │                     │
+│  └──────────────┘      └─────────────────┘                     │
+│                                │                                 │
+│                                │ spawn process                   │
+│                                ▼                                 │
+│                        ┌──────────────┐                         │
+│                        │multiprocessing│                        │
+│                        │    .Queue     │                        │
+│                        └──────────────┘                         │
+└────────────────────────────│───────────────────────────────────┘
+                             │ game state events
+                             ▼
+┌────────────────────────────────────────────────────────────────┐
+│                   Visualizer Process                            │
+│                                                                  │
+│  ┌──────────────┐      ┌─────────────────┐                     │
+│  │  Visualizer  │      │     Pygame      │                     │
+│  │  Adapter     │─────▶│   Visualizer    │                     │
+│  └──────────────┘      └─────────────────┘                     │
+│        │                        │                                │
+│        │ receives events        │ renders game                  │
+│        ▼                        ▼                                │
+│  Event Queue           Pygame Window                            │
+└────────────────────────────────────────────────────────────────┘
+```
+
+#### VisualizerService Component
+
+```python
+class VisualizerService:
+    """Manages Pygame visualizer process lifecycle"""
+
+    def __init__(self, max_visualized_sessions: int = 10):
+        self.max_sessions = max_visualized_sessions
+        self.active_visualizers: Dict[str, VisualizerProcess] = {}
+        self._lock = asyncio.Lock()
+
+    async def create_visualizer(
+        self,
+        session_id: str,
+        player1_name: str,
+        player2_name: str,
+        player1_sprite: Optional[str] = None,
+        player2_sprite: Optional[str] = None,
+    ) -> Tuple[multiprocessing.Process, multiprocessing.Queue]:
+        """Create a new visualizer process for a session"""
+
+    async def send_game_state(
+        self, session_id: str, game_state: Dict[str, Any]
+    ) -> None:
+        """Send game state update to visualizer process"""
+
+    async def cleanup_visualizer(self, session_id: str) -> None:
+        """Terminate visualizer process and cleanup resources"""
+
+    def can_create_visualizer(self) -> bool:
+        """Check if we can create a new visualizer (under limit)"""
+        return len(self.active_visualizers) < self.max_sessions
+```
+
+#### VisualizerAdapter Component
+
+```python
+class VisualizerAdapter:
+    """Bridges backend events to Pygame visualizer format"""
+
+    def __init__(
+        self,
+        session_id: str,
+        event_queue: multiprocessing.Queue,
+        player1_name: str,
+        player2_name: str,
+        player1_sprite: Optional[str] = None,
+        player2_sprite: Optional[str] = None,
+    ):
+        self._session_id = session_id
+        self._queue = event_queue
+        self._player1_name = player1_name
+        self._player2_name = player2_name
+        self._player1_sprite = player1_sprite
+        self._player2_sprite = player2_sprite
+        self._visualizer = None  # Pygame visualizer instance
+        self._running = True
+
+    def initialize_visualizer(self) -> None:
+        """Initialize Pygame and create Visualizer instance"""
+        # Import pygame here to avoid import in main process
+        import pygame
+        from simulator.visualizer import Visualizer
+
+        pygame.init()
+        self._visualizer = Visualizer(
+            player1_name=self._player1_name,
+            player2_name=self._player2_name,
+            # ... sprite paths, etc.
+        )
+
+    def run(self) -> None:
+        """Main loop: receive events from queue and render to Pygame"""
+        self.initialize_visualizer()
+
+        while self._running:
+            try:
+                # Check for shutdown signal
+                try:
+                    event = self._queue.get(timeout=0.1)
+                    if event == "SHUTDOWN":
+                        break
+                    elif isinstance(event, dict):
+                        self._handle_game_state(event)
+                except queue.Empty:
+                    pass
+
+                # Handle Pygame events (window close, etc.)
+                self._handle_pygame_events()
+
+                # Render current state
+                self._visualizer.render()
+
+            except Exception as e:
+                logger.error(f"Visualizer error: {e}")
+                break
+
+        self.cleanup()
+
+    def _handle_game_state(self, state: Dict[str, Any]) -> None:
+        """Translate backend game state to Pygame visualizer format"""
+        # Convert backend state format to visualizer format
+        # Update visualizer with new state
+
+    def _handle_pygame_events(self) -> None:
+        """Handle Pygame window events"""
+        import pygame
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self._running = False
+
+    def cleanup(self) -> None:
+        """Cleanup Pygame resources"""
+        import pygame
+
+        pygame.quit()
+```
+
+#### Process Lifecycle
+
+**Startup**:
+1. SessionManager receives `visualize=true` in session creation request
+2. SessionManager calls `VisualizerService.create_visualizer()`
+3. VisualizerService spawns new `multiprocessing.Process` running `VisualizerAdapter.run()`
+4. Pygame window opens in visualizer process
+
+**During Match**:
+1. After each turn, SessionManager sends game state to visualizer queue
+2. VisualizerAdapter receives state from queue
+3. Adapter translates backend format to Pygame visualizer format
+4. Visualizer renders updated state to Pygame window
+
+**Shutdown**:
+1. Match ends or session is cleaned up
+2. SessionManager sends "SHUTDOWN" signal to visualizer queue
+3. VisualizerAdapter exits main loop and calls cleanup()
+4. Pygame window closes
+5. Visualizer process terminates
+
+#### Configuration
+
+Visualization behavior is controlled via environment variables:
+
+```python
+class Settings(BaseSettings):
+    # Visualization
+    enable_visualization: bool = True
+    max_visualized_sessions: int = 10
+    visualizer_queue_size: int = 100
+    visualizer_shutdown_timeout: float = 5.0
+    visualizer_animation_duration: float = 0.5
+    visualizer_initial_render_delay: float = 0.3
+```
+
+#### Integration with SessionManager
+
+```python
+class SessionManager:
+    async def create_session(
+        self,
+        player_1: PlayerConfig,
+        player_2: PlayerConfig,
+        visualize: bool = False
+    ) -> str:
+        """Create a new session and optionally spawn visualizer"""
+
+        session_id = str(uuid4())
+
+        # ... create session logic ...
+
+        # Spawn visualizer if requested
+        if visualize and self._visualizer_service.can_create_visualizer():
+            visualizer_process, visualizer_queue = await self._visualizer_service.create_visualizer(
+                session_id=session_id,
+                player1_name=bot1.name,
+                player2_name=bot2.name,
+                player1_sprite=bot1.player.sprite_path,
+                player2_sprite=bot2.player.sprite_path,
+            )
+            # Store visualizer references in session context
+            session_context.visualizer_process = visualizer_process
+            session_context.visualizer_queue = visualizer_queue
+            session_context.visualizer_enabled = True
+
+        return session_id
+
+    async def _send_to_visualizer(self, session_id: str, game_state: Dict) -> None:
+        """Send game state update to visualizer if enabled"""
+        session = self.get_session(session_id)
+        if session.visualizer_enabled and session.visualizer_queue:
+            try:
+                session.visualizer_queue.put_nowait(game_state)
+            except queue.Full:
+                logger.warning(f"Visualizer queue full for session {session_id}")
+```
+
+#### Limitations and Considerations
+
+**Display Requirements**:
+- Requires X11/Wayland (Linux), macOS window server, or Windows display
+- Headless environments: Set `PLAYGROUND_ENABLE_VISUALIZATION=false`
+- CI/CD: Visualizer tests use mocked Pygame to avoid display requirements
+
+**Resource Management**:
+- Each visualizer spawns a separate Python process
+- Limited to `max_visualized_sessions` concurrent visualizers (default: 10)
+- Process cleanup on session end prevents resource leaks
+
+**Process Isolation**:
+- Pygame runs in separate process to avoid conflicts with asyncio
+- Communication via `multiprocessing.Queue` (one-way: backend → visualizer)
+- Visualizer errors don't crash main backend process
+
+**Performance**:
+- Minimal impact on match performance (async queue operations)
+- Event queue size limits memory usage
+- Visualizer process can be terminated without affecting match
+
+### 7. Player Action Processing
 
 #### Turn Processing Pipeline
 
