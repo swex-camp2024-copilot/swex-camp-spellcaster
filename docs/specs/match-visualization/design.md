@@ -64,8 +64,9 @@ graph TB
 2. `GameOverEvent` is broadcast to SSE clients
 3. `GameOverEvent` is sent to visualizer via IPC
 4. Visualizer displays winner overlay with "EXIT" button
-5. User closes window or clicks "EXIT", visualizer process terminates
-6. Backend detects termination and cleans up IPC channel
+5. **Visualizer window remains open** showing final game state
+6. User can close window manually, or admin can terminate via `DELETE /playground/{session_id}` API
+7. Backend does NOT automatically terminate visualizer when session ends
 
 ### 2.3 Process Model
 
@@ -81,7 +82,8 @@ graph TB
 - Consumes events from IPC queue
 - Renders game state and animations
 - Handles user input (window close, button clicks)
-- Exits cleanly on game end or user action
+- **Remains open after game ends** to display final state
+- Exits only on user closing window or admin shutdown signal
 
 ---
 
@@ -234,7 +236,9 @@ class VisualizerAdapter:
         """Initialize pygame and create Visualizer instance immediately, opening the window."""
     
     def process_events(self) -> None:
-        """Main event loop: consume events from queue and render in real-time."""
+        """Main event loop: consume events from queue and render in real-time.
+
+        Window remains open after game completion until manually closed."""
     
     def handle_turn_event(self, event: Dict[str, Any]) -> None:
         """Process a turn_update event and render it immediately with animation."""
@@ -259,6 +263,7 @@ class VisualizerAdapter:
 6. **Graceful Degradation**: If pygame is unavailable, adapter logs error and exits cleanly
 7. **Pygame Event Guard**: Only handles pygame events if `pygame.display.get_init()` returns True to prevent "video system not initialized" errors
 8. **Animation Flow**: Uses `Visualizer.animate_transition()` for smooth transitions between turns and `Visualizer.display_end_game_message()` for game completion
+9. **Persistent Window**: Window remains open after game completion to display final state; only exits on user action (closing window) or admin shutdown signal
 
 ---
 
@@ -344,18 +349,12 @@ class SessionManager:
                         logger.warning(f"Failed to send game over event to visualizer for {ctx.session_id}: {exc}")
                 
                 # ... rest of method ...
-        
+
         finally:
-            # NEW: Clean up visualizer process
-            if ctx.visualizer_enabled and ctx.visualizer_process:
-                try:
-                    logger.info(f"Terminating visualizer for session {ctx.session_id}")
-                    self._visualizer_service.terminate_visualizer(
-                        ctx.visualizer_process,
-                        ctx.visualizer_queue
-                    )
-                except Exception as exc:
-                    logger.error(f"Error terminating visualizer for {ctx.session_id}: {exc}", exc_info=True)
+            # NOTE: Visualizer is NOT terminated automatically when session ends.
+            # It remains open to show the final game state.
+            # Admin can manually terminate via cleanup_session() API or user can close the window.
+            pass
 ```
 
 **Additional SessionManager Methods**:
@@ -522,10 +521,12 @@ except Exception as exc:
 - No active health checks (avoids overhead)
 
 **Cleanup Triggers**:
-1. Game over event sent
-2. Session manually deleted via API
-3. Backend shutdown (lifespan handler)
-4. Process detected as dead during event send
+1. Session manually deleted via API (`DELETE /playground/{session_id}`)
+2. User closes pygame window (pygame.QUIT event)
+3. Explicit shutdown event sent via IPC queue
+4. Backend shutdown (lifespan handler)
+
+**Note**: Visualizer is NOT automatically terminated when game ends. It remains open to display final game state.
 
 ---
 

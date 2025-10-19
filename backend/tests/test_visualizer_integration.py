@@ -197,10 +197,18 @@ class TestFullVisualizerIntegration:
                     shutdown_event = {"event": "shutdown"}
                     queue.put_nowait(shutdown_event)
 
-                    # Wait for process to finish
-                    process.join(timeout=2.0)
+                    # Wait for process to finish (increased timeout for pygame cleanup)
+                    process.join(timeout=5.0)
 
                     # Verify process terminated
+                    # Note: Small delay may be needed for pygame cleanup
+                    import time
+
+                    for _ in range(10):
+                        if not process.is_alive():
+                            break
+                        time.sleep(0.1)
+
                     assert not process.is_alive()
 
                 finally:

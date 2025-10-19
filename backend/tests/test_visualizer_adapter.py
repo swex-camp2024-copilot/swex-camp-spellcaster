@@ -196,6 +196,8 @@ class TestVisualizerAdapterProcessEvents:
                 "final_state": {"turn": 1},
                 "winner_name": "Player1",
             },
+            # Need to add shutdown to exit the loop since game_over no longer stops it
+            {"event": "shutdown"},
         ]
 
         mock_queue.get.side_effect = events
@@ -203,6 +205,7 @@ class TestVisualizerAdapterProcessEvents:
         adapter.process_events()
 
         assert len(adapter._states) == 2
+        # After shutdown event, _running should be False
         assert not adapter._running
         # Verify real-time rendering occurred
         adapter._visualizer.render_frame.assert_called_once()

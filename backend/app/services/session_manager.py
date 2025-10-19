@@ -273,13 +273,10 @@ class SessionManager:
             if self._sse:
                 await self._sse.close_session_streams(ctx.session_id)
         finally:
-            # Clean up visualizer process
-            if ctx.visualizer_enabled and ctx.visualizer_process:
-                try:
-                    logger.info(f"Terminating visualizer for session {ctx.session_id}")
-                    self._visualizer_service.terminate_visualizer(ctx.visualizer_process, ctx.visualizer_queue)
-                except Exception as exc:
-                    logger.error(f"Error terminating visualizer for {ctx.session_id}: {exc}", exc_info=True)
+            # NOTE: Visualizer is NOT terminated automatically when session ends.
+            # It remains open to show the final game state.
+            # Admin can manually terminate via cleanup_session() API or user can close the window.
+            pass
 
     async def get_session(self, session_id: str) -> SessionContext:
         async with self._lock:

@@ -274,8 +274,12 @@ async def test_game_over_event_sent_to_visualizer(mock_visualizer_service, mock_
 
 
 @pytest.mark.asyncio
-async def test_visualizer_terminated_after_match_completion(mock_visualizer_service, mock_visualizer_process):
-    """Test that visualizer is terminated after match completes."""
+async def test_visualizer_not_terminated_after_match_completion(mock_visualizer_service, mock_visualizer_process):
+    """Test that visualizer is NOT automatically terminated after match completes.
+
+    The visualizer should remain open to display the final game state.
+    It will only be terminated when manually cleaned up via cleanup_session().
+    """
     from backend.app.core.database import create_tables
     from backend.app.services import game_adapter as ga
 
@@ -296,11 +300,14 @@ async def test_visualizer_terminated_after_match_completion(mock_visualizer_serv
     # Wait for match to complete
     await asyncio.sleep(0.3)
 
-    # Verify terminate_visualizer was called
-    mock_visualizer_service.terminate_visualizer.assert_called_once_with(process, queue)
+    # Verify terminate_visualizer was NOT called automatically after match completion
+    mock_visualizer_service.terminate_visualizer.assert_not_called()
 
-    # Cleanup
+    # Cleanup - this should now trigger termination
     await manager.cleanup_session(session_id)
+
+    # Verify terminate_visualizer was called during cleanup
+    mock_visualizer_service.terminate_visualizer.assert_called_once_with(process, queue)
 
 
 @pytest.mark.asyncio

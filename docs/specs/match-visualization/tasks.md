@@ -224,11 +224,54 @@ This document provides a step-by-step implementation plan for the match visualiz
   - **Requirements**: All requirements (comprehensive validation), 2.5.2 (crash resilience), 2.2.5 (concurrent sessions), 3.1.3 (independent performance)
   - **Files**: `backend/tests/test_visualized_match_e2e.py`, `backend/tests/test_visualizer_resilience.py`, `backend/tests/test_concurrent_visualizers.py`, all modified files
 
+### Task 7: Update Visualizer Lifecycle for Manual Termination
+
+- [x] **7. Modify visualizer to remain open after game completion for manual termination**
+  - **Behavior Changes**:
+    - Remove automatic visualizer termination in `SessionManager._run_match_loop()` finally block
+    - Visualizer window remains open after game completion to display final game state
+    - Window only closes when:
+      - Admin calls `DELETE /playground/{session_id}` API (triggers `cleanup_session()`)
+      - User closes pygame window (pygame.QUIT event)
+      - Explicit shutdown signal sent via IPC queue
+  - **Code Changes**:
+    - Modify `backend/app/services/session_manager.py`:
+      - Replace visualizer termination in finally block with comment documenting new behavior
+      - Keep `cleanup_session()` unchanged - it will handle manual termination
+    - Modify `backend/app/services/visualizer_adapter.py`:
+      - Remove `self._running = False` from game_over event handler
+      - Update `process_events()` docstring to reflect persistent window behavior
+      - Window continues handling pygame events after game over
+  - **Documentation Updates**:
+    - Update `docs/specs/match-visualization/design.md`:
+      - Section 2.2: Update "Game Over with Visualization" flow
+      - Section 2.3: Update child process description
+      - Section 3.4: Add key design decision #9 about persistent window
+      - Section 3.5: Update SessionManager integration code examples
+      - Section 5.3: Update cleanup triggers list
+  - **Test Updates**:
+    - Rename and update test in `backend/tests/test_session_manager_visualizer.py`:
+      - Change `test_visualizer_terminated_after_match_completion` to `test_visualizer_not_terminated_after_match_completion`
+      - Verify visualizer is NOT called during match completion
+      - Verify visualizer IS terminated during cleanup_session()
+    - Update `backend/tests/test_visualizer_adapter.py`:
+      - Add shutdown event to `test_process_events_handles_turn_update` to exit loop
+      - Verify game_over event no longer exits the loop
+    - Update `backend/tests/test_visualizer_integration.py`:
+      - Increase timeout and add retry logic for process termination check
+  - **Validation**:
+    - Run `uv run pytest backend/tests/ -v`
+    - Verify all 147 tests pass (2 skipped)
+    - Verify no breaking changes to existing functionality
+    - Confirm visualizer stays open in manual testing
+  - **Rationale**: Allows users to review final game state and provides more control over visualizer lifecycle. Admin retains ability to terminate via API when needed.
+  - **Files**: `backend/app/services/session_manager.py`, `backend/app/services/visualizer_adapter.py`, `docs/specs/match-visualization/design.md`, `backend/tests/test_session_manager_visualizer.py`, `backend/tests/test_visualizer_adapter.py`, `backend/tests/test_visualizer_integration.py`
+
 ---
 
 ## Task Execution Notes
 
-- **Sequential Execution**: Complete tasks in order (1 → 2 → 3 → 4 → 5 → 6), as each builds on previous work
+- **Sequential Execution**: Complete tasks in order (1 → 2 → 3 → 4 → 5 → 6 → 7), as each builds on previous work
 - **Test-Driven Development**: Each task includes testing steps that must pass before moving to next task
 - **Validation Gate**: Each task ends with running tests and linting - task is not complete until all tests pass
 - **Mocking Strategy**: Use mocking extensively to avoid requiring pygame/display during automated tests
@@ -261,6 +304,11 @@ This document provides a step-by-step implementation plan for the match visualiz
 
 8. **Animation Timing**: The visualizer waits 0.5 seconds (ANIMATION_DURATION) between turns to allow animations to complete, matching the original Visualizer behavior.
 
+9. **Persistent Visualizer Window** (Added in Task 7): The visualizer window remains open after game completion to display the final game state. This allows users to review the match outcome and provides more control over the visualizer lifecycle. The window only closes when:
+   - Admin manually terminates via `DELETE /playground/{session_id}` API
+   - User closes the pygame window directly
+   - Explicit shutdown signal is sent via IPC queue
+
 ### Bug Fixes Applied
 
 1. **Fixed pygame "video system not initialized" error**: Added `pygame.display.get_init()` check before calling `pygame.event.get()` in the event processing loop.
@@ -273,14 +321,14 @@ This document provides a step-by-step implementation plan for the match visualiz
 
 ## Requirements Coverage
 
-All requirements from `requirements.md` are covered by the 6 implementation tasks:
+All requirements from `requirements.md` are covered by the 7 implementation tasks:
 
 - **Section 2.1** (Opt-in Control): Tasks 1, 4, 5
-- **Section 2.2** (Process Management): Tasks 2, 3, 4
+- **Section 2.2** (Process Management): Tasks 2, 3, 4, 7
 - **Section 2.3** (Event Communication): Tasks 2, 3, 4
 - **Section 2.4** (Rendering Behavior): Task 3
 - **Section 2.5** (Error Handling): Tasks 2, 3, 4, 6
-- **Section 2.6** (Process Cleanup): Tasks 2, 4, 5
+- **Section 2.6** (Process Cleanup): Tasks 2, 4, 5, 7
 - **Section 3.1** (Performance): Tasks 2, 6
 - **Section 3.2** (Compatibility): Tasks 4, 5
 - **Section 3.3** (Environment): Tasks 1, 2

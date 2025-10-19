@@ -102,7 +102,8 @@ class VisualizerAdapter:
         """Consume events from queue and render game states.
 
         This method runs in the child process and consumes events from the IPC queue.
-        It accumulates game states and triggers rendering when the game ends.
+        It accumulates game states and renders them in real-time. The window remains
+        open after game completion until manually closed by user or admin shutdown.
         """
         self._logger.info(f"Starting event processing for session {self._session_id}")
 
@@ -119,8 +120,8 @@ class VisualizerAdapter:
                         self.handle_turn_event(event_data)
                     elif event_type == "game_over":
                         self.handle_game_over_event(event_data)
-                        # Game is over, exit the loop
-                        self._running = False
+                        # Game is over, but keep window open to show final state
+                        # Window will close only on user action (closing window) or admin shutdown
                     elif event_type == "shutdown":
                         self._logger.info(f"Received shutdown signal for session {self._session_id}")
                         self._running = False
