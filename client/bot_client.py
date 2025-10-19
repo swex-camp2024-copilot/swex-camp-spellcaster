@@ -110,9 +110,21 @@ class BotClient:
             "visualize": visualize,
         }
 
-        resp = await self._client.post(url, json=payload)
-        resp.raise_for_status()
-        return resp.json()["session_id"]
+        logger.debug(f"POST {url} with payload: {payload}")
+        try:
+            resp = await self._client.post(url, json=payload)
+            resp.raise_for_status()
+            session_id = resp.json()["session_id"]
+            logger.debug(f"POST {url} -> {resp.status_code} (session_id: {session_id})")
+            return session_id
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"HTTP {e.request.method} {e.request.url} failed with status {e.response.status_code}: {e.response.text}"
+            )
+            raise
+        except httpx.RequestError as e:
+            logger.error(f"HTTP {e.request.method} {e.request.url} failed: {e}")
+            raise
 
     async def stream_session_events(
         self, session_id: str, *, max_events: Optional[int] = None
@@ -130,8 +142,23 @@ class BotClient:
         """Submit an action for the current turn."""
         url = f"{self.base_url}/playground/{session_id}/action"
         payload = {"player_id": player_id, "turn": turn, "action_data": action}
-        resp = await self._client.post(url, json=payload)
-        resp.raise_for_status()
+        logger.debug(f"POST {url} with turn={turn}, action={action}")
+        try:
+            resp = await self._client.post(url, json=payload)
+            resp.raise_for_status()
+            logger.debug(f"POST {url} -> {resp.status_code}")
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"HTTP {e.request.method} {e.request.url} failed with status {e.response.status_code}: {e.response.text}",
+                extra={"turn": turn, "action": action},
+            )
+            raise
+        except httpx.RequestError as e:
+            logger.error(
+                f"HTTP {e.request.method} {e.request.url} failed: {e}",
+                extra={"turn": turn, "action": action},
+            )
+            raise
 
     async def play_match(
         self, session_id: str, player_id: str, *, max_events: Optional[int] = None
@@ -154,25 +181,30 @@ class BotClient:
             SSE events as dictionaries
         """
         async for event in self.stream_session_events(session_id, max_events=max_events):
+            event_type = event.get("event", "unknown")
+            logger.debug(f"Received event: {event_type}")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Full event payload: {event}")
+
             # Check if game is over - stop processing but yield the event
-            if event.get("event") == "game_over":
+            if event_type == "game_over":
                 yield event
                 break
 
             yield event
 
             # Check if this is a turn_update event
-            if event.get("event") == "turn_update":
+            if event_type == "turn_update":
                 game_state = event.get("game_state", {})
+                turn = event.get("turn", 0)
 
                 try:
-                    turn = event.get("turn", 0)
                     next_turn = turn + 1
 
                     # Call bot's decide() method directly (synchronous call in async context)
                     action = self.bot.decide(game_state)
 
-                    logger.debug(f"Bot decided action for turn {next_turn}: {action}")
+                    logger.debug(f"Bot '{self.bot.name}' decided action for turn {next_turn}: {action}")
 
                     # Submit action for next turn
                     await self.submit_action(session_id, player_id, next_turn, action)
@@ -181,7 +213,7 @@ class BotClient:
                     logger.error(
                         f"Failed to process turn {turn}: {e}",
                         exc_info=True,
-                        extra={"game_state": game_state},
+                        extra={"game_state": game_state, "bot_name": self.bot.name},
                     )
                     # Continue streaming - backend will use default action
 

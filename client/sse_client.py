@@ -102,9 +102,11 @@ class SSEClient:
             except (httpx.TransportError, httpx.HTTPError) as exc:
                 retries += 1
                 if retries > self.config.max_retries:
-                    logger.error(f"SSE reconnect max retries exceeded: {exc}")
+                    logger.error(f"SSE reconnect max retries exceeded ({retries}/{self.config.max_retries}): {exc}")
                     break
-                logger.warning(f"SSE connection error, retry {retries}/{self.config.max_retries}: {exc}")
+                logger.warning(
+                    f"SSE connection error (retry {retries}/{self.config.max_retries}, backoff {backoff:.2f}s): {exc}"
+                )
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2.0, self.config.reconnect_max_backoff)
 
