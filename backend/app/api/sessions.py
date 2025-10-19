@@ -1,7 +1,6 @@
 """Session API endpoints for the Playground backend."""
 
 import logging
-from typing import Dict
 
 from fastapi import APIRouter, HTTPException
 
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/playground/start")
-async def start_playground_match(payload: SessionCreationRequest) -> Dict[str, str]:
+async def start_playground_match(payload: SessionCreationRequest) -> dict[str, str]:
     """Start a new playground session and return its session_id."""
     try:
         # Validate builtin bot requirements
@@ -29,11 +28,11 @@ async def start_playground_match(payload: SessionCreationRequest) -> Dict[str, s
         validate_cfg(p1_cfg)
         validate_cfg(p2_cfg)
 
-        session_id = await runtime.session_manager.create_session(p1_cfg, p2_cfg)
+        session_id = await runtime.session_manager.create_session(p1_cfg, p2_cfg, visualize=payload.visualize)
         return {"session_id": session_id}
 
     except HTTPException:
         raise
     except Exception as exc:
         logger.error(f"Failed to start session: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to start session")
+        raise HTTPException(status_code=500, detail="Failed to start session") from exc

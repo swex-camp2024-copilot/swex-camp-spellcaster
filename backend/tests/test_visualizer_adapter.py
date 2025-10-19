@@ -90,7 +90,10 @@ class TestVisualizerAdapterEventHandling:
     """Tests for event handling methods."""
 
     def test_handle_turn_event_accumulates_state(self, adapter):
-        """Test that turn events accumulate game states."""
+        """Test that turn events accumulate game states and render in real-time."""
+        # Mock the visualizer
+        adapter._visualizer = MagicMock()
+
         event = {
             "event": "turn_update",
             "turn": 1,
@@ -106,6 +109,8 @@ class TestVisualizerAdapterEventHandling:
 
         assert len(adapter._states) == 1
         assert adapter._states[0] == event["game_state"]
+        # Verify visualizer was called to render
+        adapter._visualizer.render_frame.assert_called_once()
 
     def test_handle_turn_event_missing_game_state(self, adapter):
         """Test handling of turn event without game_state."""
@@ -116,7 +121,10 @@ class TestVisualizerAdapterEventHandling:
         assert len(adapter._states) == 0
 
     def test_handle_turn_event_multiple_turns(self, adapter):
-        """Test accumulating multiple turn events."""
+        """Test accumulating multiple turn events with real-time rendering."""
+        # Mock the visualizer
+        adapter._visualizer = MagicMock()
+
         for i in range(5):
             event = {
                 "event": "turn_update",
@@ -128,61 +136,77 @@ class TestVisualizerAdapterEventHandling:
         assert len(adapter._states) == 5
         assert adapter._states[0]["turn"] == 0
         assert adapter._states[4]["turn"] == 4
+        # First turn renders frame, subsequent turns animate transitions
+        assert adapter._visualizer.render_frame.call_count == 1
+        assert adapter._visualizer.animate_transition.call_count == 4
 
-    @patch.object(VisualizerAdapter, "_render_game")
-    def test_handle_game_over_event(self, mock_render, adapter):
-        """Test handling of game over event."""
+    def test_handle_game_over_event(self, adapter):
+        """Test handling of game over event with end game message."""
+        # Mock the visualizer
+        adapter._visualizer = MagicMock()
+
         # Add some existing states
         adapter._states = [{"turn": 0}, {"turn": 1}]
 
         event = {
             "event": "game_over",
             "final_state": {"turn": 2, "game_over": True},
-            "winner": "Player1",
+            "winner_name": "Player1",
         }
 
         adapter.handle_game_over_event(event)
 
         assert len(adapter._states) == 3
         assert adapter._states[-1] == event["final_state"]
-        mock_render.assert_called_once()
+        # Verify end game message is displayed
+        adapter._visualizer.display_end_game_message.assert_called_once_with("Player1", has_more_matches=False)
 
-    @patch.object(VisualizerAdapter, "_render_game")
-    def test_handle_game_over_event_without_final_state(self, mock_render, adapter):
+    def test_handle_game_over_event_without_final_state(self, adapter):
         """Test handling of game over event without final_state."""
+        # Mock the visualizer
+        adapter._visualizer = MagicMock()
+
         adapter._states = [{"turn": 0}]
 
-        event = {"event": "game_over", "winner": "Player1"}
+        event = {"event": "game_over", "winner_name": "Player1"}
 
         adapter.handle_game_over_event(event)
 
         assert len(adapter._states) == 1
-        mock_render.assert_called_once()
+        # Verify end game message is still displayed
+        adapter._visualizer.display_end_game_message.assert_called_once_with("Player1", has_more_matches=False)
 
 
 class TestVisualizerAdapterProcessEvents:
     """Tests for event processing loop."""
 
     def test_process_events_handles_turn_update(self, adapter, mock_queue):
-        """Test processing of turn_update events."""
+        """Test processing of turn_update events with real-time rendering."""
+        # Mock the visualizer
+        adapter._visualizer = MagicMock()
+
         events = [
             {
                 "event": "turn_update",
+                "turn": 0,
                 "game_state": {"turn": 0},
             },
             {
                 "event": "game_over",
                 "final_state": {"turn": 1},
+                "winner_name": "Player1",
             },
         ]
 
         mock_queue.get.side_effect = events
 
-        with patch.object(adapter, "_render_game"):
-            adapter.process_events()
+        adapter.process_events()
 
         assert len(adapter._states) == 2
         assert not adapter._running
+        # Verify real-time rendering occurred
+        adapter._visualizer.render_frame.assert_called_once()
+        adapter._visualizer.display_end_game_message.assert_called_once()
 
     def test_process_events_handles_shutdown(self, adapter, mock_queue):
         """Test processing of shutdown event."""
@@ -215,38 +239,6 @@ class TestVisualizerAdapterProcessEvents:
         adapter.process_events()
 
         assert not adapter._running
-
-
-class TestVisualizerAdapterRendering:
-    """Tests for game rendering."""
-
-    def test_render_game_with_states(self, adapter):
-        """Test rendering game with accumulated states."""
-        adapter._states = [{"turn": 0}, {"turn": 1}, {"turn": 2}]
-
-        mock_visualizer_instance = MagicMock()
-        mock_visualizer_class = MagicMock(return_value=mock_visualizer_instance)
-
-        with patch("simulator.visualizer.Visualizer", mock_visualizer_class):
-            adapter._render_game()
-
-        mock_visualizer_class.assert_called_once()
-        mock_visualizer_instance.run.assert_called_once_with(adapter._states, has_more_matches=False)
-
-    def test_render_game_without_states(self, adapter):
-        """Test rendering game with no accumulated states."""
-        adapter._states = []
-
-        adapter._render_game()
-        # Should not raise any exceptions
-
-    def test_render_game_handles_errors(self, adapter):
-        """Test graceful error handling during rendering."""
-        adapter._states = [{"turn": 0}]
-
-        with patch("simulator.visualizer.Visualizer", side_effect=Exception("Render error")):
-            adapter._render_game()
-            # Should not raise exception, only log it
 
 
 class TestVisualizerAdapterPygameEvents:

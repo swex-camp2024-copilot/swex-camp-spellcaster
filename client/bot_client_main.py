@@ -29,7 +29,7 @@ async def run_bot(base_url: str, player_name: str, builtin_bot_id: str, max_even
     try:
         player = await client.register_player(PlayerRegistrationRequest(player_name=player_name))
         print(json.dumps({"registered_player": player.__dict__}))
-        session_id = await client.start_match_vs_builtin(player.player_id, builtin_bot_id)
+        session_id = await client.start_match_vs_builtin(player.player_id, builtin_bot_id, max_events=max_events)
         print(json.dumps({"session_id": session_id}))
         async for event in client.stream_session_events(session_id, max_events=max_events):
             try:

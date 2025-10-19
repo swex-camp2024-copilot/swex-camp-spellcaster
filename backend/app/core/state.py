@@ -7,13 +7,14 @@ and health monitoring for all backend services.
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from ..services.admin_service import AdminService
 from ..services.database import DatabaseService
 from ..services.match_logger import MatchLogger
 from ..services.session_manager import SessionManager
 from ..services.sse_manager import SSEManager
+from ..services.visualizer_service import VisualizerService
 
 logger = logging.getLogger(__name__)
 
@@ -40,20 +41,22 @@ class StateManager:
         self._status = ServiceStatus.UNINITIALIZED
         self._startup_time: Optional[datetime] = None
         self._shutdown_time: Optional[datetime] = None
-        self._initialization_errors: Dict[str, str] = {}
+        self._initialization_errors: dict[str, str] = {}
 
         # Service instances
         self._db_service: Optional[DatabaseService] = None
         self._sse_manager: Optional[SSEManager] = None
         self._match_logger: Optional[MatchLogger] = None
+        self._visualizer_service: Optional[VisualizerService] = None
         self._session_manager: Optional[SessionManager] = None
         self._admin_service: Optional[AdminService] = None
 
         # Service status tracking
-        self._service_status: Dict[str, ServiceStatus] = {
+        self._service_status: dict[str, ServiceStatus] = {
             "database": ServiceStatus.UNINITIALIZED,
             "sse_manager": ServiceStatus.UNINITIALIZED,
             "match_logger": ServiceStatus.UNINITIALIZED,
+            "visualizer_service": ServiceStatus.UNINITIALIZED,
             "session_manager": ServiceStatus.UNINITIALIZED,
             "admin_service": ServiceStatus.UNINITIALIZED,
         }
@@ -105,6 +108,13 @@ class StateManager:
             raise RuntimeError("Admin service not initialized")
         return self._admin_service
 
+    @property
+    def visualizer_service(self) -> VisualizerService:
+        """Get visualizer service instance."""
+        if not self._visualizer_service:
+            raise RuntimeError("Visualizer service not initialized")
+        return self._visualizer_service
+
     async def initialize(self) -> None:
         """Initialize all services with proper dependency management.
 
@@ -129,7 +139,10 @@ class StateManager:
             # Initialize match logger (no dependencies)
             await self._initialize_match_logger()
 
-            # Initialize session manager (depends on SSE and match logger)
+            # Initialize visualizer service (no dependencies)
+            await self._initialize_visualizer_service()
+
+            # Initialize session manager (depends on SSE, match logger, and visualizer)
             await self._initialize_session_manager()
 
             # Initialize admin service (depends on database and session manager)
@@ -199,6 +212,24 @@ class StateManager:
             logger.error(f"Failed to initialize {service_name}: {e}")
             raise
 
+    async def _initialize_visualizer_service(self) -> None:
+        """Initialize visualizer service."""
+        service_name = "visualizer_service"
+        try:
+            logger.info(f"Initializing {service_name}...")
+            self._service_status[service_name] = ServiceStatus.INITIALIZING
+
+            self._visualizer_service = VisualizerService()
+
+            self._service_status[service_name] = ServiceStatus.READY
+            logger.info(f"{service_name} initialized")
+
+        except Exception as e:
+            self._service_status[service_name] = ServiceStatus.ERROR
+            self._initialization_errors[service_name] = str(e)
+            logger.error(f"Failed to initialize {service_name}: {e}")
+            raise
+
     async def _initialize_session_manager(self) -> None:
         """Initialize session manager."""
         service_name = "session_manager"
@@ -206,10 +237,14 @@ class StateManager:
             logger.info(f"Initializing {service_name}...")
             self._service_status[service_name] = ServiceStatus.INITIALIZING
 
-            if not self._sse_manager or not self._match_logger:
-                raise RuntimeError("SSE manager and match logger must be initialized first")
+            if not self._sse_manager or not self._match_logger or not self._visualizer_service:
+                raise RuntimeError("SSE manager, match logger, and visualizer service must be initialized first")
 
-            self._session_manager = SessionManager(sse_manager=self._sse_manager, match_logger=self._match_logger)
+            self._session_manager = SessionManager(
+                sse_manager=self._sse_manager,
+                match_logger=self._match_logger,
+                visualizer_service=self._visualizer_service,
+            )
 
             self._service_status[service_name] = ServiceStatus.READY
             logger.info(f"{service_name} initialized")
@@ -277,6 +312,12 @@ class StateManager:
                 logger.info("Shutting down match logger...")
                 self._service_status["match_logger"] = ServiceStatus.SHUTDOWN
 
+            # Shutdown visualizer service
+            if self._visualizer_service:
+                logger.info("Shutting down visualizer service...")
+                # Note: Individual visualizers are terminated when sessions are terminated above
+                self._service_status["visualizer_service"] = ServiceStatus.SHUTDOWN
+
             # Shutdown SSE manager
             if self._sse_manager:
                 logger.info("Shutting down SSE manager...")
@@ -296,7 +337,7 @@ class StateManager:
             logger.error(f"Error during shutdown: {e}", exc_info=True)
             raise
 
-    def get_health(self) -> Dict[str, Any]:
+    def get_health(self) -> dict[str, Any]:
         """Get health status of all services.
 
         Returns:
@@ -315,7 +356,7 @@ class StateManager:
             "initialization_errors": self._initialization_errors if self._initialization_errors else None,
         }
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get system statistics.
 
         Returns:

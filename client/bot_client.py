@@ -65,7 +65,7 @@ class BotClient:
         data = resp.json()
         return PlayerInfo(player_id=data["player_id"], player_name=data["player_name"])
 
-    async def start_match_vs_builtin(self, player_id: str, builtin_bot_id: str) -> str:
+    async def start_match_vs_builtin(self, player_id: str, builtin_bot_id: str, max_events: int = 100) -> str:
         url = f"{self.base_url}/playground/start"
         payload = {
             "player_1_config": {"player_id": player_id, "bot_type": "player"},
@@ -74,6 +74,8 @@ class BotClient:
                 "bot_type": "builtin",
                 "bot_id": builtin_bot_id,
             },
+            "max_events": max_events,
+            "visualize": True,
         }
         resp = await self._client.post(url, json=payload)
         resp.raise_for_status()

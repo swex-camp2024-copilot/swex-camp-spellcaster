@@ -44,7 +44,7 @@ class VisualizerAdapter:
         self._running = True
 
     def initialize_visualizer(self) -> None:
-        """Initialize pygame and create Visualizer instance.
+        """Initialize pygame and create Visualizer instance immediately.
 
         Raises:
             ImportError: If pygame is not available
@@ -55,11 +55,41 @@ class VisualizerAdapter:
             # Import pygame here to avoid importing in parent process
             import pygame  # noqa: F401
 
+            pygame.init()
             self._logger.info(f"Pygame initialized for session {self._session_id}")
 
             # Import the existing Visualizer class
-            # Note: We'll need to adapt this to work without BotInterface instances
-            # For now, we'll defer the actual Visualizer instantiation until we have game states
+            from simulator.visualizer import Visualizer
+
+            # Create mock bot objects for the visualizer
+            # The visualizer expects BotInterface objects, but we only need name and sprite paths
+            class MockBot:
+                def __init__(self, name: str, sprite_path: Optional[str], minion_sprite_path: Optional[str]):
+                    self.name = name
+                    self.sprite_path = sprite_path or "assets/wizards/sample_bot1.png"
+                    self.minion_sprite_path = minion_sprite_path or "assets/minions/minion_1.png"
+
+            # Create mock logger for visualizer
+            class MockLogger:
+                def __init__(self):
+                    self.damage_events = []
+                    self.spells = []
+
+            mock_logger = MockLogger()
+            bot1 = MockBot(
+                self._player1_name,
+                self._player1_sprite,
+                self._player1_sprite.replace("wizards", "minions") if self._player1_sprite else None,
+            )
+            bot2 = MockBot(
+                self._player2_name,
+                self._player2_sprite,
+                self._player2_sprite.replace("wizards", "minions") if self._player2_sprite else None,
+            )
+
+            # Create visualizer instance - this creates the pygame window
+            self._visualizer = Visualizer(mock_logger, bot1, bot2)
+            self._logger.info(f"Visualizer window created for session {self._session_id}")
 
         except ImportError as exc:
             self._logger.error(f"Pygame not available for session {self._session_id}: {exc}")
@@ -108,7 +138,7 @@ class VisualizerAdapter:
             self._logger.info(f"Event processing ended for session {self._session_id}")
 
     def handle_turn_event(self, event: dict[str, Any]) -> None:
-        """Process a turn_update event.
+        """Process a turn_update event and render it in real-time.
 
         Args:
             event: Turn event data containing game state
@@ -116,98 +146,85 @@ class VisualizerAdapter:
         """
         try:
             game_state = event.get("game_state")
+            turn = event.get("turn", 0)
             if not game_state:
                 self._logger.warning("Turn event missing game_state")
                 return
 
-            # Accumulate game states for later rendering
+            if not self._visualizer:
+                self._logger.warning("Visualizer not initialized, cannot render turn")
+                return
+
+            # Store previous state for animation
+            prev_state = self._states[-1] if self._states else None
+
+            # Accumulate game states
             self._states.append(game_state)
-            self._logger.debug(f"Accumulated state {len(self._states)} for session {self._session_id}")
+
+            # Render in real-time
+            if prev_state:
+                # Animate transition from previous state to current state
+                self._visualizer.animate_transition(prev_state, game_state, len(self._states) - 2)
+                self._visualizer.wait_for(0.5)  # ANIMATION_DURATION
+            else:
+                # First state - just render it
+                self._visualizer.info_bar_state = game_state
+                self._visualizer.render_frame(game_state, turn)
+                self._visualizer.wait_for(0.3)
+
+            # Update info bar
+            self._visualizer.info_bar_state = game_state
+            self._visualizer.draw_wizard_info_bar()
+
+            self._logger.debug(f"Rendered turn {turn} for session {self._session_id}")
 
         except Exception as exc:
             self._logger.error(f"Error handling turn event: {exc}", exc_info=True)
 
     def handle_game_over_event(self, event: dict[str, Any]) -> None:
-        """Process a game_over event and trigger rendering.
+        """Process a game_over event and display end game message.
 
         Args:
-            event: Game over event data containing final state
+            event: Game over event data containing final state and winner
 
         """
         try:
             final_state = event.get("final_state")
+            winner_name = event.get("winner_name")
+
+            if not self._visualizer:
+                self._logger.warning("Visualizer not initialized, cannot show game over")
+                return
+
+            # Render final state if provided and not already rendered
             if final_state:
-                # Add final state to accumulated states
-                self._states.append(final_state)
+                prev_state = self._states[-1] if self._states else None
+                if prev_state and prev_state != final_state:
+                    self._visualizer.animate_transition(prev_state, final_state, len(self._states) - 1)
+                    self._visualizer.wait_for(0.5)
+                    self._states.append(final_state)
 
-            self._logger.info(f"Game over for session {self._session_id}, rendering {len(self._states)} states")
+            self._logger.info(f"Game over for session {self._session_id}, winner: {winner_name}")
 
-            # Now that we have all states, create and run the visualizer
-            self._render_game()
+            # Display end game message
+            # has_more_matches=False since we're only visualizing one match
+            self._visualizer.display_end_game_message(winner_name, has_more_matches=False)
 
         except Exception as exc:
             self._logger.error(f"Error handling game over event: {exc}", exc_info=True)
-
-    def _render_game(self) -> None:
-        """Render the complete game using the accumulated states.
-
-        This method instantiates the Visualizer and renders all accumulated states.
-        """
-        if not self._states:
-            self._logger.warning("No states to render")
-            return
-
-        try:
-            # Import here to avoid circular imports and keep pygame in child process
-            from simulator.visualizer import Visualizer
-
-            # Create mock bot objects for the visualizer
-            # The visualizer expects BotInterface objects, but we only need name and sprite paths
-            class MockBot:
-                def __init__(self, name: str, sprite_path: Optional[str], minion_sprite_path: Optional[str]):
-                    self.name = name
-                    self.sprite_path = sprite_path or "assets/wizards/sample_bot1.png"
-                    self.minion_sprite_path = minion_sprite_path or "assets/minions/minion_1.png"
-
-            # Create mock logger for visualizer
-            class MockLogger:
-                def __init__(self):
-                    self.damage_events = []
-                    self.spells = []
-
-            mock_logger = MockLogger()
-            bot1 = MockBot(
-                self._player1_name,
-                self._player1_sprite,
-                self._player1_sprite.replace("wizards", "minions") if self._player1_sprite else None,
-            )
-            bot2 = MockBot(
-                self._player2_name,
-                self._player2_sprite,
-                self._player2_sprite.replace("wizards", "minions") if self._player2_sprite else None,
-            )
-
-            # Create visualizer instance
-            visualizer = Visualizer(mock_logger, bot1, bot2)
-
-            # Run the visualization with all accumulated states
-            # has_more_matches=False since we're only visualizing one match
-            visualizer.run(self._states, has_more_matches=False)
-
-            self._logger.info(f"Visualization completed for session {self._session_id}")
-
-        except Exception as exc:
-            self._logger.error(f"Error rendering game: {exc}", exc_info=True)
 
     def _handle_pygame_events(self) -> None:
         """Handle pygame events (window close, etc.)."""
         try:
             import pygame
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self._logger.info(f"Pygame QUIT event received for session {self._session_id}")
-                    self._running = False
+            # Only handle events if pygame display is initialized
+            # This prevents "video system not initialized" errors
+            if pygame.display.get_init():
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self._logger.info(f"Pygame QUIT event received for session {self._session_id}")
+                        self._running = False
 
         except ImportError:
             # Pygame not available, skip event handling

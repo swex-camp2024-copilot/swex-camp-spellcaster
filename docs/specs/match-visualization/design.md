@@ -231,16 +231,19 @@ class VisualizerAdapter:
         self._states: List[Dict[str, Any]] = []
     
     def initialize_visualizer(self) -> None:
-        """Initialize pygame and create Visualizer instance."""
+        """Initialize pygame and create Visualizer instance immediately, opening the window."""
     
     def process_events(self) -> None:
-        """Main event loop: consume events from queue and render."""
+        """Main event loop: consume events from queue and render in real-time."""
     
     def handle_turn_event(self, event: Dict[str, Any]) -> None:
-        """Process a turn_update event."""
+        """Process a turn_update event and render it immediately with animation."""
     
     def handle_game_over_event(self, event: Dict[str, Any]) -> None:
-        """Process a game_over event."""
+        """Process a game_over event and display end game message."""
+    
+    def _handle_pygame_events(self) -> None:
+        """Handle pygame events (window close, QUIT) with display initialization guard."""
     
     def shutdown(self) -> None:
         """Clean shutdown of pygame."""
@@ -248,10 +251,14 @@ class VisualizerAdapter:
 
 **Key Design Decisions**:
 
-1. **State Accumulation**: Collects game states in `_states` list to pass to `Visualizer.run()`
-2. **Event Queue Polling**: Uses `queue.get(timeout=0.1)` to allow periodic pygame event handling
-3. **Pygame Isolation**: All pygame imports and calls are contained in this module
-4. **Graceful Degradation**: If pygame is unavailable, adapter logs error and exits cleanly
+1. **Immediate Window Creation**: Pygame window is created immediately in `initialize_visualizer()` when the session starts
+2. **Real-Time Rendering**: Each turn is rendered immediately as events arrive, with smooth animations between states
+3. **State Accumulation**: Collects game states in `_states` list for reference and animation transitions
+4. **Event Queue Polling**: Uses `queue.get(timeout=0.1)` to allow periodic pygame event handling
+5. **Pygame Isolation**: All pygame imports and calls are contained in this module
+6. **Graceful Degradation**: If pygame is unavailable, adapter logs error and exits cleanly
+7. **Pygame Event Guard**: Only handles pygame events if `pygame.display.get_init()` returns True to prevent "video system not initialized" errors
+8. **Animation Flow**: Uses `Visualizer.animate_transition()` for smooth transitions between turns and `Visualizer.display_end_game_message()` for game completion
 
 ---
 
@@ -271,7 +278,7 @@ class SessionManager:
         visualizer_service: Optional[VisualizerService] = None,  # NEW
     ):
         # ... existing initialization ...
-        self._visualizer_service = visualizer_service or VisualizerService()
+        self._visualizer_service = visualizer_service  # Note: Not defaulting to new instance
     
     async def create_session(
         self, 
@@ -284,20 +291,23 @@ class SessionManager:
         
         # NEW: Spawn visualizer if requested
         if visualize:
-            process, queue = self._visualizer_service.spawn_visualizer(
-                session_id=session_id,
-                player1_name=bot1.name,
-                player2_name=bot2.name,
-                player1_sprite=getattr(bot1, 'wizard_sprite_path', None),
-                player2_sprite=getattr(bot2, 'wizard_sprite_path', None)
-            )
-            if process and queue:
-                context.visualizer_process = process
-                context.visualizer_queue = queue
-                context.visualizer_enabled = True
-                logger.info(f"Visualizer spawned for session {session_id} (PID: {process.pid})")
-            else:
-                logger.warning(f"Failed to spawn visualizer for session {session_id}, continuing headless")
+            try:
+                process, queue = self._visualizer_service.spawn_visualizer(
+                    session_id=session_id,
+                    player1_name=bot1.name,
+                    player2_name=bot2.name,
+                    player1_sprite=getattr(bot1, 'wizard_sprite_path', None),
+                    player2_sprite=getattr(bot2, 'wizard_sprite_path', None)
+                )
+                if process and queue:
+                    context.visualizer_process = process
+                    context.visualizer_queue = queue
+                    context.visualizer_enabled = True
+                    logger.info(f"Visualizer spawned for session {session_id} (PID: {process.pid})")
+                else:
+                    logger.warning(f"Failed to spawn visualizer for session {session_id}, continuing headless")
+            except Exception as exc:
+                logger.error(f"Error spawning visualizer for session {session_id}: {exc}", exc_info=True)
         
         # ... rest of method ...
     
@@ -312,7 +322,10 @@ class SessionManager:
             
             # NEW: Send to visualizer if enabled
             if ctx.visualizer_enabled and ctx.visualizer_queue:
-                self._visualizer_service.send_event(ctx.visualizer_queue, turn_event)
+                try:
+                    self._visualizer_service.send_event(ctx.visualizer_queue, turn_event)
+                except Exception as exc:
+                    logger.warning(f"Failed to send turn event to visualizer for {ctx.session_id}: {exc}")
             
             # ... game over detection ...
             
@@ -325,20 +338,48 @@ class SessionManager:
                 
                 # NEW: Send to visualizer if enabled
                 if ctx.visualizer_enabled and ctx.visualizer_queue:
-                    self._visualizer_service.send_event(ctx.visualizer_queue, game_over_event)
+                    try:
+                        self._visualizer_service.send_event(ctx.visualizer_queue, game_over_event)
+                    except Exception as exc:
+                        logger.warning(f"Failed to send game over event to visualizer for {ctx.session_id}: {exc}")
                 
                 # ... rest of method ...
         
         finally:
             # NEW: Clean up visualizer process
             if ctx.visualizer_enabled and ctx.visualizer_process:
+                try:
+                    logger.info(f"Terminating visualizer for session {ctx.session_id}")
+                    self._visualizer_service.terminate_visualizer(
+                        ctx.visualizer_process,
+                        ctx.visualizer_queue
+                    )
+                except Exception as exc:
+                    logger.error(f"Error terminating visualizer for {ctx.session_id}: {exc}", exc_info=True)
+```
+
+**Additional SessionManager Methods**:
+
+```python
+    async def cleanup_session(self, session_id: str) -> bool:
+        """Clean up a session, including visualizer termination."""
+        # ... get context ...
+        
+        # NEW: Terminate visualizer before cancelling task
+        if ctx.visualizer_enabled and ctx.visualizer_process:
+            try:
+                logger.info(f"Terminating visualizer for session {session_id} during cleanup")
                 self._visualizer_service.terminate_visualizer(
                     ctx.visualizer_process,
                     ctx.visualizer_queue
                 )
+            except Exception as exc:
+                logger.error(f"Error terminating visualizer during cleanup for {session_id}: {exc}", exc_info=True)
+        
+        # ... cancel task and remove from sessions dict ...
 ```
 
-**Rationale**: Minimal changes to `SessionManager`, delegating all visualizer logic to `VisualizerService`.
+**Rationale**: Minimal changes to `SessionManager`, delegating all visualizer logic to `VisualizerService`. All visualizer operations are wrapped in try-except blocks to ensure they never crash the session management.
 
 ---
 

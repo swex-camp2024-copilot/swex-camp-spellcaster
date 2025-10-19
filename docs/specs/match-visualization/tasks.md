@@ -72,14 +72,18 @@ This document provides a step-by-step implementation plan for the match visualiz
   - **Adapter Implementation**:
     - Create `backend/app/services/visualizer_adapter.py` module
     - Implement `VisualizerAdapter.__init__()` to store configuration (session_id, player names, sprites, queue)
-    - Implement `initialize_visualizer()` to create pygame window with error handling
+    - Implement `initialize_visualizer()` to create pygame window and Visualizer instance immediately
     - Implement `process_events()` main loop to consume from IPC queue
-    - Implement `handle_turn_event()` to accumulate game states
-    - Implement `handle_game_over_event()` to trigger rendering
+    - Implement `handle_turn_event()` to render each turn in real-time with animation
+    - Implement `handle_game_over_event()` to display end game message
+    - Implement `_handle_pygame_events()` with guard check for `pygame.display.get_init()` to prevent errors
     - Implement `shutdown()` to clean up pygame
     - Use `queue.get(timeout=0.1)` for non-blocking polling
-    - Handle pygame QUIT events during processing
-    - Instantiate and call existing `Visualizer` class from `simulator/visualizer.py`
+    - Handle pygame QUIT events during processing (only if display initialized)
+    - Instantiate `Visualizer` class from `simulator/visualizer.py` in `initialize_visualizer()`
+    - Use `Visualizer.animate_transition()` for smooth turn-by-turn rendering
+    - Use `Visualizer.display_end_game_message()` to show winner
+    - Create `run_visualizer_adapter()` entry point function for multiprocessing
   - **Error Handling**:
     - Gracefully handle pygame import errors
     - Catch and log all exceptions in event loop
@@ -149,7 +153,7 @@ This document provides a step-by-step implementation plan for the match visualiz
 
 ### Task 5: Update API and StateManager Integration
 
-- [ ] **5. Update API endpoint and integrate into StateManager**
+- [x] **5. Update API endpoint and integrate into StateManager**
   - **API Changes**:
     - Update `start_playground_match()` in `backend/app/api/sessions.py`
     - Extract `visualize` from `payload.visualize`
@@ -185,7 +189,7 @@ This document provides a step-by-step implementation plan for the match visualiz
 
 ### Task 6: Comprehensive Testing and Validation
 
-- [ ] **6. End-to-end testing, resilience testing, and final validation**
+- [x] **6. End-to-end testing, resilience testing, and final validation**
   - **E2E Testing**:
     - Create `backend/tests/test_visualized_match_e2e.py`
     - Test complete visualized match from session creation to completion
@@ -230,6 +234,40 @@ This document provides a step-by-step implementation plan for the match visualiz
 - **Mocking Strategy**: Use mocking extensively to avoid requiring pygame/display during automated tests
 - **Incremental Commits**: Commit after completing each task
 - **Reference Documents**: Refer back to `requirements.md` and `design.md` when implementing
+
+## Implementation Notes
+
+### Key Implementation Details
+
+1. **Immediate Pygame Window Creation**: The `initialize_visualizer()` method creates the pygame window and Visualizer instance immediately when the session starts, allowing real-time visualization of the match.
+
+2. **Real-Time Rendering**: Each turn event is rendered immediately as it arrives using `Visualizer.animate_transition()` for smooth animations between states, providing live match visualization.
+
+3. **Pygame Event Handling Guard**: The `_handle_pygame_events()` method includes a critical guard check:
+   ```python
+   if pygame.display.get_init():
+       for event in pygame.event.get():
+           # ... handle events
+   ```
+   This prevents "video system not initialized" errors when trying to handle events before the display is created.
+
+4. **Error Isolation**: All visualizer operations in `SessionManager` are wrapped in try-except blocks to ensure visualization failures never crash the session or affect API responses.
+
+5. **Non-Blocking Event Sends**: The `send_event()` method uses `queue.put_nowait()` to prevent blocking the match loop if the visualizer is slow or the queue is full.
+
+6. **Graceful Termination**: The `terminate_visualizer()` method attempts graceful shutdown with a timeout before force-killing the process.
+
+7. **State Manager Integration**: The `VisualizerService` is initialized in the `StateManager` and passed to `SessionManager` via dependency injection, ensuring proper lifecycle management.
+
+8. **Animation Timing**: The visualizer waits 0.5 seconds (ANIMATION_DURATION) between turns to allow animations to complete, matching the original Visualizer behavior.
+
+### Bug Fixes Applied
+
+1. **Fixed pygame "video system not initialized" error**: Added `pygame.display.get_init()` check before calling `pygame.event.get()` in the event processing loop.
+
+2. **Fixed test failures in client tests**: Created `client/tests/conftest.py` with proper async fixture using `app.router.lifespan_context(app)` to ensure StateManager initialization in test environment.
+
+3. **Added comprehensive error handling**: All visualizer operations log errors but never propagate exceptions to prevent session crashes.
 
 ---
 
