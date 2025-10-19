@@ -318,3 +318,110 @@ async def test_play_match_action_submission_http_error():
     # Verify match continued despite HTTP error
     assert len(collected_events) == 3
     assert call_count == 2  # submit_action was called twice
+
+
+@pytest.mark.asyncio
+async def test_match_termination_game_over_logs_winner():
+    """Test that game_over event logs winner information (Task 4.5)."""
+    bot = RandomWalkStrategy()
+    mock_client = AsyncMock(spec=httpx.AsyncClient)
+
+    events = [
+        {"event": "session_start"},
+        {"event": "game_over", "winner": "player1"},
+    ]
+
+    client = BotClient("http://localhost:8000", bot_instance=bot, http_client=mock_client)
+
+    # Mock stream_session_events
+    async def mock_stream(*args, **kwargs):
+        for event in events:
+            yield event
+
+    with (
+        patch.object(client, "stream_session_events", side_effect=mock_stream),
+        patch("client.bot_client.logger") as mock_logger,
+    ):
+        collected_events = []
+        async for event in client.play_match("test-session", "player1"):
+            collected_events.append(event)
+
+    # Verify winner was logged
+    mock_logger.info.assert_any_call("Game over! Winner: player1")
+
+
+@pytest.mark.asyncio
+async def test_match_termination_game_over_logs_draw():
+    """Test that game_over event logs draw when no winner (Task 4.5)."""
+    bot = RandomWalkStrategy()
+    mock_client = AsyncMock(spec=httpx.AsyncClient)
+
+    events = [
+        {"event": "session_start"},
+        {"event": "game_over", "winner": None},
+    ]
+
+    client = BotClient("http://localhost:8000", bot_instance=bot, http_client=mock_client)
+
+    # Mock stream_session_events
+    async def mock_stream(*args, **kwargs):
+        for event in events:
+            yield event
+
+    with (
+        patch.object(client, "stream_session_events", side_effect=mock_stream),
+        patch("client.bot_client.logger") as mock_logger,
+    ):
+        collected_events = []
+        async for event in client.play_match("test-session", "player1"):
+            collected_events.append(event)
+
+    # Verify draw was logged
+    mock_logger.info.assert_any_call("Game over! Result: Draw")
+
+
+@pytest.mark.asyncio
+async def test_match_termination_no_events_after_game_over():
+    """Test that no events are processed after game_over (Task 4.5)."""
+    bot = RandomWalkStrategy()
+    mock_client = AsyncMock(spec=httpx.AsyncClient)
+
+    # Events after game_over should be ignored
+    events = [
+        {"event": "session_start"},
+        {"event": "turn_update", "turn": 1, "game_state": {"turn": 1}},
+        {"event": "game_over", "winner": "player1"},
+        {"event": "turn_update", "turn": 2, "game_state": {"turn": 2}},  # Should not be yielded
+        {"event": "heartbeat"},  # Should not be yielded
+    ]
+
+    client = BotClient("http://localhost:8000", bot_instance=bot, http_client=mock_client)
+
+    # Track action submissions
+    submitted_actions = []
+
+    async def mock_submit(session_id, player_id, turn, action):
+        submitted_actions.append({"turn": turn})
+
+    # Mock stream_session_events
+    async def mock_stream(*args, **kwargs):
+        for event in events:
+            yield event
+
+    with (
+        patch.object(client, "stream_session_events", side_effect=mock_stream),
+        patch.object(client, "submit_action", side_effect=mock_submit),
+    ):
+        collected_events = []
+        async for event in client.play_match("test-session", "player1"):
+            collected_events.append(event)
+
+    # Verify only events up to and including game_over were yielded
+    assert len(collected_events) == 3
+    assert collected_events[0]["event"] == "session_start"
+    assert collected_events[1]["event"] == "turn_update"
+    assert collected_events[2]["event"] == "game_over"
+
+    # Verify only one action was submitted (for turn 1)
+    assert len(submitted_actions) == 1
+    assert submitted_actions[0]["turn"] == 2  # turn 1 + 1

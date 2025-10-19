@@ -188,6 +188,11 @@ class BotClient:
 
             # Check if game is over - stop processing but yield the event
             if event_type == "game_over":
+                winner = event.get("winner")
+                if winner:
+                    logger.info(f"Game over! Winner: {winner}")
+                else:
+                    logger.info("Game over! Result: Draw")
                 yield event
                 break
 
