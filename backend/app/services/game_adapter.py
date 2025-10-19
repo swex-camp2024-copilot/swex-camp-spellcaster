@@ -195,9 +195,17 @@ class GameEngineAdapter:
         Returns:
             GameOverEvent for SSE streaming
         """
+        # Determine winner name from player_id
+        winner_name = None
+        if game_result.winner == self.bot1.player_id:
+            winner_name = self.bot1.name
+        elif game_result.winner == self.bot2.player_id:
+            winner_name = self.bot2.name
+        # winner_name stays None for draws (when game_result.winner is None)
+
         return GameOverEvent(
             winner=game_result.winner,
-            winner_name=None,  # Could be extracted from player registry if needed
+            winner_name=winner_name,
             final_state=self.get_game_state(),
             game_result=game_result.model_dump(),
         )

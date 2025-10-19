@@ -267,11 +267,71 @@ This document provides a step-by-step implementation plan for the match visualiz
   - **Rationale**: Allows users to review final game state and provides more control over visualizer lifecycle. Admin retains ability to terminate via API when needed.
   - **Files**: `backend/app/services/session_manager.py`, `backend/app/services/visualizer_adapter.py`, `docs/specs/match-visualization/design.md`, `backend/tests/test_session_manager_visualizer.py`, `backend/tests/test_visualizer_adapter.py`, `backend/tests/test_visualizer_integration.py`
 
+### Task 8: Fix Winner Display and EXIT Button Functionality
+
+- [x] **8. Fix visualizer bugs for correct winner display and working EXIT button**
+  - **Issues Identified**:
+    - **Issue 1 - Winner displays as "DRAW"**: `GameEngineAdapter.create_game_over_event()` was hardcoding `winner_name=None`, causing visualizer to always show "DRAW!" regardless of actual winner
+    - **Issue 2 - EXIT button doesn't work**: After user clicks EXIT button, `display_end_game_message()` returns but visualizer continues running because Task 7 removed `_running = False` from game_over handler
+  - **Root Cause Analysis**:
+    - Issue 1: `create_game_over_event()` comment stated "Could be extracted from player registry if needed" but never implemented the mapping from player_id to bot name
+    - Issue 2: Task 7 removed automatic termination but didn't account for EXIT button click. The blocking call to `display_end_game_message()` returns when user clicks EXIT, but no code was added to exit the event loop afterward
+  - **Code Changes**:
+    - Fix `backend/app/services/game_adapter.py` (`create_game_over_event()` method):
+      ```python
+      # Determine winner name from player_id
+      winner_name = None
+      if game_result.winner == self.bot1.player_id:
+          winner_name = self.bot1.name
+      elif game_result.winner == self.bot2.player_id:
+          winner_name = self.bot2.name
+      # winner_name stays None for draws
+
+      return GameOverEvent(
+          winner=game_result.winner,
+          winner_name=winner_name,  # Now properly set
+          final_state=self.get_game_state(),
+          game_result=game_result.model_dump(),
+      )
+      ```
+    - Fix `backend/app/services/visualizer_adapter.py` (`handle_game_over_event()` method):
+      ```python
+      # Display end game message
+      # has_more_matches=False since we're only visualizing one match
+      # This method blocks until the user clicks the EXIT button
+      self._visualizer.display_end_game_message(winner_name, has_more_matches=False)
+
+      # User clicked EXIT button, signal the visualizer to exit
+      self._logger.info(f"User clicked EXIT, closing visualizer for session {self._session_id}")
+      self._running = False
+      ```
+  - **Test Updates**:
+    - Update `backend/tests/test_visualizer_adapter.py`:
+      - `test_handle_game_over_event()`: Add assertion `assert not adapter._running` to verify EXIT triggers exit
+      - `test_handle_game_over_event_without_final_state()`: Add same assertion
+      - `test_process_events_handles_turn_update()`: Update comment - game_over now sets `_running = False`, no need for separate shutdown event
+    - Add new test `backend/tests/test_session_manager_visualizer.py`:
+      - `test_game_over_event_has_winner_name()`: Verify `GameOverEvent` includes correct `winner_name` mapped from player_id
+  - **Documentation Updates**:
+    - Update `docs/specs/match-visualization/design.md`:
+      - Section 2.2: Update step 2 to mention winner_name mapping, update step 5 to show specific messages, update step 6 to describe EXIT button behavior
+      - Section 2.3: Update child process description to mention waiting for EXIT button
+      - Section 3.4 Key Design Decision #9: Change from "persistent window" to describe EXIT button behavior
+      - Section 5.3: Add "Winner Name Display" note and rewrite cleanup triggers with EXIT button as primary method
+  - **Validation**:
+    - Run `uv run pytest backend/tests/ -v`
+    - Verify all 148 tests pass (2 skipped) - added 1 new test
+    - Manual testing confirms:
+      - Winner name displays correctly ("THE WINNER IS SAMPLE BOT 2!" not "DRAW!")
+      - EXIT button closes window immediately when clicked
+  - **Rationale**: These were critical bugs discovered during manual testing. The visualizer must display the correct winner and respond to user input (EXIT button) for proper user experience.
+  - **Files**: `backend/app/services/game_adapter.py`, `backend/app/services/visualizer_adapter.py`, `backend/tests/test_visualizer_adapter.py`, `backend/tests/test_session_manager_visualizer.py`, `docs/specs/match-visualization/design.md`
+
 ---
 
 ## Task Execution Notes
 
-- **Sequential Execution**: Complete tasks in order (1 → 2 → 3 → 4 → 5 → 6 → 7), as each builds on previous work
+- **Sequential Execution**: Complete tasks in order (1 → 2 → 3 → 4 → 5 → 6 → 7 → 8), as each builds on previous work
 - **Test-Driven Development**: Each task includes testing steps that must pass before moving to next task
 - **Validation Gate**: Each task ends with running tests and linting - task is not complete until all tests pass
 - **Mocking Strategy**: Use mocking extensively to avoid requiring pygame/display during automated tests
@@ -317,18 +377,22 @@ This document provides a step-by-step implementation plan for the match visualiz
 
 3. **Added comprehensive error handling**: All visualizer operations log errors but never propagate exceptions to prevent session crashes.
 
+4. **Fixed winner display bug** (Task 8): `create_game_over_event()` now properly maps winner player_id to bot name, ensuring visualizer shows correct winner instead of always displaying "DRAW!"
+
+5. **Fixed EXIT button bug** (Task 8): After user clicks EXIT button, `handle_game_over_event()` now sets `self._running = False` to exit the visualizer event loop cleanly
+
 ---
 
 ## Requirements Coverage
 
-All requirements from `requirements.md` are covered by the 7 implementation tasks:
+All requirements from `requirements.md` are covered by the 8 implementation tasks:
 
 - **Section 2.1** (Opt-in Control): Tasks 1, 4, 5
-- **Section 2.2** (Process Management): Tasks 2, 3, 4, 7
-- **Section 2.3** (Event Communication): Tasks 2, 3, 4
-- **Section 2.4** (Rendering Behavior): Task 3
+- **Section 2.2** (Process Management): Tasks 2, 3, 4, 7, 8
+- **Section 2.3** (Event Communication): Tasks 2, 3, 4, 8
+- **Section 2.4** (Rendering Behavior): Tasks 3, 8
 - **Section 2.5** (Error Handling): Tasks 2, 3, 4, 6
-- **Section 2.6** (Process Cleanup): Tasks 2, 4, 5, 7
+- **Section 2.6** (Process Cleanup): Tasks 2, 4, 5, 7, 8
 - **Section 3.1** (Performance): Tasks 2, 6
 - **Section 3.2** (Compatibility): Tasks 4, 5
 - **Section 3.3** (Environment): Tasks 1, 2

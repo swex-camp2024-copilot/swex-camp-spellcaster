@@ -209,7 +209,12 @@ class VisualizerAdapter:
 
             # Display end game message
             # has_more_matches=False since we're only visualizing one match
+            # This method blocks until the user clicks the EXIT button
             self._visualizer.display_end_game_message(winner_name, has_more_matches=False)
+
+            # User clicked EXIT button, signal the visualizer to exit
+            self._logger.info(f"User clicked EXIT, closing visualizer for session {self._session_id}")
+            self._running = False
 
         except Exception as exc:
             self._logger.error(f"Error handling game over event: {exc}", exc_info=True)

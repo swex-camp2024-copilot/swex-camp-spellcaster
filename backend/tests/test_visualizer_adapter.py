@@ -160,6 +160,8 @@ class TestVisualizerAdapterEventHandling:
         assert adapter._states[-1] == event["final_state"]
         # Verify end game message is displayed
         adapter._visualizer.display_end_game_message.assert_called_once_with("Player1", has_more_matches=False)
+        # Verify visualizer is signaled to exit after user clicks EXIT button
+        assert not adapter._running
 
     def test_handle_game_over_event_without_final_state(self, adapter):
         """Test handling of game over event without final_state."""
@@ -175,6 +177,8 @@ class TestVisualizerAdapterEventHandling:
         assert len(adapter._states) == 1
         # Verify end game message is still displayed
         adapter._visualizer.display_end_game_message.assert_called_once_with("Player1", has_more_matches=False)
+        # Verify visualizer is signaled to exit after user clicks EXIT button
+        assert not adapter._running
 
 
 class TestVisualizerAdapterProcessEvents:
@@ -196,8 +200,7 @@ class TestVisualizerAdapterProcessEvents:
                 "final_state": {"turn": 1},
                 "winner_name": "Player1",
             },
-            # Need to add shutdown to exit the loop since game_over no longer stops it
-            {"event": "shutdown"},
+            # Game over sets _running to False after user clicks EXIT, so loop exits
         ]
 
         mock_queue.get.side_effect = events
@@ -205,7 +208,7 @@ class TestVisualizerAdapterProcessEvents:
         adapter.process_events()
 
         assert len(adapter._states) == 2
-        # After shutdown event, _running should be False
+        # After game_over event (user clicks EXIT), _running should be False
         assert not adapter._running
         # Verify real-time rendering occurred
         adapter._visualizer.render_frame.assert_called_once()

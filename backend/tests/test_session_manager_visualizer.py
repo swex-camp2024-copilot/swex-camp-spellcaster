@@ -274,6 +274,49 @@ async def test_game_over_event_sent_to_visualizer(mock_visualizer_service, mock_
 
 
 @pytest.mark.asyncio
+async def test_game_over_event_has_winner_name(mock_visualizer_service, mock_visualizer_process):
+    """Test that game over event includes the winner's name."""
+    from backend.app.core.database import create_tables
+    from backend.app.services import game_adapter as ga
+
+    ga.GameEngine = DummyEngine
+    await create_tables()
+
+    # Configure mock to return a process and queue
+    process, queue = mock_visualizer_process
+    mock_visualizer_service.spawn_visualizer.return_value = (process, queue)
+
+    manager = SessionManager(visualizer_service=mock_visualizer_service)
+
+    p1 = PlayerConfig(player_id="builtin_sample_1", bot_type="builtin", bot_id="sample_bot_1")
+    p2 = PlayerConfig(player_id="builtin_sample_2", bot_type="builtin", bot_id="sample_bot_2")
+
+    session_id = await manager.create_session(p1, p2, visualize=True)
+
+    # Wait for match to complete
+    await asyncio.sleep(0.3)
+
+    # Find the game over event call
+    game_over_event = None
+    for call in mock_visualizer_service.send_event.call_args_list:
+        event = call.args[1]
+        if hasattr(event, "event") and event.event == "game_over":
+            game_over_event = event
+            break
+
+    # Verify we found a game over event
+    assert game_over_event is not None, "Game over event should have been sent to visualizer"
+
+    # Verify the event has a winner_name (DummyEngine makes wizard2 hp=0, so bot1 wins)
+    assert game_over_event.winner_name == "Sample Bot 1", (
+        f"Expected winner_name to be 'Sample Bot 1', got {game_over_event.winner_name}"
+    )
+
+    # Cleanup
+    await manager.cleanup_session(session_id)
+
+
+@pytest.mark.asyncio
 async def test_visualizer_not_terminated_after_match_completion(mock_visualizer_service, mock_visualizer_process):
     """Test that visualizer is NOT automatically terminated after match completes.
 
