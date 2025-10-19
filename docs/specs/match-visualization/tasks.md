@@ -109,7 +109,7 @@ This document provides a step-by-step implementation plan for the match visualiz
 
 ### Task 4: Integrate VisualizerService into SessionManager
 
-- [ ] **4. Integrate visualization into SessionManager lifecycle**
+- [x] **4. Integrate visualization into SessionManager lifecycle**
   - **SessionManager Changes**:
     - Modify `SessionManager.__init__()` to accept `visualizer_service` parameter (default to new instance)
     - Add `visualize: bool = False` parameter to `create_session()` method

@@ -1,26 +1,29 @@
 """Session management and game flow coordination for the Playground backend."""
 
 import asyncio
+import contextlib
 import logging
 import multiprocessing
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
 
 from ..core.exceptions import SessionNotFoundError
-from ..models.actions import ActionData, Move, SpellAction
-from ..models.bots import BotInterface, BotCreationRequest, PlayerBotFactory, PlayerBot
-from ..models.events import GameOverEvent, TurnEvent
+from ..models.actions import ActionData
+from ..models.bots import BotInterface, HumanBot, PlayerBot
 from ..models.players import PlayerConfig
 from ..models.sessions import GameState, PlayerSlot, TurnStatus
 from .builtin_bots import BuiltinBotRegistry
-from .sse_manager import SSEManager
-from .match_logger import MatchLogger
-from .turn_processor import TurnProcessor
-from ..models.bots import HumanBot
 from .database import DatabaseService
 from .game_adapter import GameEngineAdapter
+from .match_logger import MatchLogger
+from .sse_manager import SSEManager
+from .turn_processor import TurnProcessor
+from .visualizer_service import VisualizerService
+
+if TYPE_CHECKING:
+    from ..models.events import TurnEvent
 
 logger = logging.getLogger(__name__)
 
@@ -47,18 +50,26 @@ class SessionManager:
         db_service: Optional[DatabaseService] = None,
         sse_manager: Optional[SSEManager] = None,
         match_logger: Optional[MatchLogger] = None,
+        visualizer_service: Optional[VisualizerService] = None,
     ):
         self._db = db_service or DatabaseService()
         self._sse = sse_manager
-        self._sessions: Dict[str, SessionContext] = {}
+        self._sessions: dict[str, SessionContext] = {}
         self._turn_processor = TurnProcessor()
         self._lock = asyncio.Lock()
         self._logger = match_logger
+        self._visualizer_service = visualizer_service or VisualizerService()
 
-    async def create_session(self, player_1: PlayerConfig, player_2: PlayerConfig) -> str:
+    async def create_session(self, player_1: PlayerConfig, player_2: PlayerConfig, visualize: bool = False) -> str:
         """Create a new session and start the match loop.
 
-        Returns the new session_id.
+        Args:
+            player_1: Configuration for player 1
+            player_2: Configuration for player 2
+            visualize: Whether to spawn a visualizer process for this session
+
+        Returns:
+            The new session_id.
         """
         session_id = str(uuid4())
 
@@ -99,6 +110,26 @@ class SessionManager:
         )
         async with self._lock:
             self._sessions[session_id] = context
+
+        # Spawn visualizer if requested
+        if visualize:
+            try:
+                process, queue = self._visualizer_service.spawn_visualizer(
+                    session_id=session_id,
+                    player1_name=bot1.name,
+                    player2_name=bot2.name,
+                    player1_sprite=getattr(bot1, "wizard_sprite_path", None),
+                    player2_sprite=getattr(bot2, "wizard_sprite_path", None),
+                )
+                if process and queue:
+                    context.visualizer_process = process
+                    context.visualizer_queue = queue
+                    context.visualizer_enabled = True
+                    logger.info(f"Visualizer spawned for session {session_id} (PID: {process.pid})")
+                else:
+                    logger.warning(f"Failed to spawn visualizer for session {session_id}, continuing headless")
+            except Exception as exc:
+                logger.error(f"Error spawning visualizer for session {session_id}: {exc}", exc_info=True)
 
         # Start match loop
         context.task = asyncio.create_task(self._run_match_loop(context))
@@ -167,6 +198,14 @@ class SessionManager:
                 # Broadcast turn update over SSE if configured
                 if self._sse:
                     await self._sse.broadcast(ctx.session_id, turn_event)
+
+                # Send to visualizer if enabled
+                if ctx.visualizer_enabled and ctx.visualizer_queue:
+                    try:
+                        self._visualizer_service.send_event(ctx.visualizer_queue, turn_event)
+                    except Exception as exc:
+                        logger.warning(f"Failed to send turn event to visualizer for {ctx.session_id}: {exc}")
+
                 # Log turn to file
                 if self._logger:
                     try:
@@ -192,16 +231,22 @@ class SessionManager:
                     ctx.game_state.winner_id = result.winner
 
                     # Broadcast game over event
+                    game_over_event = ctx.adapter.create_game_over_event(result)
                     if self._sse:
-                        await self._sse.broadcast(ctx.session_id, ctx.adapter.create_game_over_event(result))
+                        await self._sse.broadcast(ctx.session_id, game_over_event)
                         # Close all SSE streams for this session
                         await self._sse.close_session_streams(ctx.session_id)
+
+                    # Send to visualizer if enabled
+                    if ctx.visualizer_enabled and ctx.visualizer_queue:
+                        try:
+                            self._visualizer_service.send_event(ctx.visualizer_queue, game_over_event)
+                        except Exception as exc:
+                            logger.warning(f"Failed to send game over event to visualizer for {ctx.session_id}: {exc}")
+
                     # Log game over
                     if self._logger:
                         try:
-                            from ..models.events import GameOverEvent
-
-                            game_over_event = ctx.adapter.create_game_over_event(result)
                             self._logger.log_game_over(ctx.session_id, game_over_event)
                         except Exception as exc:
                             logger.warning(f"Failed to write game over log for {ctx.session_id}: {exc}")
@@ -227,6 +272,14 @@ class SessionManager:
             # Close SSE streams on error
             if self._sse:
                 await self._sse.close_session_streams(ctx.session_id)
+        finally:
+            # Clean up visualizer process
+            if ctx.visualizer_enabled and ctx.visualizer_process:
+                try:
+                    logger.info(f"Terminating visualizer for session {ctx.session_id}")
+                    self._visualizer_service.terminate_visualizer(ctx.visualizer_process, ctx.visualizer_queue)
+                except Exception as exc:
+                    logger.error(f"Error terminating visualizer for {ctx.session_id}: {exc}", exc_info=True)
 
     async def get_session(self, session_id: str) -> SessionContext:
         async with self._lock:
@@ -235,7 +288,7 @@ class SessionManager:
             raise SessionNotFoundError(session_id)
         return ctx
 
-    async def list_active_sessions(self) -> List[str]:
+    async def list_active_sessions(self) -> list[str]:
         async with self._lock:
             return [s for s, c in self._sessions.items() if c.game_state.status == TurnStatus.ACTIVE]
 
@@ -244,12 +297,19 @@ class SessionManager:
             ctx = self._sessions.get(session_id)
         if not ctx:
             raise SessionNotFoundError(session_id)
+
+        # Terminate visualizer before cancelling task
+        if ctx.visualizer_enabled and ctx.visualizer_process:
+            try:
+                logger.info(f"Terminating visualizer for session {session_id} during cleanup")
+                self._visualizer_service.terminate_visualizer(ctx.visualizer_process, ctx.visualizer_queue)
+            except Exception as exc:
+                logger.error(f"Error terminating visualizer during cleanup for {session_id}: {exc}", exc_info=True)
+
         if ctx.task and not ctx.task.done():
             ctx.task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await ctx.task
-            except asyncio.CancelledError:
-                pass
         async with self._lock:
             self._sessions.pop(session_id, None)
         return True
@@ -264,7 +324,7 @@ class SessionManager:
             ctx = self._sessions.get(session_id)
         if not ctx:
             return
-        bot_map: Dict[str, BotInterface] = {
+        bot_map: dict[str, BotInterface] = {
             ctx.adapter.bot1.player_id
             if hasattr(ctx.adapter, "bot1")
             else ctx.game_state.player_1.player_id: ctx.adapter.bot1 if hasattr(ctx.adapter, "bot1") else None,

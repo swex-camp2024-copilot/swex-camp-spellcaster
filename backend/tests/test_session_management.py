@@ -1,8 +1,8 @@
 """Tests for session management and game flow."""
 
+from unittest.mock import MagicMock
+
 import pytest
-from datetime import datetime
-from unittest.mock import patch
 
 from backend.app.models.players import PlayerConfig
 from backend.app.services.session_manager import SessionManager
@@ -88,7 +88,11 @@ async def test_create_session_and_run_loop(monkeypatch):
 
     await create_tables()
 
-    manager = SessionManager()
+    # Mock visualizer service to return (None, None) to avoid spawning processes
+    mock_visualizer_service = MagicMock()
+    mock_visualizer_service.spawn_visualizer.return_value = (None, None)
+
+    manager = SessionManager(visualizer_service=mock_visualizer_service)
 
     # Use builtin configs (registry will build wrappers)
     p1 = PlayerConfig(player_id="builtin_sample_1", bot_type="builtin", bot_id="sample_bot_1")
