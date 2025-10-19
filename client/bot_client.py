@@ -29,6 +29,30 @@ class RandomWalkStrategy(BotStrategy):
         return {"move": [self._toggle, max(0, self._toggle)], "spell": None}
 
 
+class BotInterfaceAdapter(BotStrategy):
+    """Adapter to wrap BotInterface instances for use with BotClient."""
+
+    def __init__(self, bot_instance: Any) -> None:
+        """Initialize with a BotInterface instance.
+
+        Args:
+            bot_instance: An instance of a class implementing BotInterface
+        """
+        self._bot = bot_instance
+
+    async def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Call the bot's decide method (sync) and return the result.
+
+        Args:
+            state: Game state dictionary
+
+        Returns:
+            Action dictionary with move and spell
+        """
+        # BotInterface.decide() is synchronous, but we run it in async context
+        return self._bot.decide(state)
+
+
 @dataclass
 class PlayerRegistrationRequest:
     player_name: str
@@ -93,8 +117,55 @@ class BotClient:
                 if max_events is not None and count >= max_events:
                     break
 
-    async def submit_action(self, session_id: str, player_id: str, action: Dict[str, Any]) -> None:
-        raise NotImplementedError("Action submission API not available yet (see Task 7.1).")
+    async def submit_action(self, session_id: str, player_id: str, turn: int, action: Dict[str, Any]) -> None:
+        """Submit an action for the current turn."""
+        url = f"{self.base_url}/playground/{session_id}/action"
+        payload = {"player_id": player_id, "turn": turn, "action_data": action}
+        resp = await self._client.post(url, json=payload)
+        resp.raise_for_status()
+
+    async def play_match(
+        self, session_id: str, player_id: str, *, max_events: Optional[int] = None
+    ) -> AsyncIterator[Dict[str, Any]]:
+        """Play a match by streaming events and automatically submitting actions.
+
+        This method combines event streaming with action submission. It:
+        1. Listens to SSE events from the session
+        2. When a turn_update event is received, extracts the game state
+        3. Calls the bot strategy's decide() method
+        4. Submits the action to the backend
+        5. Yields all events to the caller
+
+        Args:
+            session_id: The session ID
+            player_id: The player ID
+            max_events: Optional maximum number of events to process
+
+        Yields:
+            SSE events as dictionaries
+        """
+        async for event in self.stream_session_events(session_id, max_events=max_events):
+            yield event
+
+            # Check if this is a turn_update event and if it's our turn
+            if event.get("event") == "turn_update":
+                game_state = event.get("game_state", {})
+
+                # Determine if it's our turn by checking whose turn it is
+                # The game state contains information about which player needs to act
+                # For simplicity, we submit an action on every turn_update
+                try:
+                    turn = event.get("turn", 0)
+                    next_turn = turn + 1
+
+                    # Get action from strategy
+                    action = await self.strategy.decide(game_state)
+
+                    # Submit action for next turn
+                    logger.info(f"Submitting action for turn {next_turn}: {action}")
+                    await self.submit_action(session_id, player_id, next_turn, action)
+                except Exception as e:
+                    logger.error(f"Failed to submit action: {e}", exc_info=True)
 
     async def aclose(self) -> None:
         if not self._external_client:
@@ -105,6 +176,7 @@ __all__ = [
     "BotClient",
     "BotStrategy",
     "RandomWalkStrategy",
+    "BotInterfaceAdapter",
     "PlayerRegistrationRequest",
     "PlayerInfo",
 ]

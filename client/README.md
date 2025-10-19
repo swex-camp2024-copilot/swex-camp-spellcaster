@@ -37,15 +37,46 @@ curl -s -X POST http://localhost:8000/playground/start \
 
 ## Bot Client CLI
 
-Register a new player, start a match vs a built-in bot, and print the first N events.
+Register a new player, start a match vs a built-in bot, and automatically play the match.
 
-```
+### Play with Random Strategy
+
+Use the built-in RandomWalkStrategy:
+
+```bash
 uv run python -m client.bot_client_main \
   --base-url http://localhost:8000 \
-  --player-name "CLI Bot" \
+  --player-name "Random Bot" \
   --builtin-bot-id sample_bot_1 \
-  --max-events 10
+  --bot-type random \
+  --max-events 100
 ```
+
+### Play with Custom Bot
+
+Load and play with a custom bot from the `bots/` directory:
+
+```bash
+uv run python -m client.bot_client_main \
+  --base-url http://localhost:8000 \
+  --player-name "Sample Bot 1" \
+  --builtin-bot-id sample_bot_2 \
+  --bot-type custom \
+  --bot-path bots.sample_bot1.sample_bot_1.SampleBot1 \
+  --max-events 100
+```
+
+### CLI Arguments
+
+- `--base-url`: Backend server URL (default: http://localhost:8000)
+- `--player-name`: Name for the registered player (default: "CLI Bot")
+- `--builtin-bot-id`: ID of builtin bot opponent (default: sample_bot_1)
+- `--max-events`: Maximum number of events to process (default: 100)
+- `--log-level`: Logging level: DEBUG, INFO, WARNING, ERROR (default: INFO)
+- `--bot-type`: Bot strategy type: `random` or `custom` (default: random)
+- `--bot-path`: Python module path to custom bot class (required if --bot-type=custom)
+  - Format: `module.path.ClassName`
+  - Example: `bots.sample_bot1.sample_bot_1.SampleBot1`
 
 ## Environment Variables
 
@@ -57,5 +88,7 @@ uv run python -m client.bot_client_main \
 
 ## Notes
 
-- Action submission from client to server is planned in Task 7.1. The bot client currently streams events and provides a stub for action submission.
+- Action submission is fully implemented and enabled by default.
+- The client supports both built-in strategies (RandomWalkStrategy) and custom bots that implement BotInterface.
+- See [Client Bot Integration Design Document](../docs/specs/client-bot-integration/design.md) for detailed architecture and design documentation.
 
