@@ -238,7 +238,22 @@ Command-line interface for running bot matches.
   - Format: `module.path.ClassName`
   - Example: `bots.sample_bot1.sample_bot_1.SampleBot1`
 - `--max-events`: Maximum events to process (default: 100, env: `MAX_EVENTS`)
-- `--log-level`: Logging level (default: INFO, env: `LOG_LEVEL`)
+- `--log-level`: Logging level - DEBUG, INFO, WARNING, ERROR (default: INFO, env: `LOG_LEVEL`)
+
+**Output Format**:
+- Uses standard Python logging with plain text output
+- Matches server-side logging format for consistency
+- Turn updates show player HP/MP status and game events
+- Example output:
+  ```
+  INFO - Loaded custom bot: bots.sample_bot1.sample_bot_1.SampleBot1 (name: Sample Bot 1)
+  INFO - Started match: session_id=abc-123, player=Kevin Lin, opponent=builtin_sample_2
+  INFO - Turn 1 | Kevin Lin HP:100 MP:100 vs Sample Bot 2 HP:100 MP:90
+  INFO -   Kevin Lin moved to [0, 0]
+  INFO -   Sample Bot 2 cast shield
+  INFO - Game Over! Winner: Sample Bot 2
+  INFO - Total rounds: 13, Duration: 5.44s
+  ```
 
 **Workflow**:
 1. Get player_id (from argument or `whoami`)

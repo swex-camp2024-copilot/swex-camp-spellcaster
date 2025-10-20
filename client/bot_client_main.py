@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import importlib
-import json
 import logging
 import os
 import subprocess
@@ -158,14 +157,12 @@ async def run_bot(
             bot_class = load_bot_class(bot_path)
             bot_instance = bot_class()
             logger.info(f"Loaded custom bot: {bot_path} (name: {bot_instance.name})")
-            print(json.dumps({"bot_loaded": bot_path, "bot_name": bot_instance.name}))
         except Exception as e:
             logger.error(f"Failed to load custom bot from {bot_path}: {e}")
             raise
     else:
         bot_instance = RandomWalkStrategy()
         logger.info("Using RandomWalkStrategy bot")
-        print(json.dumps({"bot_loaded": "RandomWalkStrategy"}))
 
     # Create client with bot instance
     client = BotClient(base_url, bot_instance=bot_instance)
@@ -173,8 +170,7 @@ async def run_bot(
         # Start match
         try:
             session_id = await client.start_match(player_id, opponent_id, visualize=True)
-            logger.info(f"Started match: session_id={session_id}")
-            print(json.dumps({"session_id": session_id, "player_id": player_id, "opponent_id": opponent_id}))
+            logger.info(f"Started match: session_id={session_id}, player={player_id}, opponent={opponent_id}")
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 logger.error(f"Player '{player_id}' not found. Please register first via POST /players/register")
@@ -187,10 +183,41 @@ async def run_bot(
 
         # Play match and automatically submit actions
         async for event in client.play_match(session_id, player_id, max_events=max_events):
-            try:
-                print(json.dumps(event, ensure_ascii=False))
-            except Exception:
-                print(event)
+            # Format event as plain text similar to server logs
+            event_type = event.get("event", "unknown")
+
+            if event_type == "heartbeat":
+                logger.debug("Heartbeat received")
+            elif event_type == "turn_update":
+                turn = event.get("turn", 0)
+                game_state = event.get("game_state", {})
+                self_state = game_state.get("self", {})
+                opponent_state = game_state.get("opponent", {})
+
+                logger.info(
+                    f"Turn {turn} | {self_state.get('name', 'Player')} HP:{self_state.get('hp', 0)} "
+                    f"MP:{self_state.get('mana', 0)} vs {opponent_state.get('name', 'Opponent')} "
+                    f"HP:{opponent_state.get('hp', 0)} MP:{opponent_state.get('mana', 0)}"
+                )
+
+                # Log key events from this turn
+                events = event.get("events", [])
+                for evt_msg in events:
+                    if evt_msg.startswith("---"):
+                        continue  # Skip turn markers
+                    logger.info(f"  {evt_msg}")
+
+            elif event_type == "game_over":
+                winner_name = event.get("winner_name", "Unknown")
+                game_result = event.get("game_result", {})
+                total_rounds = game_result.get("total_rounds", 0)
+                duration = game_result.get("game_duration", 0.0)
+
+                logger.info(f"Game Over! Winner: {winner_name}")
+                logger.info(f"Total rounds: {total_rounds}, Duration: {duration:.2f}s")
+            else:
+                # Fallback for unknown event types
+                logger.debug(f"Event: {event_type}")
 
         # Display completion message
         print("Match complete. Press Ctrl+C to exit.")
