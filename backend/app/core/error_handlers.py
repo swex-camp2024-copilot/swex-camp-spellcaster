@@ -20,6 +20,7 @@ from .exceptions import (
     GameEngineError,
     InvalidActionError,
     InvalidTurnError,
+    PlayerAlreadyInLobbyError,
     PlaygroundError,
     PlayerNotFoundError,
     PlayerRegistrationError,
@@ -131,6 +132,28 @@ async def player_registration_error_handler(request: Request, exc: PlayerRegistr
         content=ErrorResponse(
             error="PLAYER_REGISTRATION_ERROR",
             message=str(exc),
+        ).model_dump(mode="json"),
+    )
+
+
+async def player_already_in_lobby_error_handler(request: Request, exc: PlayerAlreadyInLobbyError) -> JSONResponse:
+    """Handle player already in lobby errors.
+
+    Args:
+        request: The FastAPI request object
+        exc: The PlayerAlreadyInLobbyError exception
+
+    Returns:
+        JSON response with error details
+    """
+    logger.warning(f"Player already in lobby: {exc.player_id}", extra=_sanitize_error_for_logging(exc))
+
+    return JSONResponse(
+        status_code=409,
+        content=ErrorResponse(
+            error="PLAYER_ALREADY_IN_LOBBY",
+            message=str(exc),
+            details={"player_id": exc.player_id},
         ).model_dump(mode="json"),
     )
 
@@ -516,6 +539,7 @@ def register_error_handlers(app) -> None:
     # Custom exception handlers (specific to most general)
     app.add_exception_handler(PlayerNotFoundError, player_not_found_error_handler)
     app.add_exception_handler(PlayerRegistrationError, player_registration_error_handler)
+    app.add_exception_handler(PlayerAlreadyInLobbyError, player_already_in_lobby_error_handler)
     app.add_exception_handler(SessionNotFoundError, session_not_found_error_handler)
     app.add_exception_handler(SessionAlreadyActiveError, session_already_active_error_handler)
     app.add_exception_handler(InvalidActionError, invalid_action_error_handler)

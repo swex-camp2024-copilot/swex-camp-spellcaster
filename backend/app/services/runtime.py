@@ -13,6 +13,7 @@ _SERVICE_MAPPING = {
     "sse_manager": "sse_manager",
     "match_logger": "match_logger",
     "session_manager": "session_manager",
+    "lobby_service": "lobby_service",
     "admin_service": "admin_service",
     "db_service": "db_service",
 }

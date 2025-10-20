@@ -139,3 +139,11 @@ class ConfigurationError(PlaygroundError):
 
     def __init__(self, reason: str, **kwargs):
         super().__init__(f"Configuration error: {reason}", status_code=500, **kwargs)
+
+
+class PlayerAlreadyInLobbyError(PlaygroundError):
+    """Raised when a player tries to join lobby while already in queue."""
+
+    def __init__(self, player_id: str, **kwargs):
+        super().__init__(f"Player {player_id} is already in lobby queue", status_code=409, **kwargs)
+        self.player_id = player_id

@@ -222,7 +222,7 @@ class TestBotPathValidation:
         with pytest.raises(ValueError, match="--bot-path is required when --bot-type=custom"):
             import asyncio
 
-            asyncio.run(run_bot("http://localhost:8000", "user", "builtin_sample_1", 100, "custom", None))
+            asyncio.run(run_bot("http://localhost:8000", "user", "direct", "builtin_sample_1", 100, "custom", None))
 
 
 class TestMatchCreation:

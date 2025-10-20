@@ -56,9 +56,16 @@ def parse_args() -> argparse.Namespace:
         help="Existing registered player ID (default: OS username via whoami, env: PLAYER_ID)",
     )
     parser.add_argument(
+        "--mode",
+        default=os.environ.get("MODE", "direct"),
+        choices=["direct", "lobby"],
+        help="Match mode: direct (specify opponent) or lobby (auto-match via queue) (default: direct, env: MODE)",
+    )
+    parser.add_argument(
         "--opponent-id",
         default=os.environ.get("OPPONENT_ID", "builtin_sample_1"),
-        help="Opponent ID: builtin bot or remote player (default: builtin_sample_1, env: OPPONENT_ID)",
+        help="Opponent ID: builtin bot or remote player (default: builtin_sample_1, env: OPPONENT_ID). "
+        "Only used in direct mode.",
     )
     parser.add_argument(
         "--bot-type",
@@ -127,6 +134,7 @@ def load_bot_class(bot_path: str) -> Any:
 async def run_bot(
     base_url: str,
     player_id: str,
+    mode: str,
     opponent_id: str,
     max_events: int,
     bot_type: str = "random",
@@ -137,7 +145,8 @@ async def run_bot(
     Args:
         base_url: Backend server URL
         player_id: Existing registered player ID
-        opponent_id: Opponent ID (builtin bot or remote player)
+        mode: Match mode ('direct' or 'lobby')
+        opponent_id: Opponent ID (builtin bot or remote player), only used in direct mode
         max_events: Maximum events to process
         bot_type: Bot strategy type ('random' or 'custom')
         bot_path: Module path for custom bot (required if bot_type='custom')
@@ -167,10 +176,18 @@ async def run_bot(
     # Create client with bot instance
     client = BotClient(base_url, bot_instance=bot_instance)
     try:
-        # Start match
+        # Start match based on mode
+        session_id = None
         try:
-            session_id = await client.start_match(player_id, opponent_id, visualize=True)
-            logger.info(f"Started match: session_id={session_id}, player={player_id}, opponent={opponent_id}")
+            if mode == "lobby":
+                # Lobby mode: join queue and wait for auto-match
+                logger.info(f"Joining lobby queue as {player_id}...")
+                session_id = await client.join_lobby(player_id)
+                logger.info(f"Matched! Session: {session_id}")
+            else:
+                # Direct mode: specify opponent directly
+                session_id = await client.start_match(player_id, opponent_id, visualize=True)
+                logger.info(f"Started match: session_id={session_id}, player={player_id}, opponent={opponent_id}")
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 logger.error(f"Player '{player_id}' not found. Please register first via POST /players/register")
@@ -180,6 +197,9 @@ async def run_bot(
         except httpx.ConnectError as e:
             logger.error(f"Failed to connect to backend at {base_url}: {e}")
             raise RuntimeError(f"Backend connection failed: {e}") from e
+        except httpx.TimeoutException as e:
+            logger.error(f"Request timed out: {e}")
+            raise RuntimeError(f"Request timeout: {e}") from e
 
         # Play match and automatically submit actions
         async for event in client.play_match(session_id, player_id, max_events=max_events):
@@ -255,6 +275,7 @@ def main() -> None:
             run_bot(
                 args.base_url,
                 player_id,
+                args.mode,
                 args.opponent_id,
                 args.max_events,
                 args.bot_type,

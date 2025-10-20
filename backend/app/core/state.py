@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 from ..services.admin_service import AdminService
 from ..services.database import DatabaseService
+from ..services.lobby_service import LobbyService
 from ..services.match_logger import MatchLogger
 from ..services.session_manager import SessionManager
 from ..services.sse_manager import SSEManager
@@ -49,6 +50,7 @@ class StateManager:
         self._match_logger: Optional[MatchLogger] = None
         self._visualizer_service: Optional[VisualizerService] = None
         self._session_manager: Optional[SessionManager] = None
+        self._lobby_service: Optional[LobbyService] = None
         self._admin_service: Optional[AdminService] = None
 
         # Service status tracking
@@ -58,6 +60,7 @@ class StateManager:
             "match_logger": ServiceStatus.UNINITIALIZED,
             "visualizer_service": ServiceStatus.UNINITIALIZED,
             "session_manager": ServiceStatus.UNINITIALIZED,
+            "lobby_service": ServiceStatus.UNINITIALIZED,
             "admin_service": ServiceStatus.UNINITIALIZED,
         }
 
@@ -115,6 +118,13 @@ class StateManager:
             raise RuntimeError("Visualizer service not initialized")
         return self._visualizer_service
 
+    @property
+    def lobby_service(self) -> LobbyService:
+        """Get lobby service instance."""
+        if not self._lobby_service:
+            raise RuntimeError("Lobby service not initialized")
+        return self._lobby_service
+
     async def initialize(self) -> None:
         """Initialize all services with proper dependency management.
 
@@ -144,6 +154,9 @@ class StateManager:
 
             # Initialize session manager (depends on SSE, match logger, and visualizer)
             await self._initialize_session_manager()
+
+            # Initialize lobby service (depends on session manager and database)
+            await self._initialize_lobby_service()
 
             # Initialize admin service (depends on database and session manager)
             await self._initialize_admin_service()
@@ -255,6 +268,27 @@ class StateManager:
             logger.error(f"Failed to initialize {service_name}: {e}")
             raise
 
+    async def _initialize_lobby_service(self) -> None:
+        """Initialize lobby service."""
+        service_name = "lobby_service"
+        try:
+            logger.info(f"Initializing {service_name}...")
+            self._service_status[service_name] = ServiceStatus.INITIALIZING
+
+            if not self._session_manager or not self._db_service:
+                raise RuntimeError("Session manager and database service must be initialized first")
+
+            self._lobby_service = LobbyService(session_manager=self._session_manager, db_service=self._db_service)
+
+            self._service_status[service_name] = ServiceStatus.READY
+            logger.info(f"{service_name} initialized")
+
+        except Exception as e:
+            self._service_status[service_name] = ServiceStatus.ERROR
+            self._initialization_errors[service_name] = str(e)
+            logger.error(f"Failed to initialize {service_name}: {e}")
+            raise
+
     async def _initialize_admin_service(self) -> None:
         """Initialize admin service."""
         service_name = "admin_service"
@@ -294,6 +328,11 @@ class StateManager:
             if self._admin_service:
                 logger.info("Shutting down admin service...")
                 self._service_status["admin_service"] = ServiceStatus.SHUTDOWN
+
+            # Shutdown lobby service
+            if self._lobby_service:
+                logger.info("Shutting down lobby service...")
+                self._service_status["lobby_service"] = ServiceStatus.SHUTDOWN
 
             # Shutdown session manager
             if self._session_manager:

@@ -126,6 +126,55 @@ class BotClient:
             logger.error(f"HTTP {e.request.method} {e.request.url} failed: {e}")
             raise
 
+    async def join_lobby(self, player_id: str) -> str:
+        """Join lobby queue and wait for match (long-polling).
+
+        This method blocks until a match is found. The lobby uses FIFO matching,
+        so when 2+ players are in queue, they are automatically matched and a
+        session is created with visualization enabled.
+
+        Args:
+            player_id: Player ID (must be registered in backend)
+
+        Returns:
+            Session ID string when matched
+
+        Raises:
+            httpx.HTTPStatusError: If request fails (e.g., 404 for invalid player,
+                                   409 if already in queue)
+            httpx.TimeoutException: If no match found within timeout (5 minutes)
+        """
+        url = f"{self.base_url}/lobby/join"
+
+        # Prepare bot config for remote player
+        bot_config = {"player_id": player_id, "bot_type": "player"}
+
+        payload = {"player_id": player_id, "bot_config": bot_config}
+
+        logger.debug(f"POST {url} (long-polling) with payload: {payload}")
+        try:
+            # Long-polling request with 5-minute timeout
+            resp = await self._client.post(url, json=payload, timeout=httpx.Timeout(300.0))
+            resp.raise_for_status()
+            result = resp.json()
+            session_id = result["session_id"]
+            opponent_id = result.get("opponent_id", "unknown")
+            opponent_name = result.get("opponent_name", "unknown")
+
+            logger.info(f"Lobby match found! Session: {session_id}, Opponent: {opponent_name} ({opponent_id})")
+            return session_id
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"HTTP {e.request.method} {e.request.url} failed with status {e.response.status_code}: {e.response.text}"
+            )
+            raise
+        except httpx.TimeoutException as e:
+            logger.error(f"Lobby join timed out after 300 seconds: {e}")
+            raise
+        except httpx.RequestError as e:
+            logger.error(f"HTTP {e.request.method} {e.request.url} failed: {e}")
+            raise
+
     async def stream_session_events(
         self, session_id: str, *, max_events: Optional[int] = None
     ) -> AsyncIterator[Dict[str, Any]]:
