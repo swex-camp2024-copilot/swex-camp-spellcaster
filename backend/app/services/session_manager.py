@@ -148,14 +148,13 @@ class SessionManager:
                 raise ValueError("bot_id required for builtin bot")
             return BuiltinBotRegistry.create_bot(cfg.bot_id)
 
-        # Player-submitted bot: create a stub PlayerBot bound to existing player
+        # Remote player bot: create PlayerBot that waits for HTTP action submission
         if not cfg.player_id:
             raise ValueError("player_id required for player bot")
         player = await self._db.get_player(cfg.player_id)
         if not player:
             raise ValueError(f"Player {cfg.player_id} not found")
-        dummy_code = 'def decide(state):\n    return {"move": [0, 0], "spell": None}'
-        return PlayerBot(player, dummy_code)
+        return PlayerBot(player)
 
     async def _run_match_loop(self, ctx: SessionContext) -> None:
         """Run the automated match loop until completion."""
@@ -320,11 +319,11 @@ class SessionManager:
         return True
 
     async def submit_action(self, session_id: str, player_id: str, turn: int, action: ActionData) -> None:
-        """Submit an action and also set on HumanBot if applicable."""
+        """Submit an action and set it on the player's bot instance."""
         # Store via turn processor
         await self._turn_processor.submit_action(session_id, player_id, turn, action)
 
-        # Also set on HumanBot if the player's bot is human-controlled
+        # Set action on the player's bot (PlayerBot or HumanBot)
         async with self._lock:
             ctx = self._sessions.get(session_id)
         if not ctx:
@@ -338,7 +337,7 @@ class SessionManager:
             else ctx.game_state.player_2.player_id: ctx.adapter.bot2 if hasattr(ctx.adapter, "bot2") else None,
         }
         bot = bot_map.get(player_id)
-        if isinstance(bot, HumanBot):
+        if isinstance(bot, (PlayerBot, HumanBot)):
             bot.set_action(action)
 
     # Removed old _collect_actions in favor of TurnProcessor

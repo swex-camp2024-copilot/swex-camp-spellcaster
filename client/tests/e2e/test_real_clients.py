@@ -304,3 +304,84 @@ async def test_bot_client_player_vs_player_match(asgi_client):
 
     await client1.aclose()
     await client2.aclose()
+
+
+@pytest.mark.asyncio
+async def test_remote_player_actions_are_processed(asgi_client):
+    """Verify remote player actions are incorporated into gameplay.
+
+    This test specifically checks that:
+    1. Remote player submits actions
+    2. Actions are processed by backend
+    3. Player actually moves on the board (position changes)
+    """
+    ac = asgi_client
+
+    # Create bot that moves toward opponent
+    class MoveRightBot:
+        """Simple bot that always moves right."""
+
+        name = "MoveRightBot"
+
+        def decide(self, state):
+            return {"move": [1, 0], "spell": None}
+
+    bot = MoveRightBot()
+
+    # Create BotClient
+    client = BotClient("http://test", bot_instance=bot, http_client=ac)
+
+    # Register player
+    player_name = f"move_test_{uuid.uuid4().hex[:8]}"
+    payload = {"player_name": player_name, "submitted_from": "online"}
+    resp = await ac.post("/players/register", json=payload)
+    resp.raise_for_status()
+    player_id = resp.json()["player_id"]
+
+    # Start match vs builtin
+    session_id = await client.start_match(player_id=player_id, opponent_id="builtin_sample_1", visualize=False)
+
+    # Track player position changes
+    player_positions = []
+    turn_count = 0
+
+    async for event in client.play_match(session_id, player_id, max_events=10):
+        if event.get("event") == "turn_update":
+            turn_count += 1
+            game_state = event.get("game_state", {})
+            session_info = game_state.get("session_info", {})
+
+            # Get our player's info (player_1 or player_2)
+            if session_info.get("player_1", {}).get("player_id") == player_id:
+                position = session_info["player_1"].get("position")
+            else:
+                position = session_info["player_2"].get("position")
+
+            player_positions.append(position)
+
+            # Stop after 3 turns
+            if turn_count >= 3:
+                break
+
+        elif event.get("event") == "game_over":
+            break
+
+    # Verify we tracked multiple positions
+    assert len(player_positions) >= 2, "Should have recorded at least 2 positions"
+
+    # Verify player position actually changed (moved right)
+    # Player starts at [0, 0], should move to [1, 0], [2, 0], etc.
+    for i in range(1, len(player_positions)):
+        prev_pos = player_positions[i - 1]
+        curr_pos = player_positions[i]
+
+        # Position should change (x coordinate should increase)
+        if curr_pos != prev_pos:
+            # Position changed - actions are being processed!
+            assert curr_pos[0] > prev_pos[0], f"Player should move right: {prev_pos} -> {curr_pos}"
+            break
+    else:
+        # If we get here, position never changed
+        pytest.fail(f"Player position never changed! Positions: {player_positions}")
+
+    await client.aclose()

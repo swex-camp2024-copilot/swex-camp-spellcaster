@@ -747,22 +747,33 @@ Player-submitted bots must conform to the same `BotInterface` as built-in bots a
 ```python
 class PlayerBot(BotInterface):
     """
-    Player-submitted bot implementation.
+    Remote player bot implementation.
+    Waits for action submission via HTTP API endpoint and returns the submitted action.
     Encapsulates in-game execution with strong reference to Player instance.
     """
-    
-    def __init__(self, player: Player, bot_code: str):
-        """Initialize with Player instance and bot code"""
+
+    def __init__(self, player: Player):
+        """Initialize with Player instance."""
         super().__init__(player)  # Initialize base class with player reference
-        self._bot_code = bot_code
-    
+        self._last_action: Optional[ActionData] = None
+
+    def set_action(self, action: ActionData) -> None:
+        """Store the action submitted via HTTP API for the next turn."""
+        self._last_action = action
+
     def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute player's bot code with the given game state"""
-        # Execute player's bot code safely within the decide method
-        # The bot code should implement the decision logic
-        # Return format: {"move": [dx, dy], "spell": {...}}
-        # Bot execution happens here while maintaining player stats in self._player
-        pass
+        """Return the last submitted action, or no-op if none submitted."""
+        if self._last_action is None:
+            return {"move": [0, 0], "spell": None}
+
+        action = self._last_action
+        # Convert ActionData to game engine format
+        result = {"move": action.move if action.move else [0, 0], "spell": None}
+
+        if action.spell:
+            result["spell"] = action.spell
+
+        return result
 
 class PlayerBotFactory:
     """Factory for creating player bots with proper player references"""
@@ -786,8 +797,10 @@ class PlayerBotFactory:
             player = player_registry.register_player(request.player_registration)
         else:
             raise ValueError("Must provide either player_id or player_registration")
-        
-        return PlayerBot(player, request.bot_code)
+
+        # Create PlayerBot for remote action submission
+        # Note: bot_code parameter is deprecated and ignored
+        return PlayerBot(player)
 ```
 
 **Key Requirements for Player Bots**:
@@ -795,7 +808,10 @@ class PlayerBotFactory:
 2. Must return actions in the same format as built-in bots
 3. Must handle the same game state structure as built-in bots
 4. Must execute within timeout and resource constraints
-5. Bot code evaluation happens within the `decide()` method
+5. Remote player bots store actions via `set_action()` and return them via `decide()`
+6. The `bot_type` field in `PlayerConfig` determines bot creation:
+   - `bot_type="builtin"`: Creates built-in bot that executes its own logic
+   - `bot_type="player"`: Creates PlayerBot that waits for HTTP action submission
 
 #### Human Player Support
 

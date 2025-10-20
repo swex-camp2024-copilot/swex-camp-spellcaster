@@ -82,84 +82,33 @@ class BotInfo(BaseModel):
 
 class PlayerBot(BotInterface):
     """
-    Player-submitted bot implementation.
+    Remote player bot implementation.
+    Waits for action submission via HTTP API endpoint and returns the submitted action.
     Encapsulates in-game execution with strong reference to Player instance.
     """
 
-    def __init__(self, player: Player, bot_code: str):
-        """Initialize with Player instance and bot code."""
+    def __init__(self, player: Player):
+        """Initialize with Player instance."""
         super().__init__(player)
-        self._bot_code = bot_code
-        self._compiled_code = None
-        self._compile_bot_code()
+        self._last_action: Optional[ActionData] = None
 
-    def _compile_bot_code(self) -> None:
-        """Compile and validate the bot code."""
-        try:
-            # Compile the bot code to check for syntax errors
-            self._compiled_code = compile(self._bot_code, f"<bot_{self.player_id}>", "exec")
-        except SyntaxError as e:
-            raise ValueError(f"Bot code has syntax errors: {e}")
+    def set_action(self, action: ActionData) -> None:
+        """Store the action submitted via HTTP API for the next turn."""
+        self._last_action = action
 
     def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute player's bot code with the given game state."""
-        if not self._compiled_code:
-            raise RuntimeError("Bot code not compiled")
-
-        # Create a safe execution environment
-        bot_globals = {
-            "__builtins__": {
-                "len": len,
-                "range": range,
-                "min": min,
-                "max": max,
-                "abs": abs,
-                "sum": sum,
-                "sorted": sorted,
-                "enumerate": enumerate,
-                "zip": zip,
-                "list": list,
-                "dict": dict,
-                "tuple": tuple,
-                "set": set,
-                "str": str,
-                "int": int,
-                "float": float,
-                "bool": bool,
-            }
-        }
-        bot_locals = {"state": state}
-
-        try:
-            # Execute the bot code
-            exec(self._compiled_code, bot_globals, bot_locals)
-
-            # The bot code should define a 'decide' function that returns the action
-            if "decide" not in bot_locals:
-                raise ValueError("Bot code must define a 'decide' function")
-
-            decide_func = bot_locals["decide"]
-            if not callable(decide_func):
-                raise ValueError("'decide' must be a function")
-
-            # Call the bot's decide function
-            action = decide_func(state)
-
-            # Validate action format
-            if not isinstance(action, dict):
-                raise ValueError("Bot decision must return a dictionary")
-
-            return action
-
-        except Exception as e:
-            # Log the error and return a safe default action
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.error(f"Bot {self.player_id} execution error: {e}")
-
-            # Return a safe default action (no move, no spell)
+        """Return the last submitted action, or no-op if none submitted."""
+        if self._last_action is None:
             return {"move": [0, 0], "spell": None}
+
+        action = self._last_action
+        # Convert ActionData to game engine format
+        result = {"move": action.move if action.move else [0, 0], "spell": None}
+
+        if action.spell:
+            result["spell"] = action.spell
+
+        return result
 
 
 class HumanBot(BotInterface):
@@ -191,8 +140,11 @@ class PlayerBotFactory:
         1. Reuse existing Player (provide player_id)
         2. Register new Player (provide player_registration) - fresh stats
 
+        Note: bot_code parameter in BotCreationRequest is deprecated and ignored.
+        PlayerBot now waits for action submission via HTTP API.
+
         Args:
-            request: Bot creation request with code and player info
+            request: Bot creation request with player info
             player_registry: Registry to get/create players
 
         Returns:
@@ -212,4 +164,5 @@ class PlayerBotFactory:
         else:
             raise ValueError("Must provide either player_id or player_registration")
 
-        return PlayerBot(player, request.bot_code)
+        # Create PlayerBot for remote action submission
+        return PlayerBot(player)

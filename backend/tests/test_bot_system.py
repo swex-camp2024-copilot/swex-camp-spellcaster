@@ -51,105 +51,96 @@ class TestBotInterface:
 
 
 class TestPlayerBot:
-    """Test the PlayerBot implementation."""
+    """Test the PlayerBot implementation (remote player action submission)."""
 
     def test_player_bot_creation(self):
-        """Test PlayerBot creation with valid code."""
+        """Test PlayerBot creation."""
         player = Player(
             player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
         )
 
-        bot_code = """
-def decide(state):
-    return {"move": [1, 0], "spell": None}
-"""
-
-        bot = PlayerBot(player, bot_code)
+        bot = PlayerBot(player)
         assert bot.player == player
         assert bot.name == "Test Player"
+        assert bot._last_action is None
 
-    def test_player_bot_invalid_syntax(self):
-        """Test PlayerBot creation with invalid syntax."""
+    def test_player_bot_decide_no_action(self):
+        """Test PlayerBot decide method with no action submitted."""
         player = Player(
             player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
         )
 
-        # Invalid Python syntax
-        invalid_code = """
-def decide(state)
-    return {"move": [1, 0]}  # Missing colon
-"""
+        bot = PlayerBot(player)
 
-        with pytest.raises(ValueError, match="Bot code has syntax errors"):
-            PlayerBot(player, invalid_code)
-
-    def test_player_bot_decide_execution(self):
-        """Test PlayerBot decide method execution."""
-        player = Player(
-            player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
-        )
-
-        bot_code = """
-def decide(state):
-    if state["self"]["hp"] < 50:
-        return {"move": [0, 0], "spell": {"name": "heal"}}
-    else:
-        return {"move": [1, 0], "spell": None}
-"""
-
-        bot = PlayerBot(player, bot_code)
-
-        # Test with low HP
-        state = {"self": {"hp": 30}, "opponent": {"hp": 100}}
+        # Should return default action when no action submitted
+        state = {"self": {"hp": 100}, "opponent": {"hp": 100}}
         action = bot.decide(state)
-        assert action["spell"]["name"] == "heal"
+        assert action == {"move": [0, 0], "spell": None}
 
-        # Test with high HP
-        state = {"self": {"hp": 80}, "opponent": {"hp": 100}}
+    def test_player_bot_set_and_retrieve_action(self):
+        """Test PlayerBot action storage and retrieval."""
+        from backend.app.models.actions import ActionData
+
+        player = Player(
+            player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
+        )
+
+        bot = PlayerBot(player)
+
+        # Submit an action
+        action_data = ActionData(move=[1, 0], spell=None)
+        bot.set_action(action_data)
+
+        # Should return submitted action
+        state = {"self": {"hp": 100}, "opponent": {"hp": 100}}
         action = bot.decide(state)
         assert action["move"] == [1, 0]
         assert action["spell"] is None
 
-    def test_player_bot_missing_decide_function(self):
-        """Test PlayerBot with code that doesn't define decide function."""
+    def test_player_bot_action_with_spell(self):
+        """Test PlayerBot with spell action."""
+        from backend.app.models.actions import ActionData
+
         player = Player(
             player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
         )
 
-        bot_code = """
-x = 5
-y = 10
-# No decide function defined
-"""
+        bot = PlayerBot(player)
 
-        bot = PlayerBot(player, bot_code)
+        # Submit action with spell
+        action_data = ActionData(move=[0, 0], spell={"name": "fireball", "target": [5, 5]})
+        bot.set_action(action_data)
 
-        # Should return safe default action
-        state = {"self": {"hp": 100}}
+        # Should return submitted action with spell
+        state = {"self": {"hp": 100}, "opponent": {"hp": 100}}
         action = bot.decide(state)
-        assert action == {"move": [0, 0], "spell": None}
+        assert action["move"] == [0, 0]
+        assert action["spell"]["name"] == "fireball"
+        assert action["spell"]["target"] == [5, 5]
 
-    def test_player_bot_execution_error(self):
-        """Test PlayerBot with code that raises an exception."""
+    def test_player_bot_action_without_move(self):
+        """Test PlayerBot when move is None."""
+        from backend.app.models.actions import ActionData
+
         player = Player(
             player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
         )
 
-        bot_code = """
-def decide(state):
-    raise ValueError("Something went wrong!")
-"""
+        bot = PlayerBot(player)
 
-        bot = PlayerBot(player, bot_code)
+        # Submit action with no move
+        action_data = ActionData(move=None, spell={"name": "shield"})
+        bot.set_action(action_data)
 
-        # Should return safe default action on error
-        state = {"self": {"hp": 100}}
+        # Should default move to [0, 0]
+        state = {"self": {"hp": 100}, "opponent": {"hp": 100}}
         action = bot.decide(state)
-        assert action == {"move": [0, 0], "spell": None}
+        assert action["move"] == [0, 0]
+        assert action["spell"]["name"] == "shield"
 
 
 class TestPlayerBotFactory:
-    """Test the PlayerBotFactory."""
+    """Test the PlayerBotFactory (deprecated - kept for backward compatibility)."""
 
     def test_create_bot_with_existing_player(self):
         """Test creating bot with existing player ID."""
@@ -164,7 +155,8 @@ class TestPlayerBotFactory:
         mock_registry = Mock()
         mock_registry.get_player.return_value = player
 
-        request = BotCreationRequest(bot_code="def decide(state): return {'move': [0, 0]}", player_id="existing_player")
+        # Note: bot_code parameter is deprecated but kept for backward compatibility
+        request = BotCreationRequest(bot_code="# Remote player bot", player_id="existing_player")
 
         bot = PlayerBotFactory.create_bot(request, mock_registry)
 
@@ -182,8 +174,9 @@ class TestPlayerBotFactory:
         mock_registry = Mock()
         mock_registry.register_player.return_value = new_player
 
+        # Note: bot_code parameter is deprecated but kept for backward compatibility
         request = BotCreationRequest(
-            bot_code="def decide(state): return {'move': [0, 0]}",
+            bot_code="# Remote player bot",
             player_registration=PlayerRegistration(player_name="New Player", submitted_from="online"),
         )
 
@@ -198,9 +191,7 @@ class TestPlayerBotFactory:
         mock_registry = Mock()
         mock_registry.get_player.return_value = None
 
-        request = BotCreationRequest(
-            bot_code="def decide(state): return {'move': [0, 0]}", player_id="nonexistent_player"
-        )
+        request = BotCreationRequest(bot_code="# Remote player bot", player_id="nonexistent_player")
 
         with pytest.raises(ValueError, match="Player nonexistent_player not found"):
             PlayerBotFactory.create_bot(request, mock_registry)
@@ -209,7 +200,7 @@ class TestPlayerBotFactory:
         """Test creating bot without player ID or registration."""
         mock_registry = Mock()
 
-        request = BotCreationRequest(bot_code="def decide(state): return {'move': [0, 0]}")
+        request = BotCreationRequest(bot_code="# Remote player bot")
 
         with pytest.raises(ValueError, match="Must provide either player_id or player_registration"):
             PlayerBotFactory.create_bot(request, mock_registry)

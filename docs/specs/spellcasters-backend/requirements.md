@@ -59,10 +59,13 @@ The Spellcasters Playground Backend is a FastAPI-based system that powers the "P
 1. The system SHALL provide a POST /playground/{session_id}/action endpoint for action submission
 2. The system SHALL accept player_id, turn number, and action data in the submission payload
 3. The system SHALL validate that the turn number matches the expected next turn
-4. The system SHALL store submitted actions until both players submit or timeout occurs
+4. The system SHALL store submitted actions in the bot instance and retrieve them when processing turns
 5. The system SHALL support move and spell actions with appropriate target validation
 6. The system SHALL reject actions with invalid turn numbers with a 400 error response
 7. The system SHALL handle malformed actions by skipping them and logging the error
+8. The system SHALL distinguish between remote players (submitting via HTTP) and built-in bots (executing decide() logic) using the bot_type field in PlayerConfig
+9. The system SHALL create PlayerBot instances for remote players that store and return submitted actions
+10. The system SHALL call set_action() on remote player bots when actions are submitted via HTTP
 
 ### 5. Turn Timeout Management
 

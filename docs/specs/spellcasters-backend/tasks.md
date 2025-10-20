@@ -196,6 +196,14 @@ This implementation plan converts the feature design into a series of incrementa
   - Integration tests for complete action flow
   - **Requirements**: Testing strategy for action processing reliability
 
+- [x] 7.5 Integrate remote player action submission with game loop
+  - Re-implement PlayerBot to store and return submitted actions instead of executing bot code
+  - Update SessionManager to create PlayerBot instances for `bot_type="player"`
+  - Update SessionManager.submit_action to call set_action() on PlayerBot instances
+  - Add unit tests for PlayerBot action storage and retrieval
+  - Verify remote player actions are incorporated into gameplay
+  - **Requirements**: 4.4, 4.8, 4.9, 4.10 (Remote player action integration with game loop)
+
 ### 8. Match Logging and Replay System
 
 - [x] 8.1 Implement match logging in `/backend/app/services/match_logger.py`
