@@ -341,7 +341,7 @@ class StateManager:
                 session_ids = await self._session_manager.list_active_sessions()
                 for session_id in session_ids:
                     try:
-                        await self._session_manager.terminate_session(session_id)
+                        await self._session_manager.cleanup_session(session_id)
                     except Exception as e:
                         logger.error(f"Error terminating session {session_id}: {e}")
                 self._service_status["session_manager"] = ServiceStatus.SHUTDOWN
