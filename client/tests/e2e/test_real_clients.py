@@ -583,3 +583,91 @@ async def test_remote_player_actions_are_processed(asgi_client):
     # No need to verify replay - the logged stdout shows player moved from [0,0] to [5,0]
 
     await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_player2_moves_with_perspective_fix(asgi_client):
+    """Ensure player 2 moves when using a perspective-dependent bot.
+
+    Without perspectivizing the game_state on the client, a bot that moves toward
+    'opponent' using 'self' position would compute movement based on player 1's
+    position, causing player 2 to try to step off-board (and not move). This
+    test validates that the client remaps the state so player 2 moves correctly.
+    """
+    ac = asgi_client
+
+    class MoveTowardOpponentBot:
+        name = "MoveTowardOpponentBot"
+
+        def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
+            s = state.get("self", {})
+            o = state.get("opponent", {})
+            s_pos = s.get("position")
+            o_pos = o.get("position")
+            if not isinstance(s_pos, list) or not isinstance(o_pos, list):
+                return {"move": [0, 0], "spell": None}
+            dx = o_pos[0] - s_pos[0]
+            dy = o_pos[1] - s_pos[1]
+            step_x = 1 if dx > 0 else (-1 if dx < 0 else 0)
+            step_y = 1 if dy > 0 else (-1 if dy < 0 else 0)
+            return {"move": [step_x, step_y], "spell": None}
+
+    bot1 = MoveTowardOpponentBot()
+    bot2 = MoveTowardOpponentBot()
+
+    client1 = BotClient("http://test", bot_instance=bot1, http_client=ac)
+    client2 = BotClient("http://test", bot_instance=bot2, http_client=ac)
+
+    # Register two players
+    import uuid
+
+    p1_name = f"persp_p1_{uuid.uuid4().hex[:8]}"
+    p2_name = f"persp_p2_{uuid.uuid4().hex[:8]}"
+
+    r1 = await ac.post("/players/register", json={"player_name": p1_name, "submitted_from": "online"})
+    r1.raise_for_status()
+    p1_id = r1.json()["player_id"]
+
+    r2 = await ac.post("/players/register", json={"player_name": p2_name, "submitted_from": "online"})
+    r2.raise_for_status()
+    p2_id = r2.json()["player_id"]
+
+    # Start PvP match
+    session_id = await client1.start_match(player_id=p1_id, opponent_id=p2_id, visualize=False)
+
+    # Track positions
+    p1_positions = []
+    p2_positions = []
+
+    async def play_and_track(client: BotClient, pid: str, collector: list, max_turns: int = 5):
+        turns = 0
+        async for event in client.play_match(session_id, pid, max_events=30):
+            if event.get("event") == "turn_update":
+                turns += 1
+                sess = event.get("game_state", {}).get("session_info", {})
+                if sess.get("player_1", {}).get("player_id") == pid:
+                    collector.append(sess["player_1"].get("position"))
+                else:
+                    collector.append(sess["player_2"].get("position"))
+                if turns >= max_turns:
+                    break
+            if event.get("event") == "game_over":
+                break
+
+    # Run both clients
+    await asyncio.wait_for(
+        asyncio.gather(
+            play_and_track(client1, p1_id, p1_positions),
+            play_and_track(client2, p2_id, p2_positions),
+        ),
+        timeout=20.0,
+    )
+
+    # Validate movement
+    assert len(p1_positions) > 0 and len(p2_positions) > 0
+    # Player 2 should move from initial [9, 9] at least once within first few turns
+    p2_moved = any(i > 0 and p2_positions[i] != p2_positions[i - 1] for i in range(1, len(p2_positions)))
+    assert p2_moved, f"Player 2 should move with perspective fix, positions: {p2_positions}"
+
+    await client1.aclose()
+    await client2.aclose()

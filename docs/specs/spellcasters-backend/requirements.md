@@ -54,6 +54,7 @@ The Spellcasters Playground Backend is a FastAPI-based system that powers the "P
 5. The system SHALL send a final "game_over" event when the match concludes
 6. The system SHALL handle SSE connection drops gracefully without stopping the match
 7. The system SHALL validate session_id existence before establishing SSE connections
+8. The system SHALL document that SSE game_state is emitted from player 1's perspective (server-side canonical view) and that clients MAY remap to their own perspective before deciding actions
 
 ### 4. Player Action Submission
 
@@ -74,6 +75,7 @@ The Spellcasters Playground Backend is a FastAPI-based system that powers the "P
 12. The system SHALL require a fresh action submission for each turn to maintain proper turn-based gameplay behavior
 13. The system SHALL set submitted actions on bot instances BEFORE making them visible to the turn collection system to prevent race conditions where the game engine calls decide() before set_action() completes
 14. The system SHALL guarantee atomic action submission where bot.set_action() completes before the action becomes available to collect_actions(), ensuring actions are always available when the game engine needs them
+15. The system SHOULD provide guidance for clients that, when consuming SSE, they can transform the server-emitted game_state to ensure 'self' refers to the local player prior to computing movement and actions
 
 ### 5. Turn Timeout Management
 

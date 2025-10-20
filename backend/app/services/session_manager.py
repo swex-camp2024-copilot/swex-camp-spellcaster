@@ -334,6 +334,12 @@ class SessionManager:
         calls bot.decide(), the action has already been set.
         """
         # Set action on the player's bot FIRST (PlayerBot or HumanBot)
+        logger.debug(
+            "submit_action: received action for session=%s player=%s turn=%s (setting on bot)",
+            session_id,
+            player_id,
+            turn,
+        )
         async with self._lock:
             ctx = self._sessions.get(session_id)
         if not ctx:
@@ -350,9 +356,21 @@ class SessionManager:
         bot = bot_map.get(player_id)
         if isinstance(bot, (PlayerBot, HumanBot)):
             bot.set_action(action)
+            logger.debug(
+                "submit_action: action set on bot for session=%s player=%s turn=%s",
+                session_id,
+                player_id,
+                turn,
+            )
 
         # THEN store via turn processor (makes action visible to collect_actions)
         await self._turn_processor.submit_action(session_id, player_id, turn, action)
+        logger.debug(
+            "submit_action: action stored in TurnProcessor for session=%s player=%s turn=%s",
+            session_id,
+            player_id,
+            turn,
+        )
 
     # Removed old _collect_actions in favor of TurnProcessor
 

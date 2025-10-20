@@ -466,6 +466,11 @@ This implementation plan converts the feature design into a series of incrementa
   - Document the fix: reordering operations in `submit_action()`
   - **Requirements**: Complete documentation of timing guarantees and race prevention strategy
 
+- [x] 14.9 Clarify SSE perspective and client mapping
+  - Document in requirements/design that `game_state` is emitted from player 1's perspective
+  - Recommend client-side remapping so 'self' refers to the local player to avoid perspective-related non-movement for player 2
+  - Reference new e2e validation that player 2 moves with a perspective-dependent bot
+
 ## Implementation Summary for Task 14
 
 Task 14 addressed TWO related but distinct bugs in PvP gameplay:

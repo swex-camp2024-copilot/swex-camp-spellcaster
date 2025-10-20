@@ -989,6 +989,13 @@ async def stream_match_events(session_id: str, request: Request) -> StreamingRes
             "X-Accel-Buffering": "no"  # Nginx optimization
         }
     )
+
+#### Game State Perspective
+
+- The backend emits `game_state` in a single canonical form from player 1's point of view.
+- Fields under `session_info.player_1` and `session_info.player_2` always refer to the same physical wizards in the engine (player 1 starts at [0, 0], player 2 at [9, 9]).
+- Clients MAY remap the state so that their local player's wizard becomes `self` and the opponent becomes `opponent` before computing decisions. This prevents perspective-dependent bots from producing incorrect movement deltas for player 2.
+- This is a client-side concern; the server continues to use a canonical perspective to keep SSE simple and efficient.
 ```
 
 ### 5. Game Engine Integration
@@ -1298,36 +1305,17 @@ class TurnProcessor:
         """Process complete turn with all player actions"""
 ```
 
-#### Action Submission Flow and Race Condition Prevention
+#### Action Submission Flow
 
 The `submit_action()` method must carefully order operations to prevent a race condition between action submission and game engine execution. This is critical for PvP matches where both players are remote.
 
-**The Race Condition (BUGGY implementation):**
+1. When `bot.set_action()` completes, the bot instance has the action
+2. Only then does the action become visible in the turn processor
+3. When `collect_actions()` sees the action and returns, the bot already has it
+4. When `execute_turn()` calls `bot.decide()`, the action is guaranteed to be available
+5. No race condition possible!
 
 ```python
-# INCORRECT ORDERING - DO NOT USE
-async def submit_action(self, session_id: str, player_id: str, turn: int, action: ActionData) -> None:
-    # 1. Store action in turn processor FIRST
-    await self._turn_processor.submit_action(session_id, player_id, turn, action)
-
-    # 2. THEN set action on bot instance
-    async with self._lock:
-        ctx = self._sessions.get(session_id)
-    bot = get_bot_for_player(ctx, player_id)
-    bot.set_action(action)  # ⚠️ RACE WINDOW!
-```
-
-**Problem**: Between steps 1 and 2, there's a race window where:
-- `collect_actions()` sees the action in turn processor and returns
-- Match loop immediately calls `execute_turn()` → game engine calls `bot.decide()`
-- `bot.decide()` is called BEFORE `bot.set_action()` completes
-- Bot returns default `[0, 0]` because `_last_action` is still `None`
-- Result: Player doesn't move despite successfully submitting action!
-
-**The Fix (CORRECT implementation):**
-
-```python
-# CORRECT ORDERING - PREVENTS RACE
 async def submit_action(self, session_id: str, player_id: str, turn: int, action: ActionData) -> None:
     """Submit an action and set it on the player's bot instance.
 
@@ -1356,36 +1344,6 @@ async def submit_action(self, session_id: str, player_id: str, turn: int, action
     # 2. THEN store via turn processor (makes action visible to collect_actions)
     await self._turn_processor.submit_action(session_id, player_id, turn, action)
 ```
-
-**Why This Ordering Works:**
-
-1. When `bot.set_action()` completes, the bot instance has the action
-2. Only then does the action become visible in the turn processor
-3. When `collect_actions()` sees the action and returns, the bot already has it
-4. When `execute_turn()` calls `bot.decide()`, the action is guaranteed to be available
-5. No race condition possible!
-
-**Symptoms of the Race Condition (Before Fix):**
-
-- In PvP matches, one player moves correctly while the other stays stationary
-- Client successfully submits actions (HTTP 200 OK) but player doesn't move
-- Server logs show actions submitted but wizard position remains unchanged
-- More likely to affect player 2 due to timing differences in concurrent action submission
-
-**How Both Fixes Work Together:**
-
-1. **Action Clearing** (Task 14.1-14.2): Prevents action reuse across turns
-   - Each `decide()` call clears `_last_action` after returning it
-   - Ensures fresh action required for each turn
-
-2. **Race Condition Fix** (Task 14.6): Ensures actions available when needed
-   - Reorders operations in `submit_action()`
-   - Guarantees action set before `decide()` is called
-
-Together, these fixes ensure proper turn-based PvP gameplay where:
-- Actions never reused (clearing prevents this)
-- Actions always available when engine needs them (ordering prevents race)
-- Both players move correctly in PvP matches
 
 ### 8. Lobby Service
 

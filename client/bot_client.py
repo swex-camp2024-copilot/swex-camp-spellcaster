@@ -255,8 +255,11 @@ class BotClient:
                 try:
                     next_turn = turn + 1
 
+                    # Convert game_state to the player's perspective (so 'self' matches player_id)
+                    perspective_state = self._to_player_perspective(game_state, player_id)
+
                     # Call bot's decide() method directly (synchronous call in async context)
-                    action = self.bot.decide(game_state)
+                    action = self.bot.decide(perspective_state)
 
                     logger.debug(f"Bot '{self.bot.name}' decided action for turn {next_turn}: {action}")
 
@@ -274,6 +277,30 @@ class BotClient:
     async def aclose(self) -> None:
         if not self._external_client:
             await self._client.aclose()
+
+    def _to_player_perspective(self, game_state: Dict[str, Any], player_id: str) -> Dict[str, Any]:
+        """Return a copy of game_state where 'self' refers to the given player's wizard.
+
+        The backend engine emits game_state from player 1's perspective. For player 2,
+        swap 'self' and 'opponent' so stateful bots compute directions correctly.
+        """
+        try:
+            session_info = game_state.get("session_info", {})
+            p1 = session_info.get("player_1", {})
+            p2 = session_info.get("player_2", {})
+            is_p2 = p2.get("player_id") == player_id
+
+            if not is_p2:
+                return game_state
+
+            # Shallow copy and swap the viewpoints
+            swapped: Dict[str, Any] = dict(game_state)
+            if "self" in game_state and "opponent" in game_state:
+                swapped["self"], swapped["opponent"] = game_state["opponent"], game_state["self"]
+            return swapped
+        except Exception:
+            # On any parsing error, fall back to original state
+            return game_state
 
 
 __all__ = [
