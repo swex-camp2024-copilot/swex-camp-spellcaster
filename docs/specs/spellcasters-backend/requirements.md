@@ -70,6 +70,10 @@ The Spellcasters Playground Backend is a FastAPI-based system that powers the "P
 8. The system SHALL distinguish between remote players (submitting via HTTP) and built-in bots (executing decide() logic) using the bot_type field in PlayerConfig
 9. The system SHALL create PlayerBot instances for remote players that store and return submitted actions
 10. The system SHALL call set_action() on remote player bots when actions are submitted via HTTP
+11. The system SHALL clear submitted actions after they are consumed by the game engine to prevent action reuse across multiple turns
+12. The system SHALL require a fresh action submission for each turn to maintain proper turn-based gameplay behavior
+13. The system SHALL set submitted actions on bot instances BEFORE making them visible to the turn collection system to prevent race conditions where the game engine calls decide() before set_action() completes
+14. The system SHALL guarantee atomic action submission where bot.set_action() completes before the action becomes available to collect_actions(), ensuring actions are always available when the game engine needs them
 
 ### 5. Turn Timeout Management
 

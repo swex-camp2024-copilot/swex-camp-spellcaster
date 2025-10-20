@@ -138,6 +138,66 @@ class TestPlayerBot:
         assert action["move"] == [0, 0]
         assert action["spell"]["name"] == "shield"
 
+    def test_player_bot_clears_action_after_use(self):
+        """Test that PlayerBot clears action after decide() is called to prevent reuse.
+
+        This test verifies the fix for the PvP bug where actions were being reused
+        across multiple turns, causing one player to repeat the same action while
+        the other player stood still.
+        """
+        from backend.app.models.actions import ActionData
+
+        player = Player(
+            player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
+        )
+
+        bot = PlayerBot(player)
+
+        # Submit an action
+        action_data = ActionData(move=[1, 0], spell=None)
+        bot.set_action(action_data)
+
+        # First decide() should return the submitted action
+        state = {"self": {"hp": 100}, "opponent": {"hp": 100}}
+        action1 = bot.decide(state)
+        assert action1["move"] == [1, 0]
+        assert action1["spell"] is None
+
+        # Second decide() should return default action (action was cleared)
+        action2 = bot.decide(state)
+        assert action2["move"] == [0, 0]
+        assert action2["spell"] is None
+
+        # Third decide() should still return default (no new action submitted)
+        action3 = bot.decide(state)
+        assert action3["move"] == [0, 0]
+        assert action3["spell"] is None
+
+    def test_player_bot_action_clearing_with_spell(self):
+        """Test that PlayerBot clears actions with spells correctly."""
+        from backend.app.models.actions import ActionData
+
+        player = Player(
+            player_id="test_player", player_name="Test Player", submitted_from="online", created_at=datetime.now()
+        )
+
+        bot = PlayerBot(player)
+
+        # Submit action with spell
+        action_data = ActionData(move=[0, 1], spell={"name": "fireball", "target": [5, 5]})
+        bot.set_action(action_data)
+
+        # First decide() returns the action with spell
+        state = {"self": {"hp": 100}, "opponent": {"hp": 100}}
+        action1 = bot.decide(state)
+        assert action1["move"] == [0, 1]
+        assert action1["spell"]["name"] == "fireball"
+
+        # Second decide() returns default (spell was cleared)
+        action2 = bot.decide(state)
+        assert action2["move"] == [0, 0]
+        assert action2["spell"] is None
+
 
 class TestPlayerBotFactory:
     """Test the PlayerBotFactory (deprecated - kept for backward compatibility)."""

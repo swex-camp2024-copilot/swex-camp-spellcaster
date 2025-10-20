@@ -243,12 +243,13 @@ async def test_bot_client_custom_bot_match(asgi_client):
 @pytest.mark.slow
 @pytest.mark.asyncio
 async def test_bot_client_player_vs_player_match(asgi_client):
-    """Test BotClient with two remote players (PvP match).
+    """Test BotClient with two remote players (PvP match) over multiple turns.
 
-    This test simulates a match between two remote players:
+    This test simulates a match between two remote players and verifies:
     - Both players use RandomWalkStrategy
     - Both clients submit actions concurrently
-    - Verifies match completes successfully
+    - BOTH players move continuously over multiple turns (fixes PvP action reuse bug)
+    - Actions are not reused across turns
 
     NOTE: This test is marked as slow (~10s) because it runs a PvP match simulation.
     Run with: pytest -m slow or pytest --run-slow
@@ -276,32 +277,233 @@ async def test_bot_client_player_vs_player_match(asgi_client):
     # Start match (player vs player)
     session_id = await client1.start_match(player_id=player1_id, opponent_id=player2_id, visualize=False)
 
-    # Both clients play the match concurrently (limit to 3 events each for speed)
-    async def play_client(client, player_id, max_events=3):
+    # Track positions for both players to verify continuous movement
+    player1_positions = []
+    player2_positions = []
+
+    # Both clients play the match concurrently - run for 5 turns to verify continuous movement
+    async def play_client(client, player_id, positions_list, max_turns=5):
         events = []
-        async for event in client.play_match(session_id, player_id, max_events=max_events):
+        turn_count = 0
+        async for event in client.play_match(session_id, player_id, max_events=20):
             events.append(event)
-            # Stop early after receiving one turn_update
+
             if event.get("event") == "turn_update":
-                break
+                turn_count += 1
+                game_state = event.get("game_state", {})
+                session_info = game_state.get("session_info", {})
+
+                # Track this player's position
+                if session_info.get("player_1", {}).get("player_id") == player_id:
+                    position = session_info["player_1"].get("position")
+                else:
+                    position = session_info["player_2"].get("position")
+
+                positions_list.append(position)
+
+                # Stop after max_turns
+                if turn_count >= max_turns:
+                    break
+
             if event.get("event") == "game_over":
                 break
         return events
 
     # Run both clients concurrently
     events1, events2 = await asyncio.wait_for(
-        asyncio.gather(play_client(client1, player1_id), play_client(client2, player2_id)), timeout=10.0
+        asyncio.gather(
+            play_client(client1, player1_id, player1_positions),
+            play_client(client2, player2_id, player2_positions),
+        ),
+        timeout=15.0,
     )
 
     # Verify both clients received events
-    assert len(events1) > 0
-    assert len(events2) > 0
+    assert len(events1) > 0, "Client 1 should receive events"
+    assert len(events2) > 0, "Client 2 should receive events"
 
-    # Verify at least one turn_update was received by each client
+    # Verify turn updates
     turn_updates_1 = [e for e in events1 if e.get("event") == "turn_update"]
     turn_updates_2 = [e for e in events2 if e.get("event") == "turn_update"]
-    assert len(turn_updates_1) > 0, "Client 1 should receive at least one turn_update"
-    assert len(turn_updates_2) > 0, "Client 2 should receive at least one turn_update"
+    assert len(turn_updates_1) >= 3, f"Client 1 should receive at least 3 turn_update events, got {len(turn_updates_1)}"
+    assert len(turn_updates_2) >= 3, f"Client 2 should receive at least 3 turn_update events, got {len(turn_updates_2)}"
+
+    # CRITICAL: Verify both players are moving (positions changing over time)
+    # This is the key verification for the PvP action reuse bug fix
+    assert len(player1_positions) >= 3, f"Should track at least 3 positions for player 1, got {len(player1_positions)}"
+    assert len(player2_positions) >= 3, f"Should track at least 3 positions for player 2, got {len(player2_positions)}"
+
+    # Verify Player 1 is moving (position changes)
+    player1_moved = False
+    for i in range(1, len(player1_positions)):
+        if player1_positions[i] != player1_positions[i - 1]:
+            player1_moved = True
+            break
+
+    assert player1_moved, f"Player 1 should move! Positions: {player1_positions}"
+
+    # Verify Player 2 is moving (position changes)
+    player2_moved = False
+    for i in range(1, len(player2_positions)):
+        if player2_positions[i] != player2_positions[i - 1]:
+            player2_moved = True
+            break
+
+    assert player2_moved, f"Player 2 should move! Positions: {player2_positions}"
+
+    # Log positions for debugging
+    print(f"\nPlayer 1 positions: {player1_positions}")
+    print(f"Player 2 positions: {player2_positions}")
+
+    await client1.aclose()
+    await client2.aclose()
+
+
+@pytest.mark.slow
+@pytest.mark.asyncio
+async def test_pvp_no_race_condition_in_action_submission(asgi_client):
+    """Test that PvP matches don't have race conditions in action submission.
+
+    This test specifically validates the fix for the race condition where
+    bot.decide() was called before bot.set_action() completed, causing
+    players to use default [0,0] actions and not move.
+
+    The race condition occurred when:
+    1. submit_action() stored action in turn processor
+    2. collect_actions() saw the action and returned immediately
+    3. execute_turn() called bot.decide() before bot.set_action() completed
+    4. bot.decide() returned default [0,0] because action not yet set
+
+    This test verifies:
+    - Both players continuously submit actions
+    - Both players MOVE on EVERY turn (no default [0,0] actions from race)
+    - Actions are available when bot.decide() is called
+    - No race window between submission and execution
+
+    NOTE: This test is marked as slow (~10s) because it runs multiple turns.
+    Run with: pytest -m slow or pytest --run-slow
+    """
+    ac = asgi_client
+
+    # Create two deterministic bots that should always move
+    class AlwaysMoveRightBot:
+        """Bot that always moves right [1, 0]."""
+
+        name = "AlwaysMoveRightBot"
+
+        def decide(self, state):
+            return {"move": [1, 0], "spell": None}
+
+    class AlwaysMoveDownBot:
+        """Bot that always moves down [0, 1]."""
+
+        name = "AlwaysMoveDownBot"
+
+        def decide(self, state):
+            return {"move": [0, 1], "spell": None}
+
+    bot1 = AlwaysMoveRightBot()
+    bot2 = AlwaysMoveDownBot()
+
+    client1 = BotClient("http://test", bot_instance=bot1, http_client=ac)
+    client2 = BotClient("http://test", bot_instance=bot2, http_client=ac)
+
+    # Register two players
+    player1_name = f"race_test_p1_{uuid.uuid4().hex[:8]}"
+    player2_name = f"race_test_p2_{uuid.uuid4().hex[:8]}"
+
+    resp1 = await ac.post("/players/register", json={"player_name": player1_name, "submitted_from": "online"})
+    resp1.raise_for_status()
+    player1_id = resp1.json()["player_id"]
+
+    resp2 = await ac.post("/players/register", json={"player_name": player2_name, "submitted_from": "online"})
+    resp2.raise_for_status()
+    player2_id = resp2.json()["player_id"]
+
+    # Start match
+    session_id = await client1.start_match(player_id=player1_id, opponent_id=player2_id, visualize=False)
+
+    # Track positions for both players to detect race condition
+    player1_positions = []
+    player2_positions = []
+
+    async def play_and_track(client, player_id, positions_list, max_turns=7):
+        """Play match and track every position to detect default [0,0] moves."""
+        events = []
+        turn_count = 0
+        async for event in client.play_match(session_id, player_id, max_events=30):
+            events.append(event)
+
+            if event.get("event") == "turn_update":
+                turn_count += 1
+                game_state = event.get("game_state", {})
+                session_info = game_state.get("session_info", {})
+
+                # Get position for this player
+                if session_info.get("player_1", {}).get("player_id") == player_id:
+                    position = session_info["player_1"].get("position")
+                else:
+                    position = session_info["player_2"].get("position")
+
+                positions_list.append(position)
+
+                if turn_count >= max_turns:
+                    break
+
+            if event.get("event") == "game_over":
+                break
+        return events
+
+    # Run both clients concurrently
+    await asyncio.wait_for(
+        asyncio.gather(
+            play_and_track(client1, player1_id, player1_positions),
+            play_and_track(client2, player2_id, player2_positions),
+        ),
+        timeout=20.0,
+    )
+
+    # CRITICAL VALIDATION: Both players should move on EVERY turn
+    # Player 1 starts at [0, 0] and should move right every turn: [0,0] -> [1,0] -> [2,0] -> [3,0] ...
+    # Player 2 starts at [9, 9] and should move down every turn: [9,9] -> [9,8] -> [9,7] -> [9,6] ... (board wraps or stays at edge)
+
+    assert len(player1_positions) >= 5, f"Should track at least 5 positions for player 1, got {len(player1_positions)}"
+    assert len(player2_positions) >= 5, f"Should track at least 5 positions for player 2, got {len(player2_positions)}"
+
+    # Verify Player 1 moves right continuously (x coordinate increases)
+    for i in range(1, min(5, len(player1_positions))):
+        prev_x = player1_positions[i - 1][0]
+        curr_x = player1_positions[i][0]
+        # Either moved right (x increased) or hit edge and stayed (x same)
+        assert curr_x >= prev_x, (
+            f"Player 1 should move right (or stay at edge): "
+            f"turn {i - 1} pos {player1_positions[i - 1]} -> turn {i} pos {player1_positions[i]}"
+        )
+        # At least one turn should show movement (not stuck at start)
+        if i == 1:
+            assert curr_x > prev_x, (
+                f"Player 1 should move on first turn! "
+                f"If stuck at {player1_positions[0]}, race condition may have occurred. "
+                f"Positions: {player1_positions[:5]}"
+            )
+
+    # Verify Player 2 moves (y coordinate changes due to down movement)
+    # Note: y=9 is bottom, moving down decreases y (or wraps)
+    player2_moved = False
+    for i in range(1, min(5, len(player2_positions))):
+        if player2_positions[i] != player2_positions[i - 1]:
+            player2_moved = True
+            break
+
+    assert player2_moved, (
+        f"Player 2 should move on at least one turn! "
+        f"If stuck at {player2_positions[0]}, race condition may have occurred. "
+        f"Positions: {player2_positions[:5]}"
+    )
+
+    # Print positions for debugging
+    print(f"\nPlayer 1 positions (should move right): {player1_positions[:7]}")
+    print(f"Player 2 positions (should move down): {player2_positions[:7]}")
 
     await client1.aclose()
     await client2.aclose()

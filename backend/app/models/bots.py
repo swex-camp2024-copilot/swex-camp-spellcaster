@@ -97,11 +97,17 @@ class PlayerBot(BotInterface):
         self._last_action = action
 
     def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Return the last submitted action, or no-op if none submitted."""
+        """Return the last submitted action, or no-op if none submitted.
+
+        Note: The action is cleared after being returned to prevent reuse.
+        Each turn requires a fresh action submission.
+        """
         if self._last_action is None:
             return {"move": [0, 0], "spell": None}
 
         action = self._last_action
+        self._last_action = None  # Clear action after use to prevent reuse
+
         # Convert ActionData to game engine format
         result = {"move": action.move if action.move else [0, 0], "spell": None}
 
@@ -122,9 +128,17 @@ class HumanBot(BotInterface):
         self._last_action = action
 
     def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Return the last submitted action, or no-op if none submitted.
+
+        Note: The action is cleared after being returned to prevent reuse.
+        Each turn requires a fresh action submission.
+        """
         if self._last_action is None:
             return {"move": [0, 0], "spell": None}
+
         action = self._last_action
+        self._last_action = None  # Clear action after use to prevent reuse
+
         return {"move": action.move, "spell": action.spell}
 
 

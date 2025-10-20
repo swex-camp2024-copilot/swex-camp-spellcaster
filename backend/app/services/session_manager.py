@@ -319,15 +319,26 @@ class SessionManager:
         return True
 
     async def submit_action(self, session_id: str, player_id: str, turn: int, action: ActionData) -> None:
-        """Submit an action and set it on the player's bot instance."""
-        # Store via turn processor
-        await self._turn_processor.submit_action(session_id, player_id, turn, action)
+        """Submit an action and set it on the player's bot instance.
 
-        # Set action on the player's bot (PlayerBot or HumanBot)
+        IMPORTANT: Sets action on bot instance FIRST to avoid race condition.
+        The action must be set on the bot before it becomes visible to collect_actions()
+        via the turn processor. Otherwise, the game engine may call bot.decide() before
+        bot.set_action() completes, causing default [0,0] movement.
+
+        Order of operations:
+        1. Set action on bot instance (bot has the action)
+        2. Store in turn processor (makes action visible to collect_actions)
+
+        This ordering guarantees that when collect_actions() returns and the game engine
+        calls bot.decide(), the action has already been set.
+        """
+        # Set action on the player's bot FIRST (PlayerBot or HumanBot)
         async with self._lock:
             ctx = self._sessions.get(session_id)
         if not ctx:
             return
+
         bot_map: dict[str, BotInterface] = {
             ctx.adapter.bot1.player_id
             if hasattr(ctx.adapter, "bot1")
@@ -339,6 +350,9 @@ class SessionManager:
         bot = bot_map.get(player_id)
         if isinstance(bot, (PlayerBot, HumanBot)):
             bot.set_action(action)
+
+        # THEN store via turn processor (makes action visible to collect_actions)
+        await self._turn_processor.submit_action(session_id, player_id, turn, action)
 
     # Removed old _collect_actions in favor of TurnProcessor
 

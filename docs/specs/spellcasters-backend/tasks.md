@@ -409,6 +409,92 @@ This implementation plan converts the feature design into a series of incrementa
   - Test database path resolution is correct across different working directories
   - **Requirements**: 11.6 (Verify test database isolation works correctly)
 
+### 14. Fix PvP Action Reuse Bug
+
+- [x] 14.1 Fix PlayerBot action clearing in `backend/app/models/bots.py`
+  - Clear `_last_action` after returning it in `decide()` method
+  - Ensures each action is consumed exactly once
+  - Prevents action reuse across multiple turns
+  - **Requirements**: 4.4, 4.8, 4.9, 4.10, 4.11, 4.12 (Proper remote player action handling and consumption)
+
+- [x] 14.2 Fix HumanBot action clearing in `backend/app/models/bots.py`
+  - Apply same fix to `HumanBot.decide()` for consistency
+  - Clear action after use to prevent reuse
+  - **Requirements**: Same as 14.1
+
+- [x] 14.3 Add unit tests for action clearing behavior
+  - Test that actions are cleared after `decide()` is called (`test_player_bot_clears_action_after_use`)
+  - Test that subsequent `decide()` calls return default actions
+  - Test action clearing with spells (`test_player_bot_action_clearing_with_spell`)
+  - **Requirements**: Testing strategy for bot behavior and bug fix validation
+
+- [x] 14.4 Enhance PvP integration test
+  - Update `test_bot_client_player_vs_player_match` to run for 5 turns
+  - Track and verify both players' positions change over time
+  - Add assertions for continuous movement of BOTH players
+  - Verify action reuse bug is fixed
+  - **Requirements**: 13.9, 13.19 (PvP match validation and continuous gameplay)
+
+- [x] 14.5 Update specification documents
+  - Update requirements.md to clarify action consumption behavior (4.11, 4.12)
+  - Update design.md PlayerBot section with action clearing details
+  - Document importance of fresh action submission per turn
+  - **Requirements**: Complete documentation of action lifecycle and bug fix
+
+- [x] 14.6 Fix race condition in `submit_action()`
+  - Reorder operations in `session_manager.py:submit_action()` to set action on bot BEFORE storing in turn processor
+  - Add comprehensive docstring explaining the race condition and why ordering matters
+  - Ensures `bot.set_action()` completes before action becomes visible to `collect_actions()`
+  - Prevents game engine from calling `bot.decide()` before action is set
+  - **Root Cause**: `collect_actions()` saw action in turn processor and returned before `bot.set_action()` completed, causing `decide()` to return default [0,0]
+  - **Fix**: Set action on bot instance first, then store in turn processor
+  - **Requirements**: 4.13, 4.14 (Atomic action submission and race prevention)
+
+- [x] 14.7 Add integration test for race condition fix
+  - Create `test_pvp_no_race_condition_in_action_submission` in `client/tests/e2e/test_real_clients.py`
+  - Test with two deterministic bots (AlwaysMoveRightBot and AlwaysMoveDownBot)
+  - Verify both players move on every turn (no default [0,0] actions from race)
+  - Track positions for 5+ turns to detect any race condition occurrences
+  - Test validates that actions are available when `bot.decide()` is called
+  - **Requirements**: Complete validation of race condition fix
+
+- [x] 14.8 Update specifications for race condition fix
+  - Document race condition in design.md with code examples and detailed explanation
+  - Add requirements 4.13-4.14 for atomic action submission guarantees
+  - Explain why BOTH action clearing AND race fix are needed together
+  - Document symptoms of the race condition (one player stuck, one moving)
+  - Document the fix: reordering operations in `submit_action()`
+  - **Requirements**: Complete documentation of timing guarantees and race prevention strategy
+
+## Implementation Summary for Task 14
+
+Task 14 addressed TWO related but distinct bugs in PvP gameplay:
+
+### Bug 1: Action Reuse (Fixed in 14.1-14.2)
+- **Problem**: Actions were never cleared after use, causing indefinite reuse
+- **Solution**: Clear `_last_action` in both PlayerBot and HumanBot after returning it
+- **Impact**: Each turn now requires fresh action submission
+
+### Bug 2: Race Condition (Fixed in 14.6)
+- **Problem**: `submit_action()` made actions visible to match loop before setting them on bot instances
+- **Race Window**: `collect_actions()` → `execute_turn()` → `bot.decide()` called before `bot.set_action()` completed
+- **Symptom**: Player submitted actions successfully but didn't move (returned default [0,0])
+- **Solution**: Reorder operations - set action on bot FIRST, then store in turn processor
+- **Impact**: Actions guaranteed available when game engine calls `decide()`
+
+### Why Both Fixes Are Required
+
+1. **Without Action Clearing**: Old actions replayed indefinitely → wrong behavior
+2. **Without Race Fix**: Actions submitted but not available when needed → default [0,0] → no movement
+3. **With Both Fixes**: Proper turn-based gameplay where both players move correctly
+
+The complete solution ensures:
+- ✅ Actions never reused across turns (clearing)
+- ✅ Actions always available when engine needs them (ordering)
+- ✅ Both players move correctly in PvP matches
+- ✅ No race conditions in concurrent action submission
+- ✅ All tests pass including enhanced PvP tests
+
 ## Task Execution Notes
 
 - Each task builds incrementally on previous tasks

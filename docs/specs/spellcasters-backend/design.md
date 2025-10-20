@@ -816,6 +816,10 @@ class PlayerBot(BotInterface):
     Remote player bot implementation.
     Waits for action submission via HTTP API endpoint and returns the submitted action.
     Encapsulates in-game execution with strong reference to Player instance.
+
+    IMPORTANT: Actions are consumed after use to prevent reuse across multiple turns.
+    Each turn requires a fresh action submission. This ensures proper turn-based
+    gameplay where players must continuously submit actions to keep moving.
     """
 
     def __init__(self, player: Player):
@@ -828,11 +832,18 @@ class PlayerBot(BotInterface):
         self._last_action = action
 
     def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Return the last submitted action, or no-op if none submitted."""
+        """Return the last submitted action, or no-op if none submitted.
+
+        Note: The action is cleared after being returned to prevent reuse.
+        Each turn requires a fresh action submission. If no action is submitted,
+        the bot uses the default no-op action [0, 0] with no spell.
+        """
         if self._last_action is None:
             return {"move": [0, 0], "spell": None}
 
         action = self._last_action
+        self._last_action = None  # Clear action after use to prevent reuse
+
         # Convert ActionData to game engine format
         result = {"move": action.move if action.move else [0, 0], "spell": None}
 
@@ -1286,6 +1297,95 @@ class TurnProcessor:
     async def process_turn(self, session_id: str, actions: Dict[str, Move]) -> TurnResult:
         """Process complete turn with all player actions"""
 ```
+
+#### Action Submission Flow and Race Condition Prevention
+
+The `submit_action()` method must carefully order operations to prevent a race condition between action submission and game engine execution. This is critical for PvP matches where both players are remote.
+
+**The Race Condition (BUGGY implementation):**
+
+```python
+# INCORRECT ORDERING - DO NOT USE
+async def submit_action(self, session_id: str, player_id: str, turn: int, action: ActionData) -> None:
+    # 1. Store action in turn processor FIRST
+    await self._turn_processor.submit_action(session_id, player_id, turn, action)
+
+    # 2. THEN set action on bot instance
+    async with self._lock:
+        ctx = self._sessions.get(session_id)
+    bot = get_bot_for_player(ctx, player_id)
+    bot.set_action(action)  # ⚠️ RACE WINDOW!
+```
+
+**Problem**: Between steps 1 and 2, there's a race window where:
+- `collect_actions()` sees the action in turn processor and returns
+- Match loop immediately calls `execute_turn()` → game engine calls `bot.decide()`
+- `bot.decide()` is called BEFORE `bot.set_action()` completes
+- Bot returns default `[0, 0]` because `_last_action` is still `None`
+- Result: Player doesn't move despite successfully submitting action!
+
+**The Fix (CORRECT implementation):**
+
+```python
+# CORRECT ORDERING - PREVENTS RACE
+async def submit_action(self, session_id: str, player_id: str, turn: int, action: ActionData) -> None:
+    """Submit an action and set it on the player's bot instance.
+
+    IMPORTANT: Sets action on bot instance FIRST to avoid race condition.
+    The action must be set on the bot before it becomes visible to collect_actions()
+    via the turn processor. Otherwise, the game engine may call bot.decide() before
+    bot.set_action() completes, causing default [0,0] movement.
+
+    Order of operations:
+    1. Set action on bot instance (bot has the action)
+    2. Store in turn processor (makes action visible to collect_actions)
+
+    This ordering guarantees that when collect_actions() returns and the game engine
+    calls bot.decide(), the action has already been set.
+    """
+    # 1. Set action on the player's bot FIRST
+    async with self._lock:
+        ctx = self._sessions.get(session_id)
+    if not ctx:
+        return
+
+    bot = get_bot_for_player(ctx, player_id)
+    if isinstance(bot, (PlayerBot, HumanBot)):
+        bot.set_action(action)  # ✓ Bot has action set
+
+    # 2. THEN store via turn processor (makes action visible to collect_actions)
+    await self._turn_processor.submit_action(session_id, player_id, turn, action)
+```
+
+**Why This Ordering Works:**
+
+1. When `bot.set_action()` completes, the bot instance has the action
+2. Only then does the action become visible in the turn processor
+3. When `collect_actions()` sees the action and returns, the bot already has it
+4. When `execute_turn()` calls `bot.decide()`, the action is guaranteed to be available
+5. No race condition possible!
+
+**Symptoms of the Race Condition (Before Fix):**
+
+- In PvP matches, one player moves correctly while the other stays stationary
+- Client successfully submits actions (HTTP 200 OK) but player doesn't move
+- Server logs show actions submitted but wizard position remains unchanged
+- More likely to affect player 2 due to timing differences in concurrent action submission
+
+**How Both Fixes Work Together:**
+
+1. **Action Clearing** (Task 14.1-14.2): Prevents action reuse across turns
+   - Each `decide()` call clears `_last_action` after returning it
+   - Ensures fresh action required for each turn
+
+2. **Race Condition Fix** (Task 14.6): Ensures actions available when needed
+   - Reorders operations in `submit_action()`
+   - Guarantees action set before `decide()` is called
+
+Together, these fixes ensure proper turn-based PvP gameplay where:
+- Actions never reused (clearing prevents this)
+- Actions always available when engine needs them (ordering prevents race)
+- Both players move correctly in PvP matches
 
 ### 8. Lobby Service
 
