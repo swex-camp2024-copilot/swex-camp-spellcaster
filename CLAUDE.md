@@ -91,9 +91,6 @@ uv run python main.py match "Bot1 Name" "Bot2 Name" --count 10
 
 # Show detailed match logs
 uv run python main.py match "Bot1 Name" "Bot2 Name" --verbose
-
-# Legacy tournament runner (deprecated)
-python playground.py 1
 ```
 
 ### Backend Server (for PvC and PvP Modes)
