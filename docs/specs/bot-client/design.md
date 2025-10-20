@@ -415,9 +415,195 @@ flowchart TD
 
 ---
 
-## 6. Error Scenarios and Handling
+## 6. Lobby Mode Architecture
 
-### 6.1 Client Submits Wrong Turn Number
+### 6.1 Overview
+
+Lobby mode provides automatic matchmaking for PvP battles. Instead of specifying an opponent, players join a FIFO queue and are automatically matched when 2+ players are waiting.
+
+**Key Features**:
+- FIFO queue for fair matching
+- Long-polling for efficient waiting
+- Automatic session creation with visualization
+- Same gameplay flow as direct mode after matching
+
+### 6.2 Lobby Flow
+
+```mermaid
+sequenceDiagram
+    participant CLI1 as CLI (Player 1)
+    participant CLI2 as CLI (Player 2)
+    participant Client1 as BotClient 1
+    participant Client2 as BotClient 2
+    participant Backend
+    participant Lobby as LobbyService
+    participant Session as SessionManager
+
+    Note over CLI1,Session: Player 1 joins lobby first
+    CLI1->>Client1: Run with --mode lobby
+    Client1->>+Backend: POST /lobby/join<br/>{player_id, bot_config}
+    Backend->>Lobby: join_queue(player_1)
+    Lobby->>Lobby: Add to queue (1 player)
+    Lobby->>Lobby: Try match (not enough)
+    Note over Client1,Lobby: Player 1 waits (long-polling)...
+
+    Note over CLI2,Session: Player 2 joins lobby
+    CLI2->>Client2: Run with --mode lobby
+    Client2->>+Backend: POST /lobby/join<br/>{player_id, bot_config}
+    Backend->>Lobby: join_queue(player_2)
+    Lobby->>Lobby: Add to queue (2 players!)
+    Lobby->>Lobby: Match first 2 (FIFO)
+    Lobby->>Session: create_session(p1, p2, visualize=True)
+    Session-->>Lobby: session_id
+    Lobby->>Lobby: Signal both players (event.set())
+    Lobby-->>-Client1: {session_id, opponent_id, opponent_name}
+    Lobby-->>-Client2: {session_id, opponent_id, opponent_name}
+
+    Note over CLI1,Session: Both players proceed to gameplay
+    Client1->>Backend: GET /playground/{id}/events
+    Client2->>Backend: GET /playground/{id}/events
+    Note over Client1,Client2: Match proceeds identically to direct mode
+```
+
+### 6.3 Client Implementation
+
+**Lobby Join Method** (`client/bot_client.py`):
+
+```python
+async def join_lobby(self, player_id: str) -> str:
+    """Join lobby queue and wait for match (long-polling).
+
+    Args:
+        player_id: Player identifier
+
+    Returns:
+        Session ID for matched game
+
+    Raises:
+        httpx.HTTPStatusError: If player not found (404) or already in lobby (409)
+        httpx.TimeoutException: If no match found within 300 seconds
+    """
+    url = f"{self.base_url}/lobby/join"
+
+    # Build bot configuration based on player type
+    bot_config = {
+        "player_id": player_id,
+        "bot_type": "player"  # Remote player controlled by this client
+    }
+
+    payload = {
+        "player_id": player_id,
+        "bot_config": bot_config
+    }
+
+    # Long-polling: blocks until match found or timeout (300s)
+    response = await self._client.post(
+        url,
+        json=payload,
+        timeout=httpx.Timeout(300.0)
+    )
+    response.raise_for_status()
+
+    result = response.json()
+    return result["session_id"]
+```
+
+**CLI Mode Selection** (`client/bot_client_main.py`):
+
+```python
+parser.add_argument(
+    "--mode",
+    default=os.environ.get("MODE", "direct"),
+    choices=["direct", "lobby"],
+    help="Match mode: direct (specify opponent) or lobby (auto-match)"
+)
+
+async def run_bot(base_url, player_id, mode, opponent_id, bot, max_events):
+    """Run bot client in direct or lobby mode."""
+
+    async with BotClient(base_url, bot) as client:
+        if mode == "lobby":
+            logger.info(f"Joining lobby queue as {player_id}...")
+            session_id = await client.join_lobby(player_id)
+            logger.info(f"Matched! Session: {session_id}")
+        else:
+            logger.info(f"Starting direct match: {player_id} vs {opponent_id}")
+            session_id = await client.start_match(player_id, opponent_id, visualize=True)
+
+        # Both modes continue with identical gameplay flow
+        async for event in client.play_match(session_id, player_id, max_events):
+            # Process events...
+```
+
+### 6.4 Long-polling Mechanism
+
+**How it works**:
+
+1. **Client calls `POST /lobby/join`**: HTTP request blocks on client side
+2. **Backend creates queue entry**: `QueueEntry` with `asyncio.Event()`
+3. **Backend awaits match**: `await entry.event.wait()` suspends coroutine
+4. **Second player joins**: Triggers matching logic
+5. **Backend signals both entries**: `entry.event.set()` on both queue entries
+6. **Both requests unblock**: Return session_id to both clients simultaneously
+7. **Clients proceed to gameplay**: Same flow as direct mode
+
+**Benefits**:
+- No polling overhead (coroutine suspended)
+- Instant notification when matched
+- Simple client implementation (single request)
+- Efficient server resource usage
+
+### 6.5 Error Handling
+
+**Player Not Found (404)**:
+```
+Client → POST /lobby/join {player_id: "unknown"}
+Backend → HTTP 404: Player not found
+Client: Logs error, exits
+```
+
+**Player Already in Lobby (409)**:
+```
+Client → POST /lobby/join {player_id: "alice"}
+Backend: Player alice already in queue
+Backend → HTTP 409: Player already in lobby queue
+Client: Logs error, exits
+```
+
+**Match Timeout (408)**:
+```
+Client → POST /lobby/join {player_id: "alice"}
+Backend: Waits up to 300 seconds...
+Backend: No match found
+Backend → HTTP 408: Request Timeout
+Client: Logs timeout, exits
+```
+
+**User Interruption (Ctrl+C)**:
+```
+Client: Waiting in lobby queue...
+User: Presses Ctrl+C
+Client: Closes connection, exits
+Backend: May detect disconnect and remove from queue
+```
+
+### 6.6 Comparison: Direct Mode vs Lobby Mode
+
+| Aspect | Direct Mode | Lobby Mode |
+|--------|-------------|------------|
+| **Opponent Selection** | Specify via `--opponent-id` | Auto-matched (FIFO) |
+| **Match Creation** | `POST /playground/start` | `POST /lobby/join` |
+| **Wait Time** | Immediate (creates session) | Variable (until matched) |
+| **Visualization** | Optional via `visualize` param | Always enabled |
+| **Session Start** | Client initiates | Backend initiates after match |
+| **Gameplay** | Standard turn-based | Identical to direct mode |
+| **Use Cases** | Testing vs builtin bots<br/>Coordinated matches | Random PvP<br/>Tournament matchmaking |
+
+---
+
+## 7. Error Scenarios and Handling
+
+### 7.1 Client Submits Wrong Turn Number
 
 ```
 Client → POST action {turn: 5}
@@ -428,7 +614,7 @@ Client: Logs error, continues listening
 
 **Handling**: Client logs error, continues streaming. Backend rejects with clear error message.
 
-### 6.2 Action Submission Timeout
+### 7.2 Action Submission Timeout
 
 ```
 Backend: Waiting for turn 4 actions (5s timeout)
@@ -441,7 +627,7 @@ Backend → SSE: turn_update (turn 4)
 
 **Handling**: Backend uses default action, match continues.
 
-### 6.3 Bot Decision Error
+### 7.3 Bot Decision Error
 
 ```
 Client: Receives turn_update (turn 3)
@@ -454,7 +640,7 @@ Backend: Times out, uses default action
 
 **Handling**: Client catches exception, logs, continues. Backend uses default action.
 
-### 6.4 SSE Connection Lost
+### 7.4 SSE Connection Lost
 
 ```
 Client: SSE connection dropped

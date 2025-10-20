@@ -85,29 +85,76 @@ uv run python -m client.bot_client_main \
 
 ### Play vs Another Remote Player (PvP)
 
-Both players run their own clients simultaneously:
+**Lobby mode** provides automatic matchmaking for PvP gameplay. Players join a FIFO queue and are automatically matched when two players are waiting.
+
+#### Quick Start - Join Lobby with Random Bot
 
 ```bash
-# Player 1
+uv run python -m client.bot_client_main --mode lobby
+```
+
+The client will:
+1. Join the lobby queue
+2. Wait for another player to join (long-polling, up to 5 minutes)
+3. Automatically match and start the game
+4. Play the match with visualization enabled
+
+#### Join Lobby with Custom Bot
+
+```bash
+uv run python -m client.bot_client_main \
+  --mode lobby \
+  --bot-type custom \
+  --bot-path bots.sample_bot1.sample_bot_1.SampleBot1
+```
+
+#### Two Players Joining Lobby (Different Terminals)
+
+```bash
+# Terminal 1 (joins first, waits for match)
 uv run python -m client.bot_client_main \
   --player-id alice \
-  --opponent-id bob \
+  --mode lobby \
   --bot-type custom \
   --bot-path bots.sample_bot1.sample_bot_1.SampleBot1
 
-# Player 2 (in separate terminal)
+# Terminal 2 (joins second, both auto-match immediately)
 uv run python -m client.bot_client_main \
   --player-id bob \
-  --opponent-id alice \
+  --mode lobby \
   --bot-type custom \
   --bot-path bots.tactical_bot.tactical_bot.TacticalBot
+```
+
+**How Lobby Matching Works:**
+- Players are matched in **FIFO** (first-in, first-out) order
+- When 2+ players are waiting, the first two are automatically matched
+- Both players' requests return with the same `session_id`
+- The match starts immediately with visualization enabled
+- If no match is found within 5 minutes, the request times out
+
+### Direct Mode (Specify Opponent)
+
+For direct matches against builtin bots or coordinated testing, use direct mode:
+
+```bash
+# vs builtin bot (default mode)
+uv run python -m client.bot_client_main \
+  --mode direct \
+  --opponent-id builtin_sample_1
+
+# Shorthand (--mode direct is default)
+uv run python -m client.bot_client_main \
+  --opponent-id builtin_sample_1
 ```
 
 ### CLI Arguments
 
 - `--base-url`: Backend server URL (default: `http://localhost:8000`, env: `BASE_URL`)
 - `--player-id`: Existing registered player ID (default: OS username via `whoami`, env: `PLAYER_ID`)
+- `--mode`: Match mode: `direct` (specify opponent) or `lobby` (auto-match via queue) (default: `direct`, env: `MODE`)
 - `--opponent-id`: Opponent ID - builtin bot (e.g., `builtin_sample_1`) or remote player (default: `builtin_sample_1`, env: `OPPONENT_ID`)
+  - **Only used in direct mode**
 - `--bot-type`: Bot strategy: `random` or `custom` (default: `random`, env: `BOT_TYPE`)
 - `--bot-path`: Module path for custom bot (required if `--bot-type=custom`, env: `BOT_PATH`)
   - Format: `module.path.ClassName`
@@ -122,7 +169,8 @@ All CLI arguments can be set via environment variables:
 ```bash
 export BASE_URL=http://localhost:8000
 export PLAYER_ID=myusername
-export OPPONENT_ID=builtin_sample_1
+export MODE=lobby                    # or 'direct'
+export OPPONENT_ID=builtin_sample_1  # only used in direct mode
 export BOT_TYPE=custom
 export BOT_PATH=bots.sample_bot1.sample_bot_1.SampleBot1
 export MAX_EVENTS=100

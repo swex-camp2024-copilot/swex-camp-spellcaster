@@ -456,6 +456,49 @@ class TimeoutError(PlaygroundError):
     """Operation timed out"""
 ```
 
+### Lobby Models
+
+```python
+class LobbyJoinRequest(BaseModel):
+    """Request to join lobby queue and wait for PvP match"""
+    player_id: str = Field(..., description="Player ID joining the lobby")
+    bot_config: PlayerConfig = Field(..., description="Bot configuration for the match")
+
+class LobbyMatchResponse(BaseModel):
+    """Response when a lobby match is found"""
+    session_id: str = Field(..., description="Created session ID for the match")
+    opponent_id: str = Field(..., description="Opponent player ID")
+    opponent_name: str = Field(..., description="Opponent player name")
+
+class QueueEntry:
+    """Internal queue entry for lobby matchmaking (not exposed via API)"""
+
+    def __init__(self, player_id: str, bot_config: PlayerConfig):
+        self.player_id = player_id
+        self.bot_config = bot_config
+        self.joined_at = datetime.now()
+        self.event: asyncio.Event = asyncio.Event()  # For long-polling
+        self.session_id: Optional[str] = None
+        self.opponent_id: Optional[str] = None
+        self.opponent_name: Optional[str] = None
+
+    def set_match_result(self, session_id: str, opponent_id: str, opponent_name: str) -> None:
+        """Set match result and signal waiting coroutine"""
+        self.session_id = session_id
+        self.opponent_id = opponent_id
+        self.opponent_name = opponent_name
+        self.event.set()  # Unblock long-polling request
+
+    async def wait_for_match(self) -> LobbyMatchResponse:
+        """Block until match is found (long-polling)"""
+        await self.event.wait()  # Block until event.set() is called
+        return LobbyMatchResponse(
+            session_id=self.session_id,
+            opponent_id=self.opponent_id,
+            opponent_name=self.opponent_name
+        )
+```
+
 ### Database Models (SQLModel)
 
 ```python
@@ -1223,20 +1266,283 @@ class SessionManager:
 ```python
 class TurnProcessor:
     """Processes player actions and coordinates turn execution"""
-    
+
     def __init__(self, timeout_seconds: float = 5.0):
         self.timeout = timeout_seconds
         self.pending_actions: Dict[str, Dict[str, Move]] = {}
-    
+
     async def collect_actions(self, session_id: str, expected_players: List[str]) -> Dict[str, Move]:
         """Collect actions from all players with timeout"""
-    
+
     async def validate_action(self, action: Move, game_state: Dict[str, Any]) -> bool:
         """Validate action against current game rules"""
-    
+
     async def process_turn(self, session_id: str, actions: Dict[str, Move]) -> TurnResult:
         """Process complete turn with all player actions"""
 ```
+
+### 8. Lobby Service
+
+The Lobby Service provides automatic matchmaking for remote PvP battles. Players join a FIFO queue and are automatically matched when 2+ players are waiting. The service uses long-polling to block join requests until a match is found.
+
+#### Architecture
+
+```mermaid
+sequenceDiagram
+    participant P1 as Player 1
+    participant P2 as Player 2
+    participant API as Lobby API
+    participant LS as Lobby Service
+    participant SM as Session Manager
+
+    P1->>API: POST /lobby/join (blocks)
+    API->>LS: join_queue(player_1)
+    LS->>LS: Add to FIFO queue
+    LS->>LS: Try match (1 player)
+    Note over LS: Not enough players, wait...
+
+    P2->>API: POST /lobby/join (blocks)
+    API->>LS: join_queue(player_2)
+    LS->>LS: Add to FIFO queue
+    LS->>LS: Try match (2 players!)
+    LS->>SM: create_session(p1, p2, visualize=True)
+    SM-->>LS: session_id
+    LS->>LS: Signal both players
+    LS-->>API: LobbyMatchResponse (P1)
+    API-->>P1: {session_id, opponent_id, opponent_name}
+    LS-->>API: LobbyMatchResponse (P2)
+    API-->>P2: {session_id, opponent_id, opponent_name}
+```
+
+#### LobbyService Component
+
+```python
+class LobbyService:
+    """Manages lobby queue for PvP matchmaking.
+
+    Uses FIFO queue for fair matching. When 2+ players are in queue,
+    automatically creates a session and notifies both players via long-polling.
+    """
+
+    def __init__(
+        self, session_manager: SessionManager, db_service: DatabaseService
+    ):
+        """Initialize lobby service.
+
+        Args:
+            session_manager: SessionManager instance for creating matches
+            db_service: DatabaseService for player lookups
+        """
+        self._session_manager = session_manager
+        self._db = db_service
+        self._queue: Deque[QueueEntry] = deque()  # FIFO queue
+        self._player_lookup: Dict[str, QueueEntry] = {}  # Fast duplicate check
+        self._lock = asyncio.Lock()  # Thread-safe queue operations
+
+    async def join_queue(self, request: LobbyJoinRequest) -> LobbyMatchResponse:
+        """Join lobby queue and wait for match (long-polling).
+
+        This method blocks until a match is found. When 2+ players are in queue,
+        they are automatically matched and a session is created.
+
+        Args:
+            request: Lobby join request with player_id and bot_config
+
+        Returns:
+            LobbyMatchResponse with session_id and opponent details
+
+        Raises:
+            PlayerAlreadyInLobbyError: If player is already in queue
+            PlayerNotFoundError: If player_id doesn't exist in database
+        """
+        # Verify player exists
+        player = await self._db.get_player(request.player_id)
+        if not player:
+            raise PlayerNotFoundError(request.player_id)
+
+        async with self._lock:
+            # Check if already in queue
+            if request.player_id in self._player_lookup:
+                raise PlayerAlreadyInLobbyError(request.player_id)
+
+            # Create queue entry
+            entry = QueueEntry(player_id=request.player_id, bot_config=request.bot_config)
+            self._queue.append(entry)
+            self._player_lookup[request.player_id] = entry
+
+        # Try to match immediately (releases lock first)
+        await self._try_match()
+
+        # Wait for match (long-polling) - blocks here until matched
+        match_response = await entry.wait_for_match()
+        return match_response
+
+    async def _try_match(self) -> None:
+        """Attempt to match first 2 players in queue.
+
+        If 2+ players are waiting, creates a session with visualization enabled
+        and notifies both players.
+        """
+        async with self._lock:
+            if len(self._queue) < 2:
+                return
+
+            # Pop first 2 players (FIFO)
+            p1_entry = self._queue.popleft()
+            p2_entry = self._queue.popleft()
+
+            # Remove from lookup
+            del self._player_lookup[p1_entry.player_id]
+            del self._player_lookup[p2_entry.player_id]
+
+        # Create session outside the lock to avoid blocking queue operations
+        try:
+            # Get player names for response
+            p1_player = await self._db.get_player(p1_entry.player_id)
+            p2_player = await self._db.get_player(p2_entry.player_id)
+
+            if not p1_player or not p2_player:
+                logger.error(f"Player not found during matching")
+                return
+
+            # Create session with visualization enabled
+            session_id = await self._session_manager.create_session(
+                player_1=p1_entry.bot_config, player_2=p2_entry.bot_config, visualize=True
+            )
+
+            # Notify both players (unblocks their long-polling requests)
+            p1_entry.set_match_result(
+                session_id=session_id, opponent_id=p2_entry.player_id, opponent_name=p2_player.player_name
+            )
+            p2_entry.set_match_result(
+                session_id=session_id, opponent_id=p1_entry.player_id, opponent_name=p1_player.player_name
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to create session for lobby match: {e}")
+
+    async def get_queue_size(self) -> int:
+        """Get current number of players waiting in queue."""
+        async with self._lock:
+            return len(self._queue)
+
+    async def get_player_position(self, player_id: str) -> Optional[int]:
+        """Get player's position in queue (1-indexed)."""
+        async with self._lock:
+            if player_id not in self._player_lookup:
+                return None
+            for i, entry in enumerate(self._queue, start=1):
+                if entry.player_id == player_id:
+                    return i
+            return None
+
+    async def remove_from_queue(self, player_id: str) -> bool:
+        """Remove a player from the queue."""
+        async with self._lock:
+            if player_id not in self._player_lookup:
+                return False
+            entry = self._player_lookup[player_id]
+            self._queue.remove(entry)
+            del self._player_lookup[player_id]
+            return True
+```
+
+#### API Endpoints
+
+```python
+@app.post("/lobby/join", response_model=LobbyMatchResponse)
+async def join_lobby(request: LobbyJoinRequest) -> LobbyMatchResponse:
+    """Join lobby queue and wait for match (long-polling).
+
+    This endpoint blocks for up to 300 seconds until a match is found.
+    When 2+ players are in queue, the first two are automatically matched.
+
+    Raises:
+        404: Player not found
+        409: Player already in lobby queue
+        408: Request timeout (no match found within 300s)
+    """
+    match_response = await runtime.lobby_service.join_queue(request)
+    return match_response
+
+@app.get("/lobby/status")
+async def get_lobby_status() -> dict:
+    """Get current lobby queue size."""
+    queue_size = await runtime.lobby_service.get_queue_size()
+    return {"queue_size": queue_size}
+
+@app.delete("/lobby/leave/{player_id}")
+async def leave_lobby(player_id: str) -> dict:
+    """Remove a player from the lobby queue."""
+    removed = await runtime.lobby_service.remove_from_queue(player_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Player not in queue")
+    return {"message": f"Player {player_id} removed from lobby"}
+```
+
+#### Integration with StateManager
+
+```python
+class StateManager:
+    """Centralized state management for all backend components"""
+
+    def __init__(self):
+        # ... existing services ...
+        self._lobby_service: Optional[LobbyService] = None
+        self._service_status["lobby_service"] = ServiceStatus.UNINITIALIZED
+
+    @property
+    def lobby_service(self) -> LobbyService:
+        """Get lobby service instance."""
+        if not self._lobby_service:
+            raise RuntimeError("Lobby service not initialized")
+        return self._lobby_service
+
+    async def _initialize_lobby_service(self) -> None:
+        """Initialize lobby service with session manager and database."""
+        self._lobby_service = LobbyService(
+            session_manager=self._session_manager,
+            db_service=self._db_service
+        )
+```
+
+#### Long-polling Mechanism
+
+The lobby uses `asyncio.Event` for efficient long-polling:
+
+1. **Player joins queue**: Create `QueueEntry` with `asyncio.Event()`
+2. **Block request**: Call `await entry.event.wait()` - suspends coroutine
+3. **Match found**: Call `entry.event.set()` on both entries
+4. **Unblock requests**: Both coroutines resume and return session info
+
+**Benefits**:
+- No CPU polling (coroutine suspended)
+- Instant notification when match found
+- Timeout support via `asyncio.wait_for()`
+- Thread-safe with asyncio.Lock
+
+#### Error Handling
+
+```python
+class PlayerAlreadyInLobbyError(PlaygroundError):
+    """Raised when a player tries to join lobby while already in queue."""
+
+    def __init__(self, player_id: str, **kwargs):
+        super().__init__(
+            f"Player {player_id} is already in lobby queue",
+            status_code=409,
+            **kwargs
+        )
+        self.player_id = player_id
+```
+
+#### Performance Considerations
+
+- **Queue operations**: O(1) append, O(1) popleft via `deque`
+- **Duplicate check**: O(1) via `_player_lookup` dict
+- **Thread safety**: `asyncio.Lock` protects all queue operations
+- **Memory**: Linear with queue size (typically small for hackathon)
+- **Long-polling**: No resource overhead (coroutines suspended)
 
 ## Error Handling
 

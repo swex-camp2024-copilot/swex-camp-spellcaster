@@ -179,4 +179,30 @@ The Spellcasters Playground Backend is a FastAPI-based system that powers the "P
 4. The system SHALL include session status, participants, and duration in active session listings
 5. The system SHALL provide a DELETE /playground/{session_id} endpoint for administrative session cleanup
 6. The system SHALL gracefully terminate sessions and notify connected clients during admin cleanup
-7. The system SHALL return appropriate error responses for invalid session IDs in admin operations 
+7. The system SHALL return appropriate error responses for invalid session IDs in admin operations
+
+### 13. Lobby and Matchmaking System
+
+**User Story**: As a participant, I want to join a matchmaking lobby so that I can automatically be matched with another remote player for PvP battles.
+
+**Acceptance Criteria**:
+1. The system SHALL provide a POST /lobby/join endpoint that accepts player_id and bot_config in the request payload
+2. The system SHALL validate that the player exists in the database before adding to the lobby queue
+3. The system SHALL return 404 Not Found when a non-existent player attempts to join the lobby
+4. The system SHALL maintain a FIFO (first-in-first-out) queue for players waiting for matches
+5. The system SHALL prevent duplicate entries by checking if a player is already in the queue
+6. The system SHALL return 409 Conflict when a player attempts to join the lobby while already in queue
+7. The system SHALL implement long-polling on the POST /lobby/join endpoint with a 300-second timeout
+8. The system SHALL block the join request until a match is found or timeout occurs
+9. The system SHALL automatically match the first two players in the queue when 2+ players are waiting
+10. The system SHALL create a new game session with visualization enabled when matching occurs
+11. The system SHALL return session_id, opponent_id, and opponent_name to both matched players
+12. The system SHALL remove matched players from the queue after session creation
+13. The system SHALL provide thread-safe queue operations using asyncio.Lock
+14. The system SHALL provide a GET /lobby/status endpoint to query current queue size
+15. The system SHALL provide a DELETE /lobby/leave/{player_id} endpoint to remove a player from the queue
+16. The system SHALL return 404 Not Found when attempting to remove a player not in the queue
+17. The system SHALL integrate with SessionManager to create matched game sessions
+18. The system SHALL integrate with DatabaseService to validate players and retrieve player information
+19. The system SHALL handle session creation errors gracefully without crashing the lobby service
+20. The system SHALL log all lobby operations including joins, matches, and errors with appropriate context

@@ -312,6 +312,80 @@ This implementation plan converts the feature design into a series of incrementa
   - Verify timeout enforcement and resource limits
   - **Requirements**: 10.2, 10.5 (Bot execution security and error handling)
 
+### 12. Lobby and PvP Matchmaking System
+
+- [x] 12.1 Implement `LobbyService` in `/backend/app/services/lobby_service.py`
+  - Create FIFO queue using `collections.deque` for player matchmaking
+  - Implement `join_queue()` method with long-polling using `asyncio.Event`
+  - Implement `_try_match()` method for automatic matching when 2+ players in queue
+  - Add thread-safe queue operations using `asyncio.Lock`
+  - Integrate with `SessionManager` for session creation
+  - Integrate with `DatabaseService` for player validation
+  - Add queue management methods (`get_queue_size`, `get_player_position`, `remove_from_queue`)
+  - **Requirements**: 13.1, 13.2, 13.4, 13.5, 13.9, 13.10, 13.13, 13.17, 13.18 (Core lobby service with FIFO queue and auto-matching)
+
+- [x] 12.2 Create lobby data models in `/backend/app/models/lobby.py`
+  - Implement `LobbyJoinRequest` model for queue join requests
+  - Implement `LobbyMatchResponse` model for match results
+  - Implement `QueueEntry` internal class with `asyncio.Event` for long-polling
+  - Add `wait_for_match()` and `set_match_result()` methods to `QueueEntry`
+  - **Requirements**: 13.1, 13.11, 13.12 (Data models for lobby requests and responses)
+
+- [x] 12.3 Implement lobby API endpoints in `/backend/app/api/lobby.py`
+  - Create `POST /lobby/join` endpoint with 300-second timeout for long-polling
+  - Create `GET /lobby/status` endpoint for queue size monitoring
+  - Create `DELETE /lobby/leave/{player_id}` endpoint for queue removal
+  - Add proper error handling for `PlayerNotFoundError` and `PlayerAlreadyInLobbyError`
+  - Wire endpoints to `LobbyService` via runtime state
+  - **Requirements**: 13.1, 13.7, 13.8, 13.14, 13.15, 13.16 (Lobby API with long-polling support)
+
+- [x] 12.4 Add lobby exception handling in `/backend/app/core/exceptions.py` and `/backend/app/core/error_handlers.py`
+  - Create `PlayerAlreadyInLobbyError` exception class with 409 status code
+  - Implement exception handler for `PlayerAlreadyInLobbyError`
+  - Register handler in `register_error_handlers()`
+  - **Requirements**: 13.3, 13.6 (Proper error responses for lobby operations)
+
+- [x] 12.5 Integrate `LobbyService` with `StateManager` in `/backend/app/core/state.py`
+  - Add `_lobby_service` property to `StateManager`
+  - Implement `_initialize_lobby_service()` with dependencies
+  - Add lobby service to service status tracking
+  - Wire lobby service to runtime module
+  - **Requirements**: 13.17, 13.18 (Lobby service lifecycle and dependency management)
+
+- [x] 12.6 Update client with lobby mode support
+  - Add `join_lobby()` method to `/client/bot_client.py` with 300-second timeout
+  - Add `--mode` CLI argument to `/client/bot_client_main.py` (direct/lobby)
+  - Update `run_bot()` function to handle lobby mode vs direct mode
+  - Add lobby mode documentation to `/client/README.md`
+  - **Requirements**: 13.8, 13.20 (Client-side lobby support and documentation)
+
+- [x] 12.7 Write unit tests for `LobbyService` in `/backend/tests/test_lobby_service.py`
+  - Test single player waiting scenario (entry creation, queue state)
+  - Test automatic matching when 2 players join
+  - Test FIFO ordering (first player gets matched with second player)
+  - Test duplicate join prevention (`PlayerAlreadyInLobbyError`)
+  - Test player not found scenario (`PlayerNotFoundError`)
+  - Test queue size and player position queries
+  - Test queue removal functionality
+  - **Requirements**: 13.4, 13.5, 13.9, 13.13, 13.19 (Comprehensive lobby service testing)
+
+- [x] 12.8 Write integration tests for lobby API in `/backend/tests/test_lobby_api.py`
+  - Test successful lobby join and match flow with 2 players
+  - Test player not found error (404) when joining lobby
+  - Test duplicate join error (409) when player already in queue
+  - Test lobby status endpoint for queue size monitoring
+  - Test lobby leave endpoint for queue removal
+  - Test leave endpoint error (404) when player not in queue
+  - **Requirements**: 13.3, 13.6, 13.14, 13.15, 13.16 (Complete lobby API testing)
+
+- [x] 12.9 Update documentation for lobby system
+  - Add §5.4 Lobby (PvP Queue) section to functional spec with API docs
+  - Add Requirement 13 to backend requirements spec
+  - Add §3.5 Lobby Models to backend design spec
+  - Add §8 Lobby Service component to backend design spec
+  - Update client README with lobby mode examples and workflow
+  - **Requirements**: 13.20 (Complete documentation for lobby feature)
+
 ## Task Execution Notes
 
 - Each task builds incrementally on previous tasks

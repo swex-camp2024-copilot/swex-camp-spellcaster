@@ -378,6 +378,70 @@ Client should then connect to `/playground/{session_id}/events` for SSE stream.
 
 > **No Bot upload endpoints** in this version; bots are built‑in only.
 
+### 5.4 Lobby (PvP Queue)
+
+The lobby system provides automatic matchmaking for PvP gameplay using a FIFO queue with long-polling.
+
+**POST** `/lobby/join`
+
+* Request:
+
+```json
+{
+  "player_id": "alice",
+  "bot_config": {
+    "player_id": "alice",
+    "bot_type": "player"
+  }
+}
+```
+
+* **Behavior**: Long-polling endpoint that blocks until a match is found (up to 300 seconds)
+* **Matching**: When 2+ players are in queue, the first two are automatically matched (FIFO)
+* **Session Creation**: Automatically creates a session with `visualize: true` enabled
+* **Response** `200 OK` (when matched):
+
+```json
+{
+  "session_id": "uuid-session",
+  "opponent_id": "bob",
+  "opponent_name": "Bob Player"
+}
+```
+
+* **Error Responses**:
+  - `404 Not Found`: Player ID doesn't exist in database
+  - `409 Conflict`: Player is already in lobby queue
+  - `408 Request Timeout`: No match found within 5 minutes
+
+**Workflow**:
+
+1. Client calls `POST /lobby/join` with player_id and bot_config
+2. Request blocks (long-polling) waiting for another player
+3. When second player joins, both requests return with same session_id
+4. Both clients connect to `/playground/{session_id}/events` for SSE stream
+5. Match plays with visualization enabled by default
+
+**Queue Management**:
+
+* **GET** `/lobby/status` — Get current queue size:
+
+```json
+{ "queue_size": 3 }
+```
+
+* **DELETE** `/lobby/leave/{player_id}` — Remove player from queue (if still waiting)
+
+**FIFO Matching Logic**:
+
+```
+Initial state:  [empty queue]
+Player A joins: [A] ← waiting
+Player B joins: [A, B] → Match! Create session, notify both
+Player C joins: [C] ← waiting
+Player D joins: [C, D] → Match! Create session, notify both
+```
+
 ---
 
 ## 6. Error Handling & State Management

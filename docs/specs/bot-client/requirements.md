@@ -282,6 +282,39 @@ This enhancement builds upon the existing client implementation to provide produ
 
 ---
 
+### 12. Lobby Mode Support
+
+**User Story**: As a bot developer, I want to automatically match with other remote players via a lobby queue, so that I can play PvP matches without coordinating opponents manually.
+
+**Acceptance Criteria**:
+
+1. **WHEN** the CLI is invoked with `--mode lobby`, **THEN** the client SHALL join the matchmaking lobby queue instead of creating a direct match.
+2. **WHERE** `--mode` is not specified, **THEN** the client SHALL default to `direct` mode (match against specified opponent).
+3. **WHEN** joining the lobby queue, **THEN** the client SHALL:
+   - Call `POST /lobby/join` with player_id and bot_config
+   - Block (long-polling) until a match is found or timeout occurs
+   - Wait up to 300 seconds for matchmaking
+4. **WHILE** waiting in the lobby queue, **THEN** the client SHALL display a message indicating "Joining lobby queue, waiting for opponent..."
+5. **WHEN** a match is found, **THEN** the backend SHALL:
+   - Automatically match the first 2 players in the FIFO queue
+   - Create a new game session with visualization enabled
+   - Return session_id, opponent_id, and opponent_name to both players
+6. **AFTER** receiving the match response, **THEN** the client SHALL:
+   - Display the matched opponent information
+   - Proceed to event streaming and automated gameplay
+   - Play the match identically to direct mode
+7. **IF** the player_id does not exist in the backend, **THEN** the backend SHALL return a 404 Not Found error.
+8. **IF** the player is already in the lobby queue, **THEN** the backend SHALL return a 409 Conflict error with message "Player already in lobby queue".
+9. **IF** no match is found within 300 seconds, **THEN** the client SHALL receive a timeout error and exit gracefully.
+10. **WHEN** using lobby mode, **THEN** the `--opponent-id` argument SHALL be ignored (matchmaking determines opponent).
+11. **WHERE** lobby mode is used with custom bots, **THEN** the client SHALL support `--bot-type custom` and `--bot-path` identically to direct mode.
+12. **WHEN** using lobby mode, **THEN** the CLI SHALL support environment variable `MODE=lobby` as an alternative to `--mode lobby`.
+13. **WHILE** in lobby queue, **IF** the user interrupts with Ctrl+C, **THEN** the client SHALL exit and the backend MAY remove the player from the queue.
+14. **WHERE** visualization is enabled, **THEN** the backend SHALL automatically enable the Pygame visualizer for lobby matches.
+15. **WHEN** both players are matched and the session starts, **THEN** the match SHALL proceed with the same turn-based gameplay as direct mode.
+
+---
+
 ## Out of Scope
 
 The following items are explicitly out of scope for this feature:
