@@ -8,6 +8,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **GitHub Project**: [swex-camp-spellcaster](https://github.com/swex-camp2024-copilot/swex-camp-spellcaster)
 
+## Game Modes
+
+The project supports four play modes with standardized terminology:
+
+| Mode | Description | Command/Tool |
+|------|-------------|--------------|
+| **Playground (Local)** | Test bots locally using `main.py` - no server required | `uv run python main.py tournament` |
+| **PvC (Client ↔ Server)** | Remote play against server's builtin bots | `client/bot_client_main.py --mode direct` |
+| **PvP (2 Clients ↔ Server)** | Auto-matchmaking between two players' custom bots | `client/bot_client_main.py --mode lobby` |
+| **Tournament (Future)** | Multi-client tournament (4/6/16 players) for hackathon finale | To be implemented |
+
 ## Common Commands
 
 ### Development Setup
@@ -61,34 +72,38 @@ uv run pytest backend/tests/ --cov=backend.app --cov-report=html
 uv run pytest client/tests/e2e/ -v
 ```
 
-### Running the Game
+### Playground (Local) - Local Bot Testing
 ```bash
-# Run tournament with all bots
+# Run tournament with all available bots (with visualization)
 uv run python main.py tournament
 
-# Run tournament without visualization (headless)
+# Run tournament without visualization (headless mode - faster)
 uv run python main.py tournament --headless
 
-# List available bots
+# List all available bots
 uv run python main.py match list
 
 # Run specific match between two bots
-uv run python main.py match <bot1> <bot2>
+uv run python main.py match "Bot1 Name" "Bot2 Name"
 
-# Run multiple matches with stats
-uv run python main.py match <bot1> <bot2> --count 10
+# Run multiple matches with win statistics
+uv run python main.py match "Bot1 Name" "Bot2 Name" --count 10
 
-# Legacy tournament runner
-python playground.py 1
+# Show detailed match logs
+uv run python main.py match "Bot1 Name" "Bot2 Name" --verbose
 ```
 
-### Backend Server
+### Backend Server (for PvC and PvP Modes)
 ```bash
 # Start development server with hot reload (from project root)
 uv run uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 
+# Production mode (no reload)
+uv run uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+
 # API available at http://localhost:8000
 # Interactive docs at http://localhost:8000/docs
+# Health check at http://localhost:8000/health
 ```
 
 ### Database Management
@@ -102,32 +117,41 @@ rm data/playground.db
 uv run python -c "import asyncio; from backend.app.core.database import create_tables; asyncio.run(create_tables())"
 ```
 
-### Client Tools (SSE and Bot Clients)
+### Client Tools (PvC and PvP Modes)
 ```bash
-# Connect to an existing session and stream events
+# SSE Client - Stream events from an existing session
 uv run python -m client.sse_client_main \
   --base-url http://localhost:8000 \
   --session-id <SESSION_ID> \
   --max-events 10
 
-# Register a player and start a match vs builtin bot (random strategy)
+# PvC Mode - Play against server builtin bot (random strategy)
 uv run python -m client.bot_client_main \
-  --base-url http://localhost:8000 \
-  --player-name "Random Bot" \
-  --builtin-bot-id sample_bot_1 \
-  --bot-type random \
-  --max-events 100
+  --player-id myusername \
+  --opponent-id builtin_sample_1 \
+  --bot-type random
 
-# Register a player and use a custom bot from bots/ directory
+# PvC Mode - Play against builtin bot with custom bot
 uv run python -m client.bot_client_main \
-  --base-url http://localhost:8000 \
-  --player-name "Sample Bot 1" \
-  --builtin-bot-id sample_bot_2 \
+  --player-id myusername \
+  --opponent-id builtin_sample_1 \
   --bot-type custom \
-  --bot-path bots.sample_bot1.sample_bot_1.SampleBot1 \
-  --max-events 100
+  --bot-path bots.sample_bot1.sample_bot_1.SampleBot1
 
-# Note: Bot clients automatically submit actions during matches
+# PvP Mode - Join matchmaking queue with random bot
+uv run python -m client.bot_client_main --mode lobby
+
+# PvP Mode - Join matchmaking queue with custom bot
+uv run python -m client.bot_client_main \
+  --mode lobby \
+  --player-id myusername \
+  --bot-type custom \
+  --bot-path bots.sample_bot1.sample_bot_1.SampleBot1
+
+# Quick start (uses OS username, default random bot, vs builtin_sample_1)
+uv run python -m client.bot_client_main
+
+# Note: Bot clients automatically handle event streaming and action submission
 ```
 
 ## Architecture Overview
@@ -247,24 +271,37 @@ When the backend server is running, the following endpoints are available:
 
 ### Player Management
 - `POST /players/register` - Register a new player
+  - Request: `{"player_name": "username"}`
 - `GET /players/{player_id}` - Get player information
 
 ### Session Management
-- `POST /playground/start` - Start a new game session
-  - Accepts `PlayerConfig` for both players (builtin or remote bots)
+
+**PvC Mode (Player vs Computer)**:
+- `POST /playground/start` - Start a game session against builtin bot
+  - Accepts `PlayerConfig` for both players
+  - Specify builtin opponent via `bot_type: "builtin"` and `bot_id`
   - Returns `session_id` for the created session
   - Optional `visualize` parameter to enable Pygame visualization
 
+**PvP Mode (Player vs Player)**:
+- `POST /playground/lobby/join` - Join matchmaking queue
+  - Auto-matches with another waiting player (FIFO)
+  - Long-polling (up to 5 minutes timeout)
+  - Returns `session_id` when matched
+
 ### Game Actions
-- `POST /playground/{session_id}/action` - Submit an action for a turn
-  - Requires `player_id`, `move`, and optional `spell`
+- `POST /playground/{session_id}/action` - Submit an action for current turn
+  - Requires `player_id`, `turn`, `move`, and optional `spell`
+  - Must match current turn number
 
 ### Event Streaming
 - `GET /playground/{session_id}/events` - SSE stream of game events
   - Real-time turn events, game state updates, and game over notifications
+  - Automatic reconnection support
 
 ### Match Replay
 - `GET /playground/{session_id}/replay` - Get complete match history and replay data
+  - Includes all turns, actions, and final results
 
 ### Admin
 - `GET /admin/players` - List all registered players (admin only)
