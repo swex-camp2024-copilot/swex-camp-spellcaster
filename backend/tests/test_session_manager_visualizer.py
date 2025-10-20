@@ -255,7 +255,9 @@ async def test_game_over_event_sent_to_visualizer(mock_visualizer_service, mock_
     session_id = await manager.create_session(p1, p2, visualize=True)
 
     # Wait for match to complete
-    await asyncio.sleep(0.3)
+    # DummyEngine completes after 2 turns, with visualizer delay of ~0.6s per turn
+    # we need at least 1.5 seconds to complete (2 turns * 0.6s + buffer)
+    await asyncio.sleep(1.5)
 
     # Verify send_event was called multiple times (turns + game over)
     assert mock_visualizer_service.send_event.call_count >= 2
@@ -294,7 +296,9 @@ async def test_game_over_event_has_winner_name(mock_visualizer_service, mock_vis
     session_id = await manager.create_session(p1, p2, visualize=True)
 
     # Wait for match to complete
-    await asyncio.sleep(0.3)
+    # DummyEngine completes after 2 turns, with visualizer delay of ~0.6s per turn
+    # we need at least 1.5 seconds to complete (2 turns * 0.6s + buffer)
+    await asyncio.sleep(1.5)
 
     # Find the game over event call
     game_over_event = None

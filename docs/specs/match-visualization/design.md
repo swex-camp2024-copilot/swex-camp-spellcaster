@@ -57,6 +57,7 @@ graph TB
 3. Event is broadcast to SSE clients via `SSEManager.broadcast()`
 4. Event is sent to visualizer via IPC queue (non-blocking)
 5. Visualizer consumes event and renders animation
+6. **Match loop waits for animation to complete** (configurable delay, default 0.6s when visualizer enabled)
 
 **Game Over with Visualization**:
 
@@ -64,9 +65,10 @@ graph TB
 2. `GameEngineAdapter.create_game_over_event()` creates event with `winner_name` mapped from player_id to bot name
 3. `GameOverEvent` is broadcast to SSE clients with correct winner name
 4. `GameOverEvent` is sent to visualizer via IPC with winner name
-5. Visualizer displays winner overlay ("THE WINNER IS [NAME]!" or "DRAW!") with "EXIT" button
-6. **User clicks EXIT button** → `display_end_game_message()` returns → visualizer sets `_running = False` → event loop exits → process terminates cleanly
-7. Alternatively, user can close window (pygame QUIT event) or admin can terminate via `DELETE /playground/{session_id}` API
+5. SSE clients disconnect, but **session remains alive if visualizer is enabled** (no automatic cleanup)
+6. Visualizer displays winner overlay ("THE WINNER IS [NAME]!" or "DRAW!") with "EXIT" button
+7. **User clicks EXIT button** → `display_end_game_message()` returns → visualizer sets `_running = False` → event loop exits → process terminates cleanly
+8. Alternatively, user can close window (pygame QUIT event) or admin can terminate via `DELETE /playground/{session_id}` API
 
 ### 2.3 Process Model
 
@@ -350,6 +352,16 @@ class SessionManager:
                         logger.warning(f"Failed to send game over event to visualizer for {ctx.session_id}: {exc}")
                 
                 # ... rest of method ...
+            
+            # Delay between turns to allow SSE event delivery and animation completion
+            # When visualizer is enabled, wait for animation duration to complete
+            # Otherwise, use minimal delay
+            if ctx.visualizer_enabled:
+                from ..core.config import settings
+                # Wait for animation to complete plus a small buffer for rendering
+                await asyncio.sleep(settings.visualizer_animation_duration + 0.1)
+            else:
+                await asyncio.sleep(0.01)
 
         finally:
             # NOTE: Visualizer is NOT terminated automatically when session ends.
@@ -410,6 +422,49 @@ async def start_playground_match(payload: SessionCreationRequest) -> Dict[str, s
 ```
 
 **Rationale**: Single-line change to pass through the `visualize` parameter.
+
+---
+
+### 3.7 SSE Streaming Endpoint Update
+
+**File**: `backend/app/api/streaming.py`
+
+**Modified Cleanup Logic**:
+```python
+@router.get("/playground/{session_id}/events")
+async def stream_session_events(session_id: str, request: Request) -> StreamingResponse:
+    """Stream real-time session events over Server-Sent Events (SSE)."""
+    # ... existing SSE streaming logic ...
+    
+    async def event_generator() -> AsyncGenerator[str, None]:
+        try:
+            # ... event streaming ...
+        finally:
+            await runtime.sse_manager.remove_connection(session_id, stream)
+            await stream.close()
+
+            # Check if this was the last connection for a completed session
+            # If so, clean up the session resources, but ONLY if no visualizer is active
+            try:
+                ctx = await runtime.session_manager.get_session(session_id)
+                # Only cleanup if game is over, no more SSE connections, AND no active visualizer
+                if ctx.game_state.status != "active":
+                    connection_count = len(runtime.sse_manager._streams_by_session.get(session_id, []))
+                    if connection_count == 0:
+                        # Do NOT cleanup if visualizer is enabled - let it stay open
+                        if ctx.visualizer_enabled:
+                            logger.info(
+                                f"Last client disconnected from completed session {session_id}, "
+                                f"but visualizer is active - keeping session alive"
+                            )
+                        else:
+                            logger.info(f"Last client disconnected from completed session {session_id}, triggering cleanup")
+                            await runtime.session_manager.cleanup_session(session_id)
+            except Exception as exc:
+                logger.debug(f"Session {session_id} already cleaned up or not found: {exc}")
+```
+
+**Rationale**: Prevents automatic session cleanup when visualizer is enabled, allowing the window to remain open indefinitely after the game ends. This ensures users can review the final game state before manually closing the visualizer.
 
 ---
 
@@ -526,8 +581,15 @@ except Exception as exc:
 2. **User closes pygame window**: pygame.QUIT event triggers immediate exit
 3. **Admin API termination**: `DELETE /playground/{session_id}` sends shutdown event via IPC queue
 4. **Explicit shutdown event**: Sent via IPC queue (e.g., during backend shutdown via lifespan handler)
+5. **SSE client disconnect**: When last SSE client disconnects from a completed session, automatic cleanup is **prevented if visualizer is enabled**. This allows the visualizer window to stay open for review.
 
 **Winner Name Display**: `GameEngineAdapter.create_game_over_event()` maps winner player_id to bot name, ensuring visualizer displays correct winner ("THE WINNER IS [BOT NAME]!") or "DRAW!" for ties.
+
+**Session Lifecycle with Visualization**:
+- Game ends → SSE clients receive `game_over` event and disconnect
+- Backend checks: if visualizer is enabled, session **stays alive** (no automatic cleanup)
+- Visualizer continues to display final game state with EXIT button
+- User manually closes visualizer → session can be cleaned up via admin API
 
 ---
 
@@ -573,7 +635,15 @@ def send_event(self, queue: multiprocessing.Queue, event: Event, timeout: float 
 MAX_CONCURRENT_VISUALIZED_SESSIONS: int = 10
 VISUALIZER_QUEUE_SIZE: int = 100  # Max events in queue
 VISUALIZER_SHUTDOWN_TIMEOUT: float = 5.0  # Seconds to wait for clean exit
+VISUALIZER_ANIMATION_DURATION: float = 0.5  # Seconds per turn animation
+VISUALIZER_INITIAL_RENDER_DELAY: float = 0.3  # Initial render delay
 ```
+
+**Animation Timing**:
+- When visualizer is enabled, match loop waits `VISUALIZER_ANIMATION_DURATION + 0.1` seconds between turns
+- This ensures animations complete before the next turn begins
+- Without visualizer, minimal 0.01 second delay is used for fast execution
+- Performance impact: ~0.6s per turn with visualizer vs ~0.01s without
 
 ---
 

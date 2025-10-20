@@ -213,8 +213,16 @@ class SessionManager:
                     except Exception as exc:
                         logger.warning(f"Failed to log turn for {ctx.session_id}: {exc}")
 
-                # Small delay between turns to allow SSE event delivery
-                await asyncio.sleep(0.01)
+                # Delay between turns to allow SSE event delivery and animation completion
+                # When visualizer is enabled, wait for animation duration to complete
+                # Otherwise, use minimal delay
+                if ctx.visualizer_enabled:
+                    from ..core.config import settings
+
+                    # Wait for animation to complete plus a small buffer for rendering
+                    await asyncio.sleep(settings.visualizer_animation_duration + 0.1)
+                else:
+                    await asyncio.sleep(0.01)
 
                 # Check game over
                 result = ctx.adapter.check_game_over()

@@ -43,15 +43,24 @@ async def stream_session_events(session_id: str, request: Request) -> StreamingR
             await stream.close()
 
             # Check if this was the last connection for a completed session
-            # If so, clean up the session resources (including visualizer)
+            # If so, clean up the session resources, but ONLY if no visualizer is active
             try:
                 ctx = await runtime.session_manager.get_session(session_id)
-                # Only cleanup if game is over and no more SSE connections
+                # Only cleanup if game is over, no more SSE connections, AND no active visualizer
                 if ctx.game_state.status != "active":
                     connection_count = len(runtime.sse_manager._streams_by_session.get(session_id, []))
                     if connection_count == 0:
-                        logger.info(f"Last client disconnected from completed session {session_id}, triggering cleanup")
-                        await runtime.session_manager.cleanup_session(session_id)
+                        # Do NOT cleanup if visualizer is enabled - let it stay open
+                        if ctx.visualizer_enabled:
+                            logger.info(
+                                f"Last client disconnected from completed session {session_id}, "
+                                f"but visualizer is active - keeping session alive"
+                            )
+                        else:
+                            logger.info(
+                                f"Last client disconnected from completed session {session_id}, triggering cleanup"
+                            )
+                            await runtime.session_manager.cleanup_session(session_id)
             except Exception as exc:
                 logger.debug(f"Session {session_id} already cleaned up or not found: {exc}")
 
