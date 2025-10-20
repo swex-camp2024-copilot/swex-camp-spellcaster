@@ -1,13 +1,19 @@
-# Spellcasters Playground Backend
+# Spellcasters Backend Server
 
-FastAPI-based backend for the Spellcasters Hackathon Playground mode. This backend enables real-time turn-based bot battles with SSE streaming, player registration, and comprehensive match logging.
+FastAPI-based backend server for **PvC** (Player vs Computer) and **PvP** (Player vs Player) remote play modes. This server enables real-time turn-based bot battles with SSE streaming, player registration, matchmaking, and comprehensive match logging.
+
+> **Note**: For game mode terminology and local testing, see the [Main README](../README.md).
+> - **Playground (Local)**: No server needed - use `main.py` for local bot testing
+> - **PvC Mode**: Remote play against server's builtin bots (this server required)
+> - **PvP Mode**: Auto-matchmaking between players (this server required)
+> - **Tournament Mode**: Coming soon for hackathon finale
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Python 3.9+
 - [UV package manager](https://github.com/astral-sh/uv) installed
-- Project dependencies installed (run `uv sync` from project root)
+- Project dependencies installed: `uv sync` (from project root)
 
 ### Start the FastAPI Server
 
@@ -66,8 +72,12 @@ ls -la data/playground.db
 ```
 
 ### Code Quality
+
+For general development commands (linting, formatting, security scans), see the [Main README](../README.md#development-tools).
+
+Backend-specific quality checks:
 ```bash
-# From project root
+# From project root - check only backend code
 uv run ruff check backend/
 uv run ruff format backend/
 uv run bandit -r backend/
@@ -128,22 +138,6 @@ PLAYGROUND_BOT_EXECUTION_TIMEOUT=1.0
 PLAYGROUND_MAX_BOT_MEMORY_MB=100
 ```
 
-## 📊 Current Status
-
-### ✅ Completed (Task 1: Project Foundation)
-- FastAPI application with CORS and error handling
-- Complete data model suite (30+ models)
-- SQLite database with async support
-- Comprehensive error handling framework
-- 30 unit tests with 98%+ coverage
-- Database table creation and management
-
-### 🚧 In Development
-- Player Management System (Task 2)
-- Bot System Implementation (Task 3)
-- Session Management and Game Flow (Task 4)
-- Real-time Streaming (SSE) (Task 5)
-
 ## 🔍 API Documentation
 
 Once the server is running, visit http://localhost:8000/docs for interactive API documentation.
@@ -154,42 +148,15 @@ Once the server is running, visit http://localhost:8000/docs for interactive API
 - `GET /docs` - Interactive API documentation
 - `GET /redoc` - Alternative API documentation
 
-### Planned Endpoints
-- `POST /players/register` - Player registration
-- `POST /playground/start` - Start game session
-- `GET /playground/{session_id}/events` - SSE stream
-- `POST /playground/{session_id}/action` - Submit actions
-- `GET /playground/{session_id}/replay` - Match replay
-- `GET /admin/players` - Admin player management
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Port already in use:**
-```bash
-# Kill process on port 8000
-lsof -ti:8000 | xargs kill -9
-
-# Or use a different port
-uv run uvicorn backend.app.main:app --reload --port 8001
-```
-
-**Database issues:**
-```bash
-# Remove and recreate database
-rm backend/playground.db
-uv run python -c "import asyncio; from backend.app.core.database import create_tables; asyncio.run(create_tables())"
-```
-
-**Import errors:**
-```bash
-# Make sure you're running from project root
-pwd  # Should end with 'swex-camp-spellcaster'
-
-# Ensure dependencies are installed
-uv sync
-```
+### Available Endpoints
+- `POST /players/register` - Register a new player
+- `GET /players/{player_id}` - Get player information
+- `POST /playground/start` - Start a game session (PvC mode - specify builtin opponent)
+- `POST /playground/lobby/join` - Join matchmaking queue (PvP mode - auto-match with another player)
+- `GET /playground/{session_id}/events` - SSE event stream (real-time game updates)
+- `POST /playground/{session_id}/action` - Submit player action for current turn
+- `GET /playground/{session_id}/replay` - Get complete match replay data
+- `GET /admin/players` - List all registered players (admin only)
 
 ## 📝 Testing
 
@@ -208,10 +175,3 @@ uv run python -m pytest backend/tests/ --cov=backend.app --cov-report=html
 # View coverage report
 open backend/htmlcov/index.html
 ```
-
-## 🔗 Related Documentation
-
-- [Project Root README](../README.md) - Main project documentation
-- [API Design Spec](../.vibedev/specs/spellcasters-playground-backend/design.md) - Technical design
-- [Requirements Doc](../.vibedev/specs/spellcasters-playground-backend/requirements.md) - System requirements
-- [Implementation Tasks](../.vibedev/specs/spellcasters-playground-backend/tasks.md) - Development roadmap 

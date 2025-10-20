@@ -1,13 +1,12 @@
-# Spellcasters Playground Clients
+# Spellcasters Client Tools
 
-This directory contains client libraries and CLI tools to interact with the Spellcasters Playground backend.
+Client libraries and CLI tools for remote play modes: **PvC** (Player vs Computer) and **PvP** (Player vs Player).
 
-## Layout
-
-- `client/sse_client.py`: Async SSE client library for event streaming
-- `client/sse_client_main.py`: CLI runner to connect to a session SSE stream
-- `client/bot_client.py`: Bot client simulator library for remote gameplay
-- `client/bot_client_main.py`: CLI runner to play matches against builtin bots or other remote players
+> **Note**: For game mode terminology and local testing, see the [Main README](../README.md).
+> - **Playground (Local)**: No client/server needed - use `main.py` for local bot testing
+> - **PvC Mode**: Remote play against server's builtin bots (this client + backend server)
+> - **PvP Mode**: Auto-matchmaking between players (this client + backend server)
+> - **Tournament Mode**: Coming soon for hackathon finale
 
 ## Prerequisites
 
@@ -25,7 +24,14 @@ curl -X POST http://localhost:8000/players/register \
   -d '{"player_name": "your-username"}'
 ```
 
-## SSE Client CLI
+## Client Overview
+
+- `client/sse_client.py`: Async SSE client library for event streaming
+- `client/sse_client_main.py`: CLI runner to connect to a session SSE stream
+- `client/bot_client.py`: Bot client simulator library for remote gameplay
+- `client/bot_client_main.py`: CLI runner to play matches against builtin bots or other remote players
+
+### SSE Client
 
 Connect to an existing session and print the first N events.
 
@@ -44,25 +50,31 @@ curl -s -X POST http://localhost:8000/playground/start \
   -d '{"player_1_config":{"player_id":"builtin_sample_1","bot_type":"builtin","bot_id":"sample_bot_1"},"player_2_config":{"player_id":"builtin_sample_2","bot_type":"builtin","bot_id":"sample_bot_2"}}'
 ```
 
-## Bot Client CLI
+### Bot Client CLI
 
-The Bot Client CLI allows you to play matches remotely against builtin bots or other remote players. It automatically handles event streaming, bot decision-making, and action submission.
+The Bot Client CLI allows you to play matches remotely in **PvC** (vs builtin bots) or **PvP** (vs other players) modes. It automatically handles event streaming, bot decision-making, and action submission.
 
-### Quick Start (Minimum Arguments)
+#### Quick Start (Minimum Arguments)
 
-Run a match using your OS username and the default random bot:
+Run a PvC match using your OS username and the default random bot:
 
 ```bash
 uv run python -m client.bot_client_main
 ```
 
 This uses:
-
 - Player ID: Current OS username (via `whoami`)
+- Mode: PvC (default)
 - Opponent: `builtin_sample_1` (default builtin bot)
 - Bot: `RandomWalkStrategy` (simple random movement)
 
-### Play vs Builtin Bot (Random Strategy)
+---
+
+## PvC Mode (Player vs Computer)
+
+Play against the server's builtin bots. Perfect for testing your bot against standard opponents.
+
+### PvC with Random Bot Strategy
 
 ```bash
 uv run python -m client.bot_client_main \
@@ -71,7 +83,7 @@ uv run python -m client.bot_client_main \
   --bot-type random
 ```
 
-### Play vs Builtin Bot (Custom Bot)
+### PvC with Custom Bot
 
 Load a custom bot from the `bots/` directory:
 
@@ -83,23 +95,31 @@ uv run python -m client.bot_client_main \
   --bot-path bots.sample_bot1.sample_bot_1.SampleBot1
 ```
 
-### Play vs Another Remote Player (PvP)
+### Available Builtin Opponents
 
-**Lobby mode** provides automatic matchmaking for PvP gameplay. Players join a FIFO queue and are automatically matched when two players are waiting.
+- `builtin_sample_1` - Sample bot with basic strategy
+- `builtin_sample_2` - Alternative sample bot
+- More builtin bots may be available - check server documentation
 
-#### Quick Start - Join Lobby with Random Bot
+---
+
+## PvP Mode (Player vs Player)
+
+Auto-matchmaking for real-time battles between two players. Players join a queue and are automatically matched.
+
+### Quick Start - Join PvP Queue
 
 ```bash
 uv run python -m client.bot_client_main --mode lobby
 ```
 
 The client will:
-1. Join the lobby queue
+1. Join the PvP matchmaking queue
 2. Wait for another player to join (long-polling, up to 5 minutes)
 3. Automatically match and start the game
 4. Play the match with visualization enabled
 
-#### Join Lobby with Custom Bot
+### PvP with Custom Bot
 
 ```bash
 uv run python -m client.bot_client_main \
@@ -108,17 +128,17 @@ uv run python -m client.bot_client_main \
   --bot-path bots.sample_bot1.sample_bot_1.SampleBot1
 ```
 
-#### Two Players Joining Lobby (Different Terminals)
+### PvP Example: Two Players (Different Terminals)
 
 ```bash
-# Terminal 1 (joins first, waits for match)
+# Terminal 1 (Player 1 - joins first, waits for match)
 uv run python -m client.bot_client_main \
   --player-id alice \
   --mode lobby \
   --bot-type custom \
   --bot-path bots.sample_bot1.sample_bot_1.SampleBot1
 
-# Terminal 2 (joins second, both auto-match immediately)
+# Terminal 2 (Player 2 - joins second, both auto-match immediately)
 uv run python -m client.bot_client_main \
   --player-id bob \
   --mode lobby \
@@ -126,36 +146,36 @@ uv run python -m client.bot_client_main \
   --bot-path bots.tactical_bot.tactical_bot.TacticalBot
 ```
 
-**How Lobby Matching Works:**
-- Players are matched in **FIFO** (first-in, first-out) order
-- When 2+ players are waiting, the first two are automatically matched
-- Both players' requests return with the same `session_id`
-- The match starts immediately with visualization enabled
-- If no match is found within 5 minutes, the request times out
+**PvP Matchmaking Details:**
+- Players matched in **FIFO** (first-in, first-out) order
+- When 2+ players waiting, first two are automatically matched
+- Both players receive the same `session_id`
+- Match starts immediately with visualization enabled
+- 5-minute timeout if no match found
 
-### Direct Mode (Specify Opponent)
+---
 
-For direct matches against builtin bots or coordinated testing, use direct mode:
+## Tournament Mode (Future)
 
-```bash
-# vs builtin bot (default mode)
-uv run python -m client.bot_client_main \
-  --mode direct \
-  --opponent-id builtin_sample_1
+Multi-player tournament mode (4/6/16 players) is planned for the hackathon finale. Stay tuned!
 
-# Shorthand (--mode direct is default)
-uv run python -m client.bot_client_main \
-  --opponent-id builtin_sample_1
-```
+---
+
+## Bot Client Instructions
 
 ### CLI Arguments
 
 - `--base-url`: Backend server URL (default: `http://localhost:8000`, env: `BASE_URL`)
-- `--player-id`: Existing registered player ID (default: OS username via `whoami`, env: `PLAYER_ID`)
-- `--mode`: Match mode: `direct` (specify opponent) or `lobby` (auto-match via queue) (default: `direct`, env: `MODE`)
-- `--opponent-id`: Opponent ID - builtin bot (e.g., `builtin_sample_1`) or remote player (default: `builtin_sample_1`, env: `OPPONENT_ID`)
-  - **Only used in direct mode**
+- `--player-id`: Registered player ID (default: OS username via `whoami`, env: `PLAYER_ID`)
+- `--mode`: Play mode: `direct` (PvC) or `lobby` (PvP) (default: `direct`, env: `MODE`)
+  - `direct` - PvC mode: Play against specified builtin bot
+  - `lobby` - PvP mode: Join matchmaking queue for auto-match
+- `--opponent-id`: Builtin bot ID for PvC mode (e.g., `builtin_sample_1`) (default: `builtin_sample_1`, env: `OPPONENT_ID`)
+  - **Only used in PvC mode (`--mode direct`)**
+  - Ignored in PvP mode
 - `--bot-type`: Bot strategy: `random` or `custom` (default: `random`, env: `BOT_TYPE`)
+  - `random` - Use built-in random movement bot
+  - `custom` - Load custom bot from `bots/` directory
 - `--bot-path`: Module path for custom bot (required if `--bot-type=custom`, env: `BOT_PATH`)
   - Format: `module.path.ClassName`
   - Example: `bots.sample_bot1.sample_bot_1.SampleBot1`
@@ -169,9 +189,9 @@ All CLI arguments can be set via environment variables:
 ```bash
 export BASE_URL=http://localhost:8000
 export PLAYER_ID=myusername
-export MODE=lobby                    # or 'direct'
-export OPPONENT_ID=builtin_sample_1  # only used in direct mode
-export BOT_TYPE=custom
+export MODE=lobby                    # 'direct' (PvC) or 'lobby' (PvP)
+export OPPONENT_ID=builtin_sample_1  # only used in PvC mode (MODE=direct)
+export BOT_TYPE=custom               # 'random' or 'custom'
 export BOT_PATH=bots.sample_bot1.sample_bot_1.SampleBot1
 export MAX_EVENTS=100
 export LOG_LEVEL=INFO
@@ -212,6 +232,8 @@ When a match ends:
 - Backend will use default action and match continues
 - Consider optimizing bot's `decide()` method
 
+---
+
 ## Testing
 
 ### Run Fast Tests (Default)
@@ -239,12 +261,3 @@ uv run pytest client/tests -v -m ""
 
 - `@pytest.mark.slow` - Tests that take 60+ seconds (game simulations)
 - Default behavior: Skip slow tests to keep CI fast
-
-## Notes
-
-- Action submission is fully automatic - the client handles all action timing
-- Matches are fully automated - no manual intervention needed
-- Custom bots must implement `BotInterface` from `bots/bot_interface.py`
-- The client supports automatic SSE reconnection with exponential backoff
-- Game state is provided to the bot's `decide()` method on every turn
-
