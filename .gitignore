@@ -171,6 +171,9 @@ uv.lock
 .history/
 
 # Project specific
+*.db
 *.pth
-training_stats.txt
 bandit-report.json
+
+# Claude Code
+.claude/settings.local.json
