@@ -76,7 +76,7 @@ erDiagram
     tournaments ||--o{ matches : "organizes"
     
     players {
-        TEXT player_id PK "UUIDv4"
+        TEXT player_id PK "Slug from player_name (e.g., 'kevin-lin')"
         TEXT player_name UK "Unique, NOT NULL"
         INTEGER is_builtin "0/1 boolean, DEFAULT 0"
         TEXT sprite_path "Optional asset hint"
@@ -136,6 +136,20 @@ erDiagram
         TEXT ended_at "UTC"
     }
 ```
+
+### Player ID Generation
+
+Player IDs are automatically generated as URL-friendly slugs from `player_name`:
+- Convert to lowercase
+- Remove special characters (keep alphanumeric and spaces)
+- Replace spaces with hyphens
+- Duplicates receive numeric postfix (`_2`, `_3`, etc.)
+- Built-in player IDs remain unchanged (e.g., `builtin_sample_1`, `builtin_tactical`)
+
+**Examples:**
+- "Kevin Lin" → `kevin-lin`
+- "O'Brien!" → `obrien`
+- Duplicate "Kevin Lin" → `kevin-lin_2`
 
 ## 4. Configuration (Env Vars)
 
@@ -234,7 +248,7 @@ Response:
 
 ```json
 {
-  "player_id": "uuid-v4",
+  "player_id": "firemage",
   "player_name": "FireMage",
   "submitted_from": "online",
   "is_builtin": false,
@@ -256,7 +270,7 @@ Response:
 ```json
 [
   {
-    "player_id": "uuid-v4",
+    "player_id": "firemage",
     "player_name": "FireMage",
     "submitted_from": "online",
     "is_builtin": false,

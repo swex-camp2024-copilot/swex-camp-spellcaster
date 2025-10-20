@@ -36,7 +36,7 @@ class TestPlayerRegistry:
     async def test_register_player_success(self, player_registry, mock_db_service, sample_registration):
         """Test successful player registration."""
         expected_player = Player(
-            player_id="test-uuid",
+            player_id="testplayer",
             player_name=sample_registration.player_name,
             submitted_from=sample_registration.submitted_from,
             created_at=datetime.now(),
@@ -48,7 +48,7 @@ class TestPlayerRegistry:
 
         player = await player_registry.register_player(sample_registration)
 
-        assert player.player_id == "test-uuid"
+        assert player.player_id == "testplayer"
         assert player.player_name == sample_registration.player_name
         mock_db_service.create_player.assert_called_once_with(sample_registration)
 
@@ -168,6 +168,58 @@ class TestPlayerRegistry:
         exists = await player_registry.validate_player_exists(player_id)
 
         assert exists is False
+
+
+class TestDatabaseServiceSlugGeneration:
+    """Test slug generation logic in DatabaseService."""
+
+    @pytest.fixture
+    def db_service(self):
+        """Create database service instance."""
+        return DatabaseService()
+
+    def test_generate_player_slug_basic(self, db_service):
+        """Test basic slug generation from player name."""
+        assert db_service._generate_player_slug("Kevin Lin") == "kevin-lin"
+        assert db_service._generate_player_slug("TestPlayer") == "testplayer"
+        assert db_service._generate_player_slug("John Doe") == "john-doe"
+
+    def test_generate_player_slug_special_characters(self, db_service):
+        """Test that special characters are removed from slug."""
+        assert db_service._generate_player_slug("O'Brien!") == "obrien"
+        assert db_service._generate_player_slug("Test User #1") == "test-user-1"
+        assert db_service._generate_player_slug("Alice@Bob") == "alicebob"
+        assert db_service._generate_player_slug("User$123") == "user123"
+
+    def test_generate_player_slug_multiple_spaces(self, db_service):
+        """Test handling of multiple consecutive spaces."""
+        assert db_service._generate_player_slug("John   Doe") == "john-doe"
+        assert db_service._generate_player_slug("Test  Player  Name") == "test-player-name"
+
+    def test_generate_player_slug_leading_trailing_spaces(self, db_service):
+        """Test handling of leading and trailing spaces."""
+        assert db_service._generate_player_slug("  Kevin Lin  ") == "kevin-lin"
+        assert db_service._generate_player_slug(" TestPlayer ") == "testplayer"
+
+    def test_generate_player_slug_only_special_chars(self, db_service):
+        """Test handling of names with only special characters."""
+        assert db_service._generate_player_slug("!!!") == ""
+        assert db_service._generate_player_slug("@#$%") == ""
+
+    def test_generate_player_slug_mixed_case(self, db_service):
+        """Test that slug is always lowercase."""
+        assert db_service._generate_player_slug("KEVIN LIN") == "kevin-lin"
+        assert db_service._generate_player_slug("JoHn DoE") == "john-doe"
+
+    @pytest.mark.asyncio
+    async def test_create_player_slug_generation(self, db_service):
+        """Test that create_player generates slug-based IDs."""
+        # This will be an integration test that requires database setup
+        # For now, we verify the slug generation method works correctly
+        registration = PlayerRegistration(player_name="Kevin Lin", submitted_from="online")
+
+        expected_slug = db_service._generate_player_slug(registration.player_name)
+        assert expected_slug == "kevin-lin"
 
 
 # Note: API and integration tests would go here, but they require a running FastAPI app

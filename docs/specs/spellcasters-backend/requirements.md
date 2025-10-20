@@ -13,17 +13,21 @@ The Spellcasters Playground Backend is a FastAPI-based system that powers the "P
 **Acceptance Criteria**:
 1. The system SHALL provide a POST /players/register endpoint that accepts player registration data
 2. The system SHALL accept player_name and submitted_from fields in the registration payload
-3. The system SHALL generate and return a unique player_id (UUID) upon successful registration
-4. The system SHALL store player metadata including name, ID, submission source, and match statistics
-5. The system SHALL initialize match statistics (total_matches, wins, losses, draws) to zero for new players
-6. The system SHALL validate that player_name is a non-empty valid string and enforce case-insensitive uniqueness
-7. The system SHALL return 409 Conflict when registering a duplicate player_name (case-insensitive)
-8. The system SHALL return appropriate error responses for invalid registration data
-9. The system SHALL provide a DELETE /players/{player_id} endpoint to remove registered players
-10. The system SHALL prevent deletion of built-in players
-11. The system SHALL prevent deletion of players with active sessions
-12. The system SHALL cascade delete related game results when deleting a player
-13. The system SHALL return appropriate error responses for invalid deletion operations
+3. The system SHALL generate player_id as a URL-friendly slug derived from player_name
+4. The system SHALL convert player_name to lowercase and replace non-alphanumeric characters (except spaces) with empty string
+5. The system SHALL replace spaces in player_name with hyphens when generating player_id
+6. The system SHALL automatically add numeric postfix (_2, _3, etc.) for duplicate slugs
+7. The system SHALL keep built-in player IDs unchanged (e.g., "builtin_sample_1")
+8. The system SHALL store player metadata including name, ID, submission source, and match statistics
+9. The system SHALL initialize match statistics (total_matches, wins, losses, draws) to zero for new players
+10. The system SHALL validate that player_name is a non-empty valid string and enforce case-insensitive uniqueness
+11. The system SHALL return 409 Conflict when registering a duplicate player_name (case-insensitive)
+12. The system SHALL return appropriate error responses for invalid registration data
+13. The system SHALL provide a DELETE /players/{player_id} endpoint to remove registered players
+14. The system SHALL prevent deletion of built-in players
+15. The system SHALL prevent deletion of players with active sessions
+16. The system SHALL cascade delete related game results when deleting a player
+17. The system SHALL return appropriate error responses for invalid deletion operations
 
 ### 2. Match Session Management
 

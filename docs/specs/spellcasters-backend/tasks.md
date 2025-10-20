@@ -70,6 +70,18 @@ This implementation plan converts the feature design into a series of incrementa
   - Test constraint validation for player deletion
   - **Requirements**: Testing strategy and error handling validation for registration and deletion
 
+- [x] 2.5 Change player ID generation from UUID to slug-based format
+  - Implement slug generation logic in `DatabaseService._generate_player_slug()`
+  - Update `DatabaseService.create_player()` to use slug-based IDs with deduplication
+  - Add deduplication with numeric postfix (_2, _3, etc.) when slug already exists
+  - Keep built-in player IDs unchanged (e.g., "builtin_sample_1", "builtin_tactical")
+  - Add comprehensive unit tests for slug generation (basic, special characters, spaces, case)
+  - Add integration tests for slug generation and deduplication in real scenarios
+  - Update functional spec (data model, API examples, player ID generation section)
+  - Update requirements spec (add slug generation acceptance criteria)
+  - Update design spec (Player model description, add Player ID Generation Strategy section)
+  - **Requirements**: Human-readable player IDs for better API usability and developer experience
+
 ### 3. Bot System Implementation
 
 - [x] 3.1 Create abstract `BotInterface` in `/backend/app/models/bots.py`

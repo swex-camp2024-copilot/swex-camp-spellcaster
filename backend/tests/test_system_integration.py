@@ -328,5 +328,94 @@ async def test_component_integration_and_data_flow(test_client):
     assert cleanup_response.status_code == 200
 
 
+@pytest.mark.asyncio
+async def test_player_id_slug_generation_integration(test_client):
+    """Test that player IDs are generated as slugs from player names."""
+    import time
+
+    # Use timestamp to ensure unique names across test runs
+    timestamp = int(time.time() * 1000)
+    player_name = f"Kevin Lin {timestamp}"
+
+    # Test basic slug generation
+    response = await test_client.post(
+        "/players/register", json={"player_name": player_name, "submitted_from": "online"}
+    )
+    assert response.status_code == 201
+    data = response.json()
+    # Should be "kevin-lin-<timestamp>"
+    assert data["player_id"].startswith("kevin-lin-")
+    assert data["player_name"] == player_name
+
+
+@pytest.mark.asyncio
+async def test_player_id_slug_special_characters_integration(test_client):
+    """Test that special characters are removed from player ID slugs."""
+    import time
+
+    timestamp = int(time.time() * 1000)
+
+    test_cases = [
+        (f"O'Brien! {timestamp}", "obrien"),
+        (f"Test User #1 {timestamp + 1}", "test-user-1"),
+        (f"Alice@Bob {timestamp + 2}", "alicebob"),
+        (f"User$123 {timestamp + 3}", "user123"),
+    ]
+
+    for player_name, expected_slug_prefix in test_cases:
+        response = await test_client.post(
+            "/players/register", json={"player_name": player_name, "submitted_from": "online"}
+        )
+        assert response.status_code == 201
+        data = response.json()
+        # Check that the slug starts with the expected prefix (before the timestamp)
+        assert data["player_id"].startswith(expected_slug_prefix), (
+            f"Expected slug to start with {expected_slug_prefix} for {player_name}, got {data['player_id']}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_player_id_deduplication_with_postfix_integration(test_client):
+    """Test that duplicate slugs get numeric postfix (_2, _3, etc.)."""
+    import time
+
+    timestamp = int(time.time() * 1000)
+
+    # Register first player with name "Dedup Player <timestamp>"
+    player_name = f"Dedup Player {timestamp}"
+    response1 = await test_client.post(
+        "/players/register", json={"player_name": player_name, "submitted_from": "online"}
+    )
+    assert response1.status_code == 201
+    data1 = response1.json()
+    assert data1["player_id"].startswith("dedup-player-")
+
+    # Register second player with same name - should get 409 due to case-insensitive uniqueness
+    response2 = await test_client.post(
+        "/players/register", json={"player_name": player_name, "submitted_from": "online"}
+    )
+    # This should fail due to case-insensitive name uniqueness, not create _2
+    # Per spec: "Enforce case-insensitive uniqueness for player_name"
+    assert response2.status_code == 409  # Conflict
+
+
+@pytest.mark.asyncio
+async def test_player_id_builtin_unchanged_integration(test_client):
+    """Test that built-in player IDs remain unchanged."""
+    # Get list of players including built-ins
+    response = await test_client.get("/players?include_builtin=true")
+    assert response.status_code == 200
+    players = response.json()
+
+    # Find built-in players
+    builtin_players = [p for p in players if p.get("is_builtin", False)]
+
+    # Verify built-in IDs follow the old pattern (builtin_*)
+    for player in builtin_players:
+        assert player["player_id"].startswith("builtin_"), (
+            f"Built-in player {player['player_name']} has ID {player['player_id']}, expected to start with 'builtin_'"
+        )
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

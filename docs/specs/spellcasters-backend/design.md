@@ -178,7 +178,7 @@ class PlayerRegistration(BaseModel):
 
 class Player(BaseModel):
     """Encapsulates visible details: ID, name, sprite, game stats"""
-    player_id: str = Field(..., description="UUID string")
+    player_id: str = Field(..., description="Slug from player_name (e.g., 'kevin-lin')")
     player_name: str
     submitted_from: str
     sprite_path: Optional[str] = None
@@ -190,6 +190,23 @@ class Player(BaseModel):
     created_at: datetime
     is_builtin: bool = False  # True for built-in players
 ```
+
+### Player ID Generation Strategy
+
+Player IDs are generated as human-readable slugs from `player_name`:
+
+1. Convert to lowercase
+2. Remove special characters (keep alphanumeric and spaces)
+3. Replace spaces with hyphens
+4. Handle duplicates with numeric postfix (`_2`, `_3`, etc.)
+5. Built-in players use fixed IDs (unchanged)
+
+**Examples:**
+- "Kevin Lin" → `kevin-lin`
+- "O'Brien!" → `obrien`
+- Duplicate "Kevin Lin" → `kevin-lin_2`
+
+**Implementation:** The `DatabaseService._generate_player_slug()` method handles slug generation, and `create_player()` checks for duplicates and adds postfix as needed.
 
 ### Player Registry
 

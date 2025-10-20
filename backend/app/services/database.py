@@ -1,8 +1,8 @@
 """Database service for centralized database operations in the Spellcasters Playground Backend."""
 
 import logging
+import re
 from typing import List, Optional
-from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -25,14 +25,60 @@ class DatabaseService:
         """Initialize the database service."""
         self._session_factory = async_session_factory
 
+    def _generate_player_slug(self, player_name: str) -> str:
+        """Generate URL-friendly slug from player name.
+
+        Converts player name to lowercase, removes special characters,
+        and replaces spaces with hyphens.
+
+        Examples:
+            "Kevin Lin" -> "kevin-lin"
+            "O'Brien!" -> "obrien"
+            "Test User #1" -> "test-user-1"
+
+        Args:
+            player_name: The player's display name
+
+        Returns:
+            URL-friendly slug string
+        """
+        # Convert to lowercase
+        slug = player_name.lower()
+        # Replace non-alphanumeric chars (except spaces) with empty string
+        slug = re.sub(r"[^a-z0-9\s]", "", slug)
+        # Replace spaces with hyphens
+        slug = re.sub(r"\s+", "-", slug)
+        # Remove leading/trailing hyphens
+        slug = slug.strip("-")
+        return slug
+
     # Player Operations
 
     async def create_player(self, registration: PlayerRegistration) -> Player:
-        """Create a new player in the database."""
+        """Create a new player in the database with slug-based ID.
+
+        Player IDs are generated as URL-friendly slugs from player_name.
+        If a slug already exists, a numeric postfix (_2, _3, etc.) is added.
+        """
         try:
             async with self._session_factory() as session:
-                # Generate unique player ID
-                player_id = str(uuid4())
+                # Generate base slug from player name
+                base_slug = self._generate_player_slug(registration.player_name)
+
+                # Check for duplicates and add postfix if needed
+                player_id = base_slug
+                counter = 2
+
+                while True:
+                    result = await session.execute(select(PlayerDB).where(PlayerDB.player_id == player_id))
+                    existing = result.scalar_one_or_none()
+
+                    if not existing:
+                        break
+
+                    # Add postfix: kevin-lin_2, kevin-lin_3, etc.
+                    player_id = f"{base_slug}_{counter}"
+                    counter += 1
 
                 # Create database record
                 player_db = PlayerDB(
