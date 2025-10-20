@@ -1,6 +1,7 @@
 """End-to-end tests using real SSE and bot clients (in-process via ASGI)."""
 
 import asyncio
+import contextlib
 import uuid
 from typing import Dict, Any
 
@@ -314,6 +315,9 @@ async def test_remote_player_actions_are_processed(asgi_client):
     1. Remote player submits actions
     2. Actions are processed by backend
     3. Player actually moves on the board (position changes)
+
+    NOTE: This test works around httpx's buffered SSE by submitting actions
+    in a background task that runs concurrently with event streaming.
     """
     ac = asgi_client
 
@@ -341,30 +345,53 @@ async def test_remote_player_actions_are_processed(asgi_client):
     # Start match vs builtin
     session_id = await client.start_match(player_id=player_id, opponent_id="builtin_sample_1", visualize=False)
 
-    # Track player position changes
+    # Track player position changes and events
     player_positions = []
     turn_count = 0
 
-    async for event in client.play_match(session_id, player_id, max_events=10):
-        if event.get("event") == "turn_update":
-            turn_count += 1
-            game_state = event.get("game_state", {})
-            session_info = game_state.get("session_info", {})
-
-            # Get our player's info (player_1 or player_2)
-            if session_info.get("player_1", {}).get("player_id") == player_id:
-                position = session_info["player_1"].get("position")
-            else:
-                position = session_info["player_2"].get("position")
-
-            player_positions.append(position)
-
-            # Stop after 3 turns
-            if turn_count >= 3:
+    # Start a background task to proactively submit actions
+    # This works around httpx's buffered SSE in tests
+    async def submit_actions_task():
+        """Proactively submit actions for turns 1-5."""
+        for turn in range(1, 6):
+            try:
+                action = bot.decide({})  # Simple bot doesn't need state
+                await client.submit_action(session_id, player_id, turn, action)
+                await asyncio.sleep(0.05)  # Small delay between submissions
+            except Exception:
+                # Session might complete before all submissions - that's OK
                 break
 
-        elif event.get("event") == "game_over":
-            break
+    # Run action submission in background
+    action_task = asyncio.create_task(submit_actions_task())
+
+    try:
+        # Stream events and track positions
+        async for event in client.play_match(session_id, player_id, max_events=10):
+            if event.get("event") == "turn_update":
+                turn_count += 1
+                game_state = event.get("game_state", {})
+                session_info = game_state.get("session_info", {})
+
+                # Get our player's info (player_1 or player_2)
+                if session_info.get("player_1", {}).get("player_id") == player_id:
+                    position = session_info["player_1"].get("position")
+                else:
+                    position = session_info["player_2"].get("position")
+
+                player_positions.append(position)
+
+                # Stop after 3 turns
+                if turn_count >= 3:
+                    break
+
+            elif event.get("event") == "game_over":
+                break
+    finally:
+        # Clean up background task
+        action_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await action_task
 
     # Verify we tracked multiple positions
     assert len(player_positions) >= 2, "Should have recorded at least 2 positions"
