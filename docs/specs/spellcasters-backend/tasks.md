@@ -386,6 +386,29 @@ This implementation plan converts the feature design into a series of incrementa
   - Update client README with lobby mode examples and workflow
   - **Requirements**: 13.20 (Complete documentation for lobby feature)
 
+### 13. Test Database Isolation
+
+- [x] 13.1 Implement test database override for e2e tests
+  - Update `client/tests/conftest.py` with session-scoped `override_test_database` fixture
+  - Override `PLAYGROUND_DATABASE_URL` environment variable to use `data/test.db`
+  - Add automatic cleanup to remove test database after test session completion
+  - Make `asgi_client` fixture depend on `override_test_database` to ensure proper initialization order
+  - **Requirements**: 11.6 (Separate test database to prevent production data pollution)
+
+- [x] 13.2 Update specification documents for test database
+  - Update `requirements.md` Requirement 11.6 to document test database usage
+  - Update `design.md` Core Data Storage section to distinguish production and test databases
+  - Add Test Database Configuration section to design.md Testing Strategy
+  - Document database override mechanism and cleanup process
+  - **Requirements**: Complete documentation of test database isolation strategy
+
+- [ ] 13.3 Add tests to verify database isolation
+  - Create test to verify e2e tests use `data/test.db` (not `data/playground.db`)
+  - Test that production database is not modified during e2e test execution
+  - Verify test database cleanup occurs after test session
+  - Test database path resolution is correct across different working directories
+  - **Requirements**: 11.6 (Verify test database isolation works correctly)
+
 ## Task Execution Notes
 
 - Each task builds incrementally on previous tasks

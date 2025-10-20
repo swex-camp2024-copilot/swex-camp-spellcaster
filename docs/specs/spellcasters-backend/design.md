@@ -547,9 +547,15 @@ class GameResultDB(SQLModel, table=True):
 ### Core Data Storage
 
 ```python
-# Database (SQLite with SQLModel)
+# Production Database (SQLite with SQLModel)
 # Note: the path is resolved to an absolute path based on the repository root
 database_service: DatabaseService = DatabaseService("sqlite:///<repo_root>/data/playground.db")
+
+# Test Database (SQLite - separate from production)
+# Used by integration and e2e tests to prevent test data pollution
+# Located at: <repo_root>/data/test.db
+# Configured via PLAYGROUND_DATABASE_URL environment variable in test fixtures
+# Automatically cleaned up after test session completion
 
 # In-Memory Cache for Active Sessions
 sessions: Dict[str, GameState] = {}
@@ -1604,6 +1610,52 @@ tests/
 
 1. **Unit Tests**: Individual component testing
 2. **Integration Tests**: Full workflow testing
+
+### Test Database Configuration
+
+**Isolation Strategy**:
+- **Backend Unit Tests** (`backend/tests/`): Use in-memory SQLite database (`:memory:`)
+  - Configured in `backend/tests/conftest.py` with `TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"`
+  - Each test gets a fresh database instance
+  - No cleanup needed (database discarded after test)
+
+- **Client E2E Tests** (`client/tests/e2e/`): Use separate file-based test database (`data/test.db`)
+  - Configured via `PLAYGROUND_DATABASE_URL` environment variable override
+  - Override implemented in `client/tests/conftest.py` as session-scoped fixture
+  - Database automatically cleaned up after test session completes
+  - Prevents test data pollution in production database (`data/playground.db`)
+
+**Database Override Mechanism**:
+```python
+# client/tests/conftest.py
+
+# IMPORTANT: Set test database URL BEFORE importing backend.app.main
+# The database engine is created at import time, so we must override the env var first
+_repo_root = Path(__file__).resolve().parents[2]
+_test_db_path = _repo_root / "data" / "test.db"
+_test_db_url = f"sqlite+aiosqlite:///{_test_db_path.as_posix()}"
+os.environ["PLAYGROUND_DATABASE_URL"] = _test_db_url
+
+from backend.app.main import app  # noqa: E402
+
+@pytest.fixture(scope="session", autouse=True)
+def override_test_database():
+    """Override database URL for e2e tests."""
+    yield _test_db_path
+
+    # Cleanup after tests
+    if _test_db_path.exists():
+        _test_db_path.unlink()
+```
+
+**Key Implementation Detail**: The environment variable must be set at module import time (before `backend.app.main` is imported) because the database engine is created when the config module is first loaded.
+
+**Benefits**:
+- Complete isolation between test and production data
+- Realistic testing with file-based database (matches production behavior)
+- Automatic cleanup prevents test database accumulation
+- Environment variable override preserves backward compatibility
+- Import-time override ensures database engine uses correct URL
 
 ### Mock Strategies
 
